@@ -1,0 +1,579 @@
+---
+title: "SFA phase1 - GCMS analysis"
+author: "Cassandra Wattenburger"
+date: "December 5, 2019"
+output: html_document
+---
+
+## Introduction
+
+This script analyzes the respiration data from sand and litter microcosms innoculated with soil wash samples from the Monkey Run Meadow site. A total of 50 soil wash innocula were evaluated in triplicate. I'm interested to see if there are differences in cumulative CO2 respiration between the microbial innocula, which have been removed from their original habitat and given the same incubation conditions.
+
+Hypothesis: Microbial innocula will respire differing amounts of total CO2 despite growing in the same conditions (ie community variation alone leads to respiration variation).
+
+Equipment used: Shumadzu GCMS-QP210S with XXX column.
+
+Method: See pages 70, 77, 78 of Cassi Wattenburger's lab notebook #2.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_knit$set(root.dir = 'home/cassi/SFAgrowthrate/SFAphase1/GCMS/data/')
+```
+
+```{r, message=FALSE}
+library("ggplot2")
+library("stringr")
+library("plyr")
+library("dplyr")
+library("broom")
+
+rm(list=ls())
+```
+
+```{r}
+sessionInfo()
+```
+
+
+```{r}
+# Import data
+
+# List of directories containing data files
+dir <- list.dirs(path="~/SFAgrowthrate/SFAphase1/GCMS/data", full.names=TRUE, recursive=FALSE)
+
+files <- list()
+
+for (i in dir) {
+  files[[i]] <- list.files(path=i, pattern="*.txt", full.names=TRUE, recursive=FALSE)
+}
+# NOTE: foo files were removed from directories (do not contain data)
+
+# Exclude data from 11/01/19, sampling was compromised by plugged needles, need to check preceeding days as well
+files <- files[names(files) != "/home/cassi/SFAgrowthrate/SFAphase1/GCMS/data/110119"] 
+
+# Extract TIC area
+name.list <- list()
+area.list <- list() 
+
+for (i in names(files)) {
+  for (x in files[[i]]) {
+    name <- str_extract(x, "data/.+/.+.txt") # not catching those dates for some reason?
+    name <- gsub("data/.+/", "", name)
+    name <- gsub(".txt", "", name)
+    name.list[[i]] <- append(name.list[[i]], name)
+    
+    t <- read.table(x, header=FALSE, fill=TRUE, sep="\t", skip=8, nrows=3, comment.char="", stringsAsFactors=FALSE) # error, no lines
+    t <- t[1,10] # TIC area 
+    t <- as.data.frame(t)
+    area.list[[i]] <- append(area.list[[i]], t)
+  }
+}
+
+# Convert into dataframes
+raw.data <- list()
+
+for (i in names(files)) {
+  raw.data[[i]] <- cbind(area.list[[i]])  
+  rownames(raw.data[[i]]) <- name.list[[i]]
+  #raw.data[[i]] <- cbind(raw.data[[i]])
+  colnames(raw.data[[i]]) <- "area"
+}
+
+# Date info
+date <- list()
+
+for (i in names(files)) {
+  date[[i]] <- str_extract(i, "data/.+")
+  date[[i]] <- gsub("data/", "", date[[i]])
+}
+```
+
+## Standards
+I will be using the TIC area for all calculations.
+```{r}
+# Standards
+
+# Extract standards from each time point
+stds <- list()
+
+for (i in names(raw.data)) {
+  match <- c("std.*")
+  stds[[i]] <- raw.data[[i]][rownames(raw.data[[i]]) %in% grep(paste(match, collapse="|"), rownames(raw.data[[i]]), value=TRUE),]
+  stds[[i]] <- cbind(stds[[i]])
+  colnames(stds[[i]]) <- "area"
+  stds[[i]] <- mutate(data.frame(stds[[i]]), std = rownames(data.frame(stds[[i]]))) # add std names as column
+  stds[[i]] <- mutate(data.frame(stds[[i]]), date = date[[i]]) # add date info
+}
+
+# Smoosh all stds into one dataframe
+stds.df <- data.frame()
+
+for (i in names(stds)) {
+  stds.df <- rbind(stds.df, stds[[i]])
+}
+
+# Add ppm info to stds dataframe
+stds.df$ppm <- ifelse(stds.df$std == "std0", 0, ifelse(stds.df$std == "std1", 804.3, ifelse(stds.df$std == "std2", 1609,
+                            ifelse(stds.df$std == "std3", 3217, ifelse(stds.df$std == "std4" | stds.df$std == "std4.1" | stds.df$std == "std4.2" |
+                            stds.df$std == "std4.3" | stds.df$std == "std4.4" | stds.df$std == "std4.5" | stds.df$std == "std4.6", 8045,
+                            ifelse(stds.df$std == "std5", 16085, ifelse(stds.df$std == "std6", 32170, ifelse(stds.df$std == "std7", 80430, 
+                            ifelse(stds.df$std == "std8", 241300, ifelse(stds.df$std == "std9", 402100, NA))))))))))
+# NOTE: ppm is calculated based on the % CO2 used to make the standard (1% for stds1-3, 5% for stds4-6, 100% for stds7-9) and the avg vol of a 30 mL serum bottle (37.3 mL)
+# EXAMPLE: 3 mL/37.3 mL = 0.08043, 1% CO2 = 10,000 ppm, 10,000 ppm * 0.08043 = 804.3 ppm in std1
+
+# Remove stds 8-9 up to 11/09/19 and all std 10 (oversaturated GCMS due to wrong split ratio)
+stds.df <- stds.df[!stds.df$std %in% "std10",]
+stds.df <- stds.df[!((stds.df$date < 111119 & stds.df$std=="std8") | (stds.df$date < 111119 & stds.df$std=="std9")),]
+
+# Adjust for 90% split ratio stds 8 and 9 (too concentrated for GCMS to handle), other stds run at 50% split ratio
+# multiplier = 1.8, based on 0.5x=0.9
+stds.df$area <- as.numeric(stds.df$area)
+stds.df <- mutate(stds.df, area.conv = ifelse(std=="std8", area*1.8, ifelse(std=="std9", area*1.8, area*1)))
+
+# Isolate replicates of std 4
+stds4.df <- stds.df[stds.df$std %in% grep("std4+", stds.df$std, value=TRUE),]
+
+# Remove std 4 reps from stds data for regression
+stds.df <- stds.df[!stds.df$std %in% grep("std4.+", stds.df$std, value=TRUE),]
+```
+
+```{r}
+# Graph standards
+
+# by date
+stds.date.graph <- ggplot(stds.df, aes(x=ppm, y=area.conv)) +
+  geom_point() +
+  facet_wrap(~date) +
+  labs(title="CO2 standards by date") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=std),hjust=0, vjust=0)
+stds.date.graph
+
+# 11/19/19 and 11/26/19 are outliers
+
+# all together
+stds.all.graph <- ggplot(stds.df, aes(x=ppm, y=area.conv)) +
+  geom_point() +
+  labs(title="CO2 standards") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=std),hjust=0, vjust=0)
+stds.all.graph
+```
+
+### Remove outliers in standards
+Outliers will be identified as lying outside 2 standard deviations of the average for its respective standard.
+```{r}
+# Identify outliers
+
+stds.out.graphs <- list()
+
+for (i in unique(stds.df$std)) {
+  stds.out.graphs[[i]] <- ggplot(stds.df[stds.df$std==i,], aes(x=ppm, y=area.conv)) +
+    geom_boxplot() +
+    facet_grid(.~std, scales="free") +
+    geom_text(aes(label=date), hjust=1, vjust=0, size=3)
+}
+
+# Remove NA values
+stds.nona.df <- na.omit(stds.df)
+
+# Summary statistics
+stds.summary.df <- ddply(stds.nona.df, .(std), summarize, mean=mean(area.conv), sd=sd(area))
+stds.summary.df <- mutate(stds.summary.df, cutoff=sd*2) # defining outliers outside 2 standard deviations of mean
+stds.summary.df <- mutate(stds.summary.df, cutoff_min=mean-cutoff)
+stds.summary.df <- mutate(stds.summary.df, cutoff_max=mean+cutoff)
+
+# Remove outliers based on cutoffs
+stds.rm.df <- data.frame()
+
+for (i in stds.summary.df$std) {
+  x <- filter(stds.nona.df[stds.nona.df$std==i,], !(area.conv < stds.summary.df$cutoff_min[stds.summary.df$std==i] | area.conv > stds.summary.df$cutoff_max[stds.summary.df$std==i])) # remove outliers
+  stds.rm.df <- rbind(x, stds.rm.df)
+}
+# removed 16 outliers
+```
+16 outliers were removed.
+
+```{r}
+# Graph without outliers
+stds.rm.graph <- ggplot(stds.rm.df, aes(x=ppm, y=area.conv)) +
+  geom_point() +
+  labs(title="CO2 standards without outliers") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label=std),hjust=0, vjust=0)
+stds.rm.graph
+```
+
+### Create calibration for samples based on standards
+Standards will be aggregated across days and used to calculate the regression. I'm taking this approach because there were issues with the standards in the first week of the sampling effort, rendering the standards from those days useless.
+
+First, check if standard data has significant trend across days (include outliers):
+```{r}
+# First, check if standard data has signficant trend across days
+day.anova <- summary(aov(area.conv ~ date, stds.df))
+day.anova
+# P = 0.495, not significant
+# I feel good about aggregating the data, in this case
+```
+Because there isn't a significant trend, I feel good about aggregating these data.
+
+Perform linear regression:
+```{r}
+# Linear regression
+stds.conv <- lm(area.conv ~ ppm, data=stds.rm.df) #TROUBLESHOOOT intercept of this looks funky?????????
+summary(stds.conv)
+# Adj. R-squared = 0.985
+```
+
+```{r}
+plot(area.conv ~ ppm, data=stds.rm.df, main="Calibration curve") + abline(stds.conv)
+
+stds.conv.df <- as.data.frame(tidy(stds.conv))
+```
+
+### Look at standard 4 replicates
+I originally included these interspersed throughout each GCMS run to evaluate leakage, but due to faulty crimps and some gas carry-over in the beginning of the experiment, I don't think they can be used for that purpose anymore.
+
+```{r}
+stds4.graph <- ggplot(stds4.df, aes(x=date, y=area)) +
+  geom_point() +
+  labs("Standard 4 replicates") +
+  geom_text(aes(label=std),hjust=0, vjust=0) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+stds4.graph
+```
+
+There is one outlier (likely due to gas carry-over), but overall the area measurements for std 4 by the GCMS look very consistent between replciates and across days.
+
+### Ambient data
+Because these samples were taken by transferring 2 mL of headspace into a evacuated 2 mL gas vial, ambient CO2 must be subtracted from the samples.
+
+Removing outliers to account for carry-over contamination that will skew ambient average. Based on 2 standard deviations from average.
+```{r}
+# Isolate ambient samples
+amb <- list()
+match <- c("ambient")
+
+for (i in names(raw.data)) {
+  amb[[i]] <- raw.data[[i]][rownames(raw.data[[i]]) %in% grep(paste(match, collapse="|"), rownames(raw.data[[i]]), value=TRUE),]
+  amb[[i]] <- cbind(amb[[i]])
+  colnames(amb[[i]]) <- "area"
+  amb[[i]] <- mutate(data.frame(amb[[i]]), date = date[[i]]) # add date info
+}
+
+amb.df <- data.frame()
+
+for (i in names(amb)) {
+  amb.df <- rbind(amb.df, amb[[i]])
+}
+
+amb.df$area <- as.numeric(amb.df$area)
+
+# Summary statistics
+amb.avg <- mean(amb.df$area)
+amb.sd <- sd(amb.df$area)
+amb_min <- amb.avg-(2*amb.sd)
+amb_max <- amb.avg+(2*amb.sd)
+
+# Remove outliers
+amb.rm.df <- filter(amb.df, !(amb.df$area < amb_min | amb.df$area > amb_max))
+# removed one outlier
+
+amb.value <- mean(amb.rm.df$area)
+```
+
+One outlier removed.
+
+```{r}
+amb.graph <- ggplot(amb.rm.df, aes(x=date, y=area)) +
+  geom_point() +
+  labs(title="Ambient air") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+amb.graph
+```
+
+## Headspace samples
+```{r}
+# Extract sample data
+samples <- list()
+
+for (i in names(raw.data)) {
+  match <- c("std.*", "ambient")
+  samples[[i]] <- raw.data[[i]][!rownames(raw.data[[i]]) %in% grep(paste(match, collapse="|"), rownames(raw.data[[i]]), value=TRUE),]
+  samples[[i]] <- cbind(samples[[i]])
+  colnames(samples[[i]]) <- "area"
+  samples[[i]] <- mutate(data.frame(samples[[i]]), id = rownames(data.frame(samples[[i]]))) # add sample names as column
+  samples[[i]] <- mutate(data.frame(samples[[i]]), date = date[[i]]) # add date info
+}
+
+# Smoosh all samples into one dataframe
+samples.df <- data.frame()
+
+for (i in names(samples)) {
+  samples.df <- rbind(samples.df, samples[[i]])
+}
+# NOTE: samples 5 and 51 on 11/11/19 were accidentally switched, labelling was corrected on .txt files prior to import
+
+# Split into replicates
+rep1 <- c(1:51)
+rep2 <- c(52:102)
+rep3 <- c(103:153)
+
+rep1.df <- samples.df[samples.df$id %in% rep1,]
+rep2.df <- samples.df[samples.df$id %in% rep2,]
+rep3.df <- samples.df[samples.df$id %in% rep3,]
+
+# Replicate labelling
+rep1.df$id <- as.numeric(rep1.df$id)
+rep1.df <- rep1.df[order(rep1.df$id),]
+rep1.df <- rep1.df[order(rep1.df$date),]
+
+rep2.df$id <- as.numeric(rep2.df$id)
+rep2.df <- rep2.df[order(rep2.df$id),]
+rep2.df <- rep2.df[order(rep2.df$date),]
+
+rep3.df$id <- as.numeric(rep3.df$id)
+rep3.df <- rep3.df[order(rep3.df$id),]
+rep3.df <- rep3.df[order(rep3.df$date),]
+
+rep1.df$rep <- paste(rep(1, nrow(rep1.df)))
+rep2.df$rep <- paste(rep(2, nrow(rep2.df)))
+rep3.df$rep <- paste(rep(3, nrow(rep3.df)))
+
+# Sample number labeling
+samplenum <- c(1:51)
+rep1.df$sample <- paste(rep(samplenum, length(unique(rep1.df$date))))
+rep2.df$sample <- paste(rep(samplenum, length(unique(rep2.df$date))))
+rep3.df$sample <- paste(rep(samplenum, length(unique(rep3.df$date))))
+
+# Day labelling for each replicate
+rep1.df <- mutate(rep1.df, day = ifelse(rep1.df$date==102619, 0, ifelse(rep1.df$date==102719, 1, ifelse(rep1.df$date==102919, 3, 
+                                ifelse(rep1.df$date==103119, 5, ifelse(rep1.df$date==110219, 7, ifelse(rep1.df$date==110419, 9, 
+                                ifelse(rep1.df$date==110719, 12, ifelse(rep1.df$date==111119, 17, ifelse(rep1.df$date==111419, 19, 
+                                ifelse(rep1.df$date==111819, 23, ifelse(rep1.df$date==112119, 26, ifelse(rep1.df$date==112519, 30, NA)))))))))))))
+
+rep2.df <- mutate(rep2.df, day = ifelse(rep2.df$date==102719, 0, ifelse(rep2.df$date==102819, 1, ifelse(rep2.df$date==103019, 3, 
+                                ifelse(rep2.df$date==110119, 5, ifelse(rep2.df$date==110319, 7, ifelse(rep2.df$date==110519, 9,
+                                ifelse(rep2.df$date==110819, 12, ifelse(rep2.df$date==111219, 17, ifelse(rep2.df$date==111519, 19, 
+                                ifelse(rep2.df$date==111919, 23, ifelse(rep2.df$date==112219, 26, ifelse(rep2.df$date==112619, 30, NA)))))))))))))
+
+rep3.df <- mutate(rep3.df, day = ifelse(rep3.df$date==102819, 0, ifelse(rep3.df$date==102919, 1, ifelse(rep3.df$date==103119, 3, 
+                                ifelse(rep3.df$date==110219, 5, ifelse(rep3.df$date==110419, 7, ifelse(rep3.df$date==110619, 9, 
+                                ifelse(rep3.df$date==110919, 12, ifelse(rep3.df$date==111319, 17, ifelse(rep3.df$date==111619, 19,
+                                ifelse(rep3.df$date==112019, 23, ifelse(rep3.df$date==112319, 26, ifelse(rep3.df$date==112719, 30, NA)))))))))))))
+
+# Rejoin data
+samples.df <- rbind(rep1.df, rep2.df, rep3.df)
+
+samples.df$sample <- as.factor(samples.df$sample)
+samples.df$rep <- as.factor(samples.df$rep)
+samples.df$date <- as.factor(samples.df$date)
+samples.df$area <- as.numeric(samples.df$area)
+```
+
+Convert headspace samples to ppm based on calibtration curve...
+```{r}
+# Apply conversion to samples
+samples.df <- mutate(samples.df, ppm = (area - stds.conv.df[1,2])/stds.conv.df[2,2])
+presconv <- (34.17/36.17)/(37.3/39.3)
+samples.df <- mutate(samples.df, ppm.conv = ppm*presconv)
+# EXPLANATION: I used evacuated sample vials to transfer headspace samples from stds and ucosms into sample vials. Because the stds did not have sand in them, the pressure change when the gas was shared between std and vial was different (lower shared atm) than between ucosm and vial. The ppm value achieved using the standard curve formula is therefore a slight overestimation, which can be corrected by knowing the starting and shared volumes of the std and ucosms during sampling. 
+# Calculation: Volume of sample vial = 2 mL, volume of stds = 37.3 mL, headspace volume of ucosms = 34.17. Std vial pressure change = 37.3/39.3 while ucosm vial pressure change = 34.17/36.17. This means that the ratio of these is the conversion needed to correct for these pressure change differences. 
+
+# Distinguish negative controls
+samples.df <- mutate(samples.df, type = ifelse(samples.df$sample==51, "negative", "sample"))
+
+# Apply conversion to ambient average
+amb.value.ppm <- (amb.value-stds.conv.df[1,2])/stds.conv.df[2,2]
+# Ambient samples were sampled in same way as stds and had same volumes
+
+# Summary statistics
+samples.summary.df <- ddply(samples.df, .(sample, day), summarize, mean=mean(ppm.conv), sd=sd(ppm.conv))
+
+# Distinguish negative controls
+samples.summary.df <- mutate(samples.summary.df, type = ifelse(samples.summary.df$sample==51, "negative", "sample"))
+
+```
+
+```{r}
+# Graph ppm per day
+samples.ppm.graph <- ggplot(samples.summary.df, aes(x=sample, y=mean, color=type)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd)) +
+  facet_wrap(~day) +
+  labs(title="Headspace sample respiration by day", y="CO2 ppm") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+samples.ppm.graph
+```
+
+### Negative controls
+Which negative controls misbehaved?
+```{r}
+negs.df <- filter(samples.df, sample==51)
+
+graph.negs <- ggplot(negs.df, aes(x=day, y=ppm)) +
+  geom_point() +
+  facet_wrap(~rep) +
+  labs(title="Negative control respiration by day", y="CO2 ppm") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+graph.negs
+
+```
+
+Negative controls rep 1 and 2 contaminated at differing points in experiment.
+
+### Calculate cumulative CO2
+```{r}
+# Convert ppm to mol CO2
+# Ideal gas law: n=(P*V)/(R*temp)
+# NOTE: pressure does not matter for this calulation because it's all relative to the stds
+
+R = 0.082057338 # universal gas constant, (L*atm)/(mol*K)
+temp = 296.48 # K, 74F in lab throughout experiment
+V = 0.03417 # L, headspace of 30 mL serum bottle with 5 g sand
+mwCO2 = 44.01 # molecular weight of CO2
+mwC =12.011 # molecular weight of C
+# P = 1 atm, assumes 1 atm in ucosms during sampling
+
+molCO2 <- 1*V/(R*temp)
+mgCO2 <- molCO2*mwCO2*1000 # NOTE: This is the mg of CO2 present if the headspace contained 100% (1000000 ppm) CO2 at 1 atm
+samples.df <- mutate(samples.df, CO2mg=mgCO2*(ppm*10^-6)) # g CO2 for each sample based on ppm measured at each time point
+
+# Subtract ambient CO2
+
+# Calculate g CO2 in average ambient sample
+V2 = 0.0373 # L, ambient bottle had no sand and so more headspace
+molCO2.amb <- V2/(R*temp)
+mgCO2.amb <- molCO2*mwCO2*1000
+amb.mgCO2 <- mgCO2.amb*(amb.value.ppm*10^-6)
+
+samples.df$CO2mg <- samples.df$CO2mg-amb.mgCO2
+
+# Negative values change to 0
+samples.df <- mutate(samples.df, CO2mg=ifelse(CO2mg<0, 0, CO2mg))
+
+# Sum all time points
+cumresp.df <- samples.df %>% group_by(id, sample) %>% summarize(cumCO2 = sum(CO2mg))
+cumresp.df <- as.data.frame(cumresp.df)
+
+# Convert to g C
+cumresp.df <- mutate(cumresp.df, cumC=(cumCO2*(mwC/mwCO2)))
+
+# Summary statistics
+cumresp.df <- na.omit(cumresp.df) # remove NAs
+cumresp.summary.df <- ddply(cumresp.df, .(sample), summarize, meanCO2=mean(cumCO2), meanC=mean(cumC), sdCO2=sd(cumCO2), sdC=sd(cumC))
+
+# Distinguish negative controls
+cumresp.summary.df <- mutate(cumresp.summary.df, type = ifelse(cumresp.summary.df$sample==51, "negative", "sample"))
+
+# Reorder samples
+cumresp.summary.df$sample <- factor(cumresp.summary.df$sample, levels=c(51, 1:50))
+
+```
+
+```{r, eval=FALSE, include=FALSE}
+# Save data
+CO2.data=cumresp.df
+save(CO2.data, file="~/SFAgrowthrate/SFAphase1/r.output/SFA1_CO2.data.RData")
+
+CO2.melt=melt(cumresp.df[,c(2:4)], c("sample"))
+# Save data
+save(CO2.melt, file="~/SFAgrowthrate/SFAphase1/r.output/SFA1_CO2.melt.RData")
+
+CO2.smry=cumresp.summary.df
+save(CO2.smry, file="~/SFAgrowthrate/SFAphase1/r.output/SFA1_CO2.smry.RData")
+```
+
+```{r}
+# Graph cumulative CO2 and C
+graph.CO2 <- ggplot(cumresp.summary.df, aes(x=sample, y=meanCO2)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=meanCO2-sdCO2, ymax=meanCO2+sdCO2)) +
+  labs(title="Cumulative CO2 respired", y="CO2 (mg)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+graph.CO2
+
+graph.C <- ggplot(cumresp.summary.df, aes(x=sample, y=meanC)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=meanC-sdC, ymax=meanC+sdC)) +
+  labs(title="Cumulative C respired", y="C (mg)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+graph.C
+```
+
+### Top and bottom CO2 producing communities
+Excluding negative control...
+
+```{r}
+# From summary data
+cumresp.summary2.df <- filter(cumresp.summary.df, type=="sample")
+
+top <- top_n(cumresp.summary2.df, 3, meanC)
+bottom <- top_n(cumresp.summary2.df, -3, meanC)
+
+top$rank <- paste(rep("high", nrow(top)))
+bottom$rank <- paste(rep("low", nrow(bottom)))
+
+topbottom.df <- rbind(top, bottom)
+
+topbottom.df$rank <- as.factor(topbottom.df$rank)
+
+# From individual reps
+top.ind <- filter(cumresp.df, sample==36 | sample==42 | sample==49)
+top.ind$rank <- paste(rep("high", nrow(top.ind)))
+bottom.ind <- filter(cumresp.df, sample==1 | sample==18 | sample==31)
+bottom.ind$rank <- paste(rep("low", nrow(bottom.ind)))
+
+topbottom.ind.df <- rbind(top.ind, bottom.ind)
+topbottom.ind.df$rank <- as.factor(topbottom.ind.df$rank)
+```
+
+```{r}
+graph.highlow <- ggplot(topbottom.df, aes(x=sample, y=meanC)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=meanC-sdC, ymax=meanC+sdC)) +
+  labs(title="Top and bottom C respiring communities", y="C (mg)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+graph.highlow
+```
+
+### Statistics (on data averaged by sample or preserve individual replicates???)
+```{r}
+# Check normality and variance
+#shapiro.test(topbottom.df$meanC)
+
+shapiro.test(topbottom.ind.df$cumC)
+# Normal
+```
+Data distribution is normal, so I'll use a Welch T-test to evaluate difference between high and low respiring communities.
+
+```{r}
+#Ctest <- kruskal.test(meanC ~ rank, data = topbottom.df) 
+#Ctest
+# Averaging across rank loses a lot of power due to loss of data, but a hierarchical model instead can bridge gap
+
+Ctest1 <- summary(aov(cumC~rank, data=topbottom.ind.df))
+Ctest1
+
+Ctest2 <- summary(aov(cumC~sample, data=topbottom.ind.df))
+Ctest2
+
+Ctest3 <- summary(aov(cumC~rank+sample, data=topbottom.ind.df))
+Ctest3
+
+Ctest4 <- summary(aov(cumC~rank*sample, data=topbottom.ind.df))
+Ctest4
+```
+
+Effect size?
+```{r}
+#topbottom.summary.df <- ddply(topbottom.df, .(rank), summarize, mean=mean(meanC))
+#sd <- sd(topbottom.df$meanC)
+#effect <- (topbottom.summary.df$mean[topbottom.summary.df$rank=="high"])/(topbottom.summary.df$mean[topbottom.summary.df$rank=="low"])/sd
+#effect
+
+topbottom.ind.summary.df <- ddply(topbottom.ind.df, .(rank), summarize, mean=mean(cumC))
+sd.ind <- sd(topbottom.ind.df$cumC)
+effect.ind <- (topbottom.ind.summary.df$mean[topbottom.ind.summary.df$rank=="high"])/(topbottom.ind.summary.df$mean[topbottom.ind.summary.df$rank=="low"])/sd.ind
+effect.ind
+```

@@ -1,0 +1,24 @@
+# Only trackign scripts, not data
+
+# Directories
+archive
+data_CO2
+data_DOC
+data_soilgeochem
+data_waterloss
+fieldsite_monkeyrun
+pictures
+preliminary_exps
+protein_extractions
+protocols
+r.objects
+script_templates
+
+# Files
+*.csv
+*.tsv
+*.txt
+*.pdf
+
+# Other
+*.Rproj

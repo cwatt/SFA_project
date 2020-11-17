@@ -1,0 +1,195 @@
+---
+title: "SFA1 - DOC workup samples 103-153, B3"
+author: "Cassi Wattenburger"
+date: "3/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(results = "hide")
+```
+
+**Goal of script:** Work up DOC data from sand microcosms and identify high and low producing micrcosms for next pahse of experiment.
+
+Script based heavily on Taylor Cyle's script, shimadzu_workup_template.Rmd.
+
+Re-scripting/organizing it myself to make sure I understand everything.
+
+Meant to be run with samples analyzed using Shimadzu NPOC measurement only, 3/5 injections.
+
+### Script requirements
+* Shimadzu exported data with header info and blank rows removed (first 26 lines of .txt file)
+* Sample metadata file with atleast an "ID"id column and "dilution" column (ie 8 if you diluted samples by hand 8-fold prior to measuring NOT the same as auto-dilute which the machine performs for you)
+
+### Run specific info
+* NPOC standard = 100 ppm KHP
+* Ext check 1 = 1 mM glycine
+* Ext check 2 = 1 mM alanine
+* Ext check 3 = 1 mM glucose
+
+## Step 0: Clear workspace, attach packages, set working directory
+```{r}
+rm(list=ls())
+
+library(plyr)
+library(tidyverse)
+require(broom)
+
+# Set working directory to location of files
+setwd("~/SFAgrowthrate/SFAphase1/DOC")
+```
+
+```{r, results="show"}
+sessionInfo()
+```
+
+```{r, echo=FALSE}
+# Names of external/internal checks and samples as entered into Shimadzu software
+stds.name <- "Std"
+int1.name <- 'Internal'
+sam1.name <- 'Sample'
+blank.name <- 'Blank'
+expblank.name <- 'Sample blank'
+
+# Internal check info
+int.ppm <- 25 # expected concentration of internal checks in ppm
+
+# Sample dilution info
+dil <- 23 # hand-dilution of samples before running
+
+# External samples aren't helpful here because TN wasn't measured
+```
+
+## Step 1: Import data and subset standards, checks, samples
+```{r, echo=FALSE}
+# Import raw data with header notes removed manually in excel or text editor
+raw = read.csv("~/SFAgrowthrate/SFAphase1/DOC/SFA1_DOC_103-153.csv", fileEncoding = "UTF-8-BOM")
+
+# Remove excluded injections
+raw <- raw[which(raw$Excluded == 0),]
+
+# Fix column names
+names(raw)[names(raw) == 'Date...Time'] <- 'DT'
+names(raw)[names(raw) == 'Sample.Name'] <- 's.type'
+names(raw)[names(raw) == 'Analysis.Inj..'] <- 'analys.type'
+
+# Remove junk columns
+raw <- raw[,c(1,3:4,9,12:14)]
+
+# Subset standard data and remove unnecessary columns
+stds <- raw[which(raw$s.type ==stds.name),]
+
+# Subset internal checks
+ints <- raw[which(raw$s.type == int1.name),]
+
+# Subset samples
+samples <- raw[which(raw$s.type == sam1.name | raw$s.type == expblank.name | raw$s.type == blank.name),]
+                       
+```
+
+## Step 2: Assess standard curve
+```{r, results="show"}
+# NPOC
+npoc.lm <- lm(Area ~ Conc., data = stds)
+plot(Area ~ Conc., data = stds, main = "Initial Cal Curve NPOC") +
+  abline(npoc.lm)
+summary(npoc.lm)
+cal.NPOC <- as.data.frame(tidy(npoc.lm))
+```
+
+## Step 3: Assess external checks
+
+Not necessary because did not measure TN.
+
+## Step 4: Assess internal checks for drift over time
+```{r, echo=FALSE}
+# Convert date/time to POSIXct (format= specifies input format)
+ints$DT.new = as.POSIXct(ints$DT, format="%m/%d/%Y %H:%M")
+
+# Time of first check
+t1 = ints[1,8]
+
+# Create time elapsed column
+ints$seconds = round((ints$DT.new - t1), 2)
+ints$minutes = as.numeric(ints$seconds/60)
+
+# Summarize mean time elapsed of each internal check group
+int.times <- ints %>% group_by(Sample.ID) %>% summarize(mean.min = mean(minutes))
+
+# Calculate concentration in internal standards based on curve
+# I've found that the concentrations that the machine comes up with have no relationship to the standard curve for some reason
+ints <- ints %>% mutate(Corr.Conc.=(Area-cal.NPOC[1,2])/(cal.NPOC[2,2]))
+int.conc <- ints %>% group_by(analys.type, Sample.ID) %>% summarize(mean.conc = mean(Corr.Conc.))
+ints.summary <- inner_join(int.times, int.conc, by='Sample.ID')
+
+# Calculate concentration of NPOC in standards based on standard curve
+NPOC.stds.summary <- stds %>% group_by(Conc.) %>% summarize(mean.area = mean(Area))
+NPOC.stds.summary <- NPOC.stds.summary %>% mutate(calc.conc = (mean.area-cal.NPOC[1,2])/cal.NPOC[2,2])
+
+# Actual concentrations expected from internal checks based on standard curves
+NPOC.std.25ppm <- NPOC.stds.summary[NPOC.stds.summary$Conc.==25,]$calc.conc
+
+# Calculate percent and proportion drift
+ints.summary <- ints.summary %>% mutate(percent.drift = ((mean.conc-NPOC.std.25ppm)/NPOC.std.25ppm)*100)
+ints.summary <- ints.summary %>% mutate(prop.drift = (mean.conc/NPOC.std.25ppm))
+
+# Plot internal standards over time
+ggplot(ints.summary, aes(mean.min, percent.drift, colour = analys.type, fill = analys.type)) + 
+  geom_point() +
+  labs(x = "Time (min)", y = "% Drift from Original Curve Value") +
+  ggtitle("Check Standard Drift - Percentage Basis") + 
+    theme_bw() + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank()) +
+  geom_smooth(method='lm')
+
+ggplot(ints.summary, aes(mean.min, prop.drift, colour = analys.type, fill = analys.type)) + 
+  geom_point() +
+  labs(x = "Time (min)", y = "Proportion of Original Value") +
+  ggtitle("Check Standard Drift - Proportional Basis") + 
+    theme_bw() + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank()) +
+  geom_smooth(method='lm')
+
+```
+
+Drift is definitely there. Will perform drift correction. Drift is somewhat erratic so I will use the overall drift instead of time intervals.
+
+## Step 5: Correct drift and recalculate samples based on standard curve
+
+```{r}
+# NPOC drift regression
+drift.fix <- lm(prop.drift ~ mean.min, data=ints.summary)
+drift.fix <- tidy(drift.fix)
+drift.fix <- as.data.frame(drift.fix)
+
+# Re-calculate sample concentrations based on std curve
+samples <- samples %>% mutate(Corr.Conc.=(Area-cal.NPOC[1,2])/(cal.NPOC[2,2]))
+
+# Convert date/time to POSIXct
+samples$DT.new = as.POSIXct(samples$DT, format="%m/%d/%Y %H:%M")
+
+# Create time elapsed (minutes) since first internal check
+samples$sec.elapsed = round((samples$DT.new - t1), 2)
+samples$min.elapsed = as.numeric(samples$sec.elapsed/60)
+samples$min.elapsed = as.numeric(samples$min.elapsed)
+
+# NPOC drift correction
+samples <- mutate(samples, drift.conc = Corr.Conc./(min.elapsed*drift.fix[2,2]+drift.fix[1,2]))
+
+# Correct for hand-dilution (not dilutions done by Shimadzu, which are already accounted for)
+samples.final <- samples %>% mutate(FinalConc. = drift.conc*dil) 
+
+# Remove blanks from data (no longer needed)
+samples.final <- samples.final[!samples.final$s.type=="Blank",]
+
+# Summarize data (average injections of same sample)
+samples.final.summary <- samples.final %>% group_by(s.type, Sample.ID) %>% summarize(mean = mean(FinalConc.), stdv=sd(FinalConc.))
+samples.final.summary$mean <- round(samples.final.summary$mean, 2)
+samples.final.summary
+
+# Save output for further analysis
+write.csv(samples.final[,c(2,3,13)], file ="~/SFAgrowthrate/SFAphase1/DOC/SFA1_DOC_103-153_processed.csv", row.names = FALSE)
+write.csv(samples.final.summary, file ="~/SFAgrowthrate/SFAphase1/DOC/SFA1_DOC_103-153_processed_summary.csv", row.names = FALSE)
+
+```
