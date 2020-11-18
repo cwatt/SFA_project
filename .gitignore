@@ -22,3 +22,4 @@ script_templates
 
 # Other
 *.Rproj
+.Rproj.user

@@ -7,8 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(results = "hide")
-knitr::opts_knit$set(root.dir = '~/SFAgrowthrate/SFAphase1.5')
+knitr::opts_chunk$set(results = "show")
 ```
 
 **Goal of this script:** Confirm that high and low DOC producing communities identified in SFA1 are reproducibile.
@@ -22,18 +21,17 @@ require(broom)
 library(reshape2)
 library(qqplotr)
 library(car)
-
-# Set working directory to location of files
-setwd("~/SFAgrowthrate/SFAphase1/DOC")
 ```
-### DOC results
+
+
+# DOC results
 
 ```{r}
 # Import data
-doc = read.csv("~/SFAgrowthrate/SFAphase1.5/DOC/SFA1.5_DOCsummary.csv")
+doc = read.csv("data_DOC/SFA1.5/SFA1.5_DOCsummary.csv")
 
 # Import metadata
-meta=read.csv("~/SFAgrowthrate/SFAphase1.5/DOC/SFA1.5_DOC_metadata.csv")
+meta = read.csv("data_DOC/SFA1.5/SFA1.5_DOC_metadata.csv")
 
 # Add metadata
 doc.meta = merge(meta, doc, by.y="Sample.ID", by.x="ucosm", all=TRUE)
@@ -82,22 +80,27 @@ ggplot(doc.mean, aes(sample = sample.mean, color = DOC, fill = DOC)) +
 leveneTest(sample.mean ~ DOC, data=doc.mean)
 ```
 
-Data appears normal and has equal variances. Use parametric test: Student's t-test.
+Data appears normal and has equal variances. Use simple linear regression
 
 ```{r}
-# Student's t-test
-doc.test = t.test(sample.mean ~ DOC, data=doc.mean[which(doc.meta$DOC=="high" | doc.meta$DOC=="low"),])
-lm(sample.mean ~ DOC, data=doc.mean[which(doc.meta$DOC=="high" | doc.meta$DOC=="low"),])
-print(paste("High vs low DOC producing communities: p-value =", doc.test$p.value))
+# Simple linear regression
+doc.lm = lm(sample.mean ~ DOC, data=doc.mean[which(doc.meta$DOC=="high" | doc.meta$DOC=="low"),])
+hist(resid(doc.lm)) # check normality of residuals
+plot(predict(doc.lm), resid(doc.lm)) # check that variances or equal
+summary(doc.lm)
 
-ggplot()
+doc.test = t.test(sample.mean ~ DOC, data=doc.mean[which(doc.meta$DOC=="high" | doc.meta$DOC=="low"),], var.equal=TRUE)
+doc.test$p.value
 ```
+
+T-test result same as linear regression result.
+
 
 ### Variability between phases 1 and 1.5
 
 ```{r, results="show"}
 # SFA 1 data
-load("~/SFAgrowthrate/SFAphase1/r.output/SFA1_DOC.data.RData")
+load("r.objects/SFA1_DOC.data.RData")
 
 # Summarize replicates
 data.melt=melt(DOC.data[,c(2,3,6)], id.vars=c("s.type","Soil.sample"))
@@ -135,6 +138,8 @@ ggplot(both.doc, aes(x=Sample, y=mean, shape=phase, color=DOC)) +
 
 These are suprisingly reproducible. Negative control had a contamination issue in SFA1, but contamination doesn't seem to have had an effect on the DOC outcome in innoculated samples
 
+How reproducible is the DOC result?
+
 Regressions between SFA 1 and 1.5:
 
 ```{r}
@@ -142,6 +147,7 @@ Regressions between SFA 1 and 1.5:
 both.doc.noctrl = both.doc[!both.doc$Sample==51,]
 both.doc2 = as.data.frame(cbind(sample=both.doc.noctrl[both.doc.noctrl$phase=="SFA1",]$Sample, sfa1=both.doc.noctrl[both.doc.noctrl$phase=="SFA1",]$mean, sfa1.5=both.doc.noctrl[both.doc.noctrl$phase=="SFA1.5",]$mean))
 both.doc2 = cbind(both.doc2, DOC=both.doc.noctrl[both.doc.noctrl$phase=="SFA1",]$DOC) # not sure why I couldn't put this in above
+
 # Visualize
 ggplot(both.doc2, aes(x=sfa1, y=sfa1.5)) +
   geom_point(aes(shape=DOC)) +
@@ -156,6 +162,7 @@ ggplot(both.doc2, aes(x=sfa1, y=sfa1.5)) +
 # Standard deviation DOC
 both.doc3 = as.data.frame(cbind(sample=both.doc.noctrl[both.doc.noctrl$phase=="SFA1",]$Sample, sfa1=both.doc.noctrl[both.doc.noctrl$phase=="SFA1",]$stdv, sfa1.5=both.doc.noctrl[both.doc.noctrl$phase=="SFA1.5",]$stdv))
 both.doc3 = cbind(both.doc3, DOC=both.doc.noctrl[both.doc.noctrl$phase=="SFA1",]$DOC)
+
 # Visualize
 ggplot(both.doc3, aes(x=sfa1, y=sfa1.5)) +
   geom_point(aes(shape=DOC)) +
@@ -169,7 +176,7 @@ ggplot(both.doc3, aes(x=sfa1, y=sfa1.5)) +
 
 ```
 
-Regression statistics:
+**Statistics**
 
 ```{r}
 test.avg = lm(sfa1 ~ sfa1.5, both.doc2)
@@ -181,6 +188,9 @@ test.stdev = lm(sfa1 ~ sfa1.5, both.doc3)
 summary(test.stdev)
 ```
 
+Mean of DOC is much more reproducible than variation of DOC.
+
+Which samples shifted least between experiments in terms of DOC result?
 
 ```{r, results="show"}
 # Subtract mean of SFA1 from SFA1.5
@@ -207,19 +217,34 @@ ggplot(chosen.doc, aes(x=as.factor(Sample), y=sample.mean, color=DOC)) +
 
 I don't like how much those deviations overlap.
 
+**Statistics**
+
+```{r}
+chosenind.doc = filter(doc.meta, Sample %in% c(19,47,2,10,12,41))
+docchosen.lm = lm(mean ~ DOC, data=chosenind.doc[which(chosenind.doc$DOC=="high" | chosenind.doc$DOC=="low"),])
+hist(resid(docchosen.lm)) # assess normality of fit
+plot(predict(docchosen.lm), resid(docchosen.lm)) # assess equal variances
+summary(docchosen.lm)
+```
+
+I think the analysis is likely robust to the departure from normality.
+
+
 ### Correlations between DOC production and wash protien conc. or volume used
 
 ```{r, results="show"}
-prot.meta = read.csv("~/SFAgrowthrate/SFAphase1/protein_extractions/SFA1_washprotein_metadata.csv")
+prot.meta = read.csv("~/SFAgrowthrate/protein_extractions/SFA1_washprotein_metadata.csv")
 doc.prot = merge(doc.mean, prot.meta)
 
 ggplot(doc.prot, aes(x=sample.mean, Protein)) +
   geom_point() +
+  geom_smooth(method="lm") +
   theme_test() +
   labs(x="DOC conc.", "Protein conc.")
 
 ggplot(doc.prot, aes(x=sample.mean, Volume)) +
   geom_point() +
+  geom_smooth(method="lm") +
   theme_test() +
   labs(x="DOC conc.", "Wash volume")
 ```
