@@ -1,0 +1,101 @@
+---
+title: "CO2_stdcheck_112320"
+author: "Cassandra Wattenburger"
+date: "11/23/2020"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Checking results of running CO2 standards on Buckley lab GCMS
+
+# Load libraries
+
+```{r}
+library(tidyverse)
+
+sessionInfo()
+
+rm(list=ls())
+```
+
+# Import data
+
+```{r}
+# List all paths to data files in directory
+stds.files = list.files(path="data_CO2/std_check/112320", pattern="*.txt", full.names=TRUE, recursive=FALSE)
+
+# Read in data
+name.list <- list()
+area.df = data.frame()
+
+for (i in stds.files) {
+  # Create name of sample based on file name
+  name = gsub("data_CO2/std_check/.+/", "", i)
+  name = gsub(".txt", "", name)
+  name.list = append(name.list, name)
+  # CO2 measurements
+  dat = read_tsv(i, skip=7, col_names=TRUE) %>%
+    select(Name, Area) %>%
+    drop_na()
+  dat$Name = str_replace_all(dat$Name, c("TIC"="total", "m/z 44" = "12C", "m/z 45" = "13C"))
+  dat = mutate(dat, Standard = rep(name, nrow(dat)))
+  area.df <- rbind(area.df, dat)
+}
+
+# Add standard ppm
+# Calculated using average volume for 10 mL serum bottles (not actually 10 mL as advertised)
+area.df = area.df %>%
+  mutate(ppm = case_when(Standard=="std0" ~ 0,
+                         Standard=="std1" ~ 769,
+                         Standard=="std2" ~ 1538,
+                         Standard=="std3" ~ 3077,
+                         Standard=="std4" ~ 7692,
+                         Standard=="std5" ~ 15385,
+                         Standard=="std6" ~ 30769,
+                         Standard=="std7" ~ 76923,
+                         Standard=="std8" ~ 230769,
+                         Standard=="std9" ~ 384615))
+```
+
+# User input: choose CO2 isotope to analyze
+
+```{r}
+# Choose:
+## total, warning: often missing
+## 12C
+## 13C
+iso = "12C"
+
+# Filter selected isotope
+subset.df = filter(area.df, Name==iso)
+```
+
+Visualize:
+
+```{r}
+# Ambient level
+amb = subset.df[subset.df$Standard=="ambient",]$Area
+
+# Plot
+subset.df %>%
+  filter(Name != "ambient") %>%
+  ggplot(aes(x=ppm, y=Area)) +
+  geom_point() +
+  geom_hline(yintercept = amb, linetype=2) +
+  annotate("text", x=30500, y=30000, label= "ambient") +
+  geom_smooth(method="lm", linetype=2, alpha=0.5) +
+  labs(title="Standards") +
+  theme_test()
+```
+
+# Linear regression
+
+```{r}
+stds.lm = lm(Area ~ ppm, data=subset.df)
+summary(stds.lm)
+```
+
+Looks good.
+

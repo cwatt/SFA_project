@@ -17,7 +17,6 @@ Method: See pages 70, 77, 78 of Cassi Wattenburger's lab notebook #2.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_knit$set(root.dir = 'home/cassi/SFAgrowthrate/SFAphase1/GCMS/data/')
 ```
 
 ```{r, message=FALSE}
@@ -39,7 +38,7 @@ sessionInfo()
 # Import data
 
 # List of directories containing data files
-dir <- list.dirs(path="~/SFAgrowthrate/SFAphase1/GCMS/data", full.names=TRUE, recursive=FALSE)
+dir <- list.dirs(path="data_CO2/SFA1/data", full.names=TRUE, recursive=FALSE)
 
 files <- list()
 
@@ -49,7 +48,7 @@ for (i in dir) {
 # NOTE: foo files were removed from directories (do not contain data)
 
 # Exclude data from 11/01/19, sampling was compromised by plugged needles, need to check preceeding days as well
-files <- files[names(files) != "/home/cassi/SFAgrowthrate/SFAphase1/GCMS/data/110119"] 
+files <- files[names(files) != "data_CO2/SFA1/data/110119"] 
 
 # Extract TIC area
 name.list <- list()
@@ -57,12 +56,12 @@ area.list <- list()
 
 for (i in names(files)) {
   for (x in files[[i]]) {
-    name <- str_extract(x, "data/.+/.+.txt") # not catching those dates for some reason?
+    name <- str_extract(x, "data/.+/.+.txt")
     name <- gsub("data/.+/", "", name)
     name <- gsub(".txt", "", name)
     name.list[[i]] <- append(name.list[[i]], name)
     
-    t <- read.table(x, header=FALSE, fill=TRUE, sep="\t", skip=8, nrows=3, comment.char="", stringsAsFactors=FALSE) # error, no lines
+    t <- read.table(x, header=FALSE, fill=TRUE, sep="\t", skip=8, nrows=3, comment.char="", stringsAsFactors=FALSE)
     t <- t[1,10] # TIC area 
     t <- as.data.frame(t)
     area.list[[i]] <- append(area.list[[i]], t)
@@ -485,20 +484,12 @@ save(CO2.smry, file="~/SFAgrowthrate/SFAphase1/r.output/SFA1_CO2.smry.RData")
 ```
 
 ```{r}
-# Graph cumulative CO2 and C
-graph.CO2 <- ggplot(cumresp.summary.df, aes(x=sample, y=meanCO2)) +
+# Graph cumulative CO2
+ggplot(cumresp.summary.df, aes(x=reorder(sample, meanCO2), y=meanCO2)) +
   geom_point() +
   geom_errorbar(aes(ymin=meanCO2-sdCO2, ymax=meanCO2+sdCO2)) +
   labs(title="Cumulative CO2 respired", y="CO2 (mg)") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-graph.CO2
-
-graph.C <- ggplot(cumresp.summary.df, aes(x=sample, y=meanC)) +
-  geom_point() +
-  geom_errorbar(aes(ymin=meanC-sdC, ymax=meanC+sdC)) +
-  labs(title="Cumulative C respired", y="C (mg)") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-graph.C
 ```
 
 ### Top and bottom CO2 producing communities
