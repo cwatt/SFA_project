@@ -84,7 +84,8 @@ subset.df %>%
   ggplot(aes(x=ppm, y=Area)) +
   geom_point() +
   geom_hline(yintercept = amb, linetype=2) +
-  annotate("text", x=30500, y=30000, label= "ambient") +
+  annotate("text", x=30500, y=30000, label = "ambient") +
+  annotate("text", x=28000, y=300000, label = "Adj.R2 = 0.998") +
   geom_smooth(method="lm", linetype=2, alpha=0.5) +
   labs(title="Standards") +
   theme_test()
@@ -97,5 +98,5 @@ stds.lm = lm(Area ~ ppm, data=subset.df)
 summary(stds.lm)
 ```
 
-Looks good.
+Looks good. Adding adjusted R back to plot.
 
