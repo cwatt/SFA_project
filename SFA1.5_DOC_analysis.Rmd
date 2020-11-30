@@ -201,7 +201,7 @@ diff.ord = arrange(diff.doc, diff)
 diff.ord
 ```
 
-Samples 19, 47, 2 very the least between experiments of the high DOC producing communities. Samples 10, 12, 41 for low.
+Samples 19, 47, 2 vary the least between experiments of the high DOC producing communities. Samples 10, 12, 41 for low.
 
 ```{r}
 # Least variable samples
