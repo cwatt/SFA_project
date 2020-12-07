@@ -1,0 +1,248 @@
+---
+title: "SFA2 - CO2 analysis"
+author: "Cassandra Wattenburger"
+date: "12/7/2020"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+**Goal:** Analyze headspace CO2 from microcosms.
+
+
+# Import libraries, clear working directory
+
+```{r}
+library(tidyverse)
+library(cowplot)
+
+sessionInfo()
+
+rm(list=ls())
+```
+
+
+
+# Import GCMS data
+
+Note: Exported from PostRun Analysis software as ASCII with XXX and XXX checked
+
+This script is built to run on data that has been stored in a particular project directory containing a "data" directory containing sub-directories for each time point for which data was collected, containing .txt files with the GCMS output for each sample.
+
+```{r}
+# List of directories containing data files
+dir = list.dirs(path="data_CO2/SFA2/data", full.names=TRUE, recursive=FALSE)
+
+# Create lists of .txt files from directories
+files = list()
+for (i in dir) {
+  files[[i]] <- list.files(path=i, pattern="*.txt", full.names=TRUE, recursive=FALSE)
+}
+
+# Extract area data
+# TIC, w/z44 (12C), w/z45 (13C)
+
+# Construct data frame containing all data
+area.df = tibble() # initialize empty tibble
+
+for (i in names(files)) { # for each list of files (refers to a directory)
+  for (x in files[[i]]) { # for each file in the selected list (directory)
+    # Create sample names based on file names
+    # Strips the rest of the path from the sample name at the end
+    name = str_remove(x, "data_CO2/SFA2/data/.+/") %>%
+      str_remove(".txt")
+    #name.list[[i]] = append(name.list[[i]], name)
+    
+    # Isolate time point info
+    date = str_remove(x, "data_CO2/SFA2/data/") %>%
+      str_remove("/.+.txt") %>%
+      str_remove(".+_")
+    tp = str_remove(x, "data_CO2/SFA2/data/") %>%
+      str_remove("/.+.txt") %>%
+      str_remove("_.+")
+    
+    # Isolate the area data from the raw data files and clean up
+    dat = read_tsv(x, skip=7, col_names=TRUE) %>%
+      select("Measurement" = Name, Area) %>% # keep only the name of sample and the area measurements collected
+      drop_na() %>%
+      mutate(Measurement = case_when(Measurement == "TIC" ~ "Ctotal", # more explicit measurement labels
+                              Measurement == "m/z 44" ~ "C12",
+                              Measurement == "m/z 45" ~ "C13"),
+             TP = tp, # adding additional metadata...
+             Date = date,
+             Sample = name)
+    area.df = rbind(area.df, dat) # add to master data frame
+  }
+}
+```
+
+
+# Calculate total area
+
+TIC area often glitches and does not record (not sure why), so we will use 12C + 13C instead which is a close approximation.
+
+```{r}
+# Calculate
+area.df = area.df %>%
+  pivot_wider(names_from = Measurement, values_from = Area) %>%
+  mutate(C1213 = C12+C13)
+```
+
+
+# Standards
+
+Separate from samples/atmosphere measurements
+
+```{r}
+std.df = area.df %>%
+  filter(str_detect(Sample, "std"))
+```
+
+Correct split-ratios and add ppm of each standard
+
+* standards 7-9 were run at a split-ratio of 90% rather than 50% because of the high CO2 concentration
+* ppm calculated based on volume and % CO2 used and bottle volume
+
+Multiplier: 0.5x = 0.9, x = 1.8
+
+```{r}
+# Calculate adjusted areas
+std.df = std.df %>%
+  mutate(Area.adj = if_else(str_detect(Sample, "[7-9]"), C1213*1.8, C1213, missing=NULL), # correct split-ratio
+         ppm = case_when(Sample == "std0" ~ 0, # add ppm
+                         Sample == "std1" ~ 769,
+                         Sample == "std2" ~ 1538,
+                         Sample == "std3" ~ 3077,
+                         Sample == "std4" ~ 7692,
+                         Sample == "std5" ~ 15385,
+                         Sample == "std6" ~ 30769,
+                         Sample == "std7" ~ 76923,
+                         Sample == "std8" ~ 230769,
+                         Sample == "std9" ~ 384615)) 
+  
+```
+
+Visualize
+
+```{r}
+std.df %>%
+  ggplot(aes(x=ppm, y=Area.adj)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  facet_wrap(~Date, scales="free") +
+  theme_test()
+```
+
+Calibration curve
+
+```{r}
+# Linear regressions
+std.cal = tibble()
+for (x in unique(std.df$Date)) {
+  dat = filter(std.df, Date==x)
+  std.lm = lm(Area.adj ~ ppm, dat)
+  this.row = bind_cols(coeff = summary(std.lm)$coefficients[2,1], adjR2 = summary(std.lm)$adj.r.squared , pval = summary(std.lm)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
+  std.cal = bind_rows(std.cal, this.row)
+}
+
+std.cal
+```
+
+
+Remove std 1 - I think it would be better to include another high ppm sample instead of lower ones.
+
+```{r}
+std.df %>%
+  filter(Sample != "std1") %>%
+  ggplot(aes(x=ppm, y=Area.adj)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  facet_wrap(~Date, scales="free") +
+  theme_test()
+```
+
+Calibration curve - no std1
+
+```{r}
+# Linear regressions
+std.cal = tibble()
+for (x in unique(std.df$Date)) {
+  dat = filter(std.df, Date==x & Sample != "std1")
+  std.lm = lm(Area.adj ~ ppm, dat)
+  this.row = bind_cols(coeff = summary(std.lm)$coefficients[2,1], adjR2 = summary(std.lm)$adj.r.squared , pval = summary(std.lm)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
+  std.cal = bind_rows(std.cal, this.row)
+}
+
+std.cal
+```
+
+
+Remove std 1 and 4
+
+```{r}
+std.df %>%
+  filter(!(Sample %in% c("std1", "std4"))) %>%
+  ggplot(aes(x=ppm, y=Area.adj)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  facet_wrap(~Date, scales="free") +
+  theme_test()
+```
+
+Calibration curve - no std1 or std4
+
+```{r}
+# Linear regressions
+std.cal = tibble()
+for (x in unique(std.df$Date)) {
+  dat = filter(std.df, Date==x & Sample != "std1")
+  std.lm = lm(Area.adj ~ ppm, dat)
+  this.row = bind_cols(coeff = summary(std.lm)$coefficients[2,1], adjR2 = summary(std.lm)$adj.r.squared , pval = summary(std.lm)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
+  std.cal = bind_rows(std.cal, this.row)
+}
+
+std.cal
+```
+
+Same result. Will add more higher ppm standards and omit these for future runs.
+
+
+# Samples
+
+Isolate microcosm and atmosphere samples
+
+I just want to make sure that the raw sample areas aren't exceeding the standards.
+
+```{r}
+sample.df = anti_join(area.df, std.df) %>%
+  mutate(ppm = 0) # dummy ppm
+```
+
+Plot against standards:
+
+```{r}
+# 50% split ratio
+trt1.plot = sample.df %>%
+  ggplot(aes(y=C1213, x=TP)) +
+  scale_y_continuous(limits=c(0,5000000)) +
+  labs(x="50% split", t="Area") +
+  geom_boxplot() +
+  theme_test() +
+  theme(panel.grid = element_blank())
+trt1.plot
+
+# stds
+compare.plot = std.df %>%
+  ggplot(aes(x=ppm, y=Area.adj)) +
+  geom_point(shape=1) +
+  geom_point(aes(y=C1213, x=ppm), color="blue", data=sample.df) +
+  #scale_y_continuous(limits=c(0,500000)) +
+  #scale_x_continuous(limits=c(0, 20000)) +
+  theme_test() +
+  theme()
+compare.plot
+```
