@@ -29,7 +29,7 @@ rm(list=ls())
 
 # Import GCMS data
 
-Note: Exported from PostRun Analysis software as ASCII with XXX and XXX checked
+Note: Exported from PostRun Analysis software as ASCII
 
 This script is built to run on data that has been stored in a particular project directory containing a "data" directory containing sub-directories for each time point for which data was collected, containing .txt files with the GCMS output for each sample.
 
@@ -121,7 +121,9 @@ std.df = std.df %>%
                          Sample == "std5" ~ 15385,
                          Sample == "std6" ~ 30769,
                          Sample == "std7" ~ 76923,
+                         Sample == "std7.5" ~ 153856,
                          Sample == "std8" ~ 230769,
+                         Sample == "std8.5" ~ 307692,
                          Sample == "std9" ~ 384615)) 
   
 ```
@@ -208,7 +210,7 @@ for (x in unique(std.df$Date)) {
 std.cal
 ```
 
-Same result. Will add more higher ppm standards and omit these for future runs.
+Same result. Will add more higher ppm standards and omit stds 1 and 4 for future runs.
 
 
 # Samples
@@ -225,24 +227,23 @@ sample.df = anti_join(area.df, std.df) %>%
 Plot against standards:
 
 ```{r}
-# 50% split ratio
-trt1.plot = sample.df %>%
+sample.df %>%
   ggplot(aes(y=C1213, x=TP)) +
   scale_y_continuous(limits=c(0,5000000)) +
   labs(x="50% split", t="Area") +
   geom_boxplot() +
   theme_test() +
   theme(panel.grid = element_blank())
-trt1.plot
 
 # stds
-compare.plot = std.df %>%
+std.df %>%
   ggplot(aes(x=ppm, y=Area.adj)) +
   geom_point(shape=1) +
-  geom_point(aes(y=C1213, x=ppm), color="blue", data=sample.df) +
+  geom_point(aes(y=C1213, x=ppm, color=Date), data=sample.df) +
   #scale_y_continuous(limits=c(0,500000)) +
   #scale_x_continuous(limits=c(0, 20000)) +
   theme_test() +
   theme()
-compare.plot
 ```
+
+Might consider adding a std 10 that is 6 or 7 mL 100% CO2 as well...
