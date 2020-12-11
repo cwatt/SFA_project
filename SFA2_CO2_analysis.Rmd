@@ -147,7 +147,11 @@ std.cal = tibble()
 for (x in unique(std.df$Date)) {
   dat = filter(std.df, Date==x)
   std.lm = lm(Area.adj ~ ppm, dat)
-  this.row = bind_cols(coeff = summary(std.lm)$coefficients[2,1], adjR2 = summary(std.lm)$adj.r.squared , pval = summary(std.lm)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
+  this.row = bind_cols(Date = unique(dat$Date), # save results
+                       intercept = summary(std.lm)$coefficients[1,1],
+                       slope = summary(std.lm)$coefficients[2,1], 
+                       adjR2 = summary(std.lm)$adj.r.squared, 
+                       pval = summary(std.lm)$coefficients[2,4])
   std.cal = bind_rows(std.cal, this.row)
 }
 
@@ -171,15 +175,16 @@ Calibration curve - no std1
 
 ```{r}
 # Linear regressions
-std.cal = tibble()
+std.cal1 = tibble()
 for (x in unique(std.df$Date)) {
-  dat = filter(std.df, Date==x & Sample != "std1")
-  std.lm = lm(Area.adj ~ ppm, dat)
-  this.row = bind_cols(coeff = summary(std.lm)$coefficients[2,1], adjR2 = summary(std.lm)$adj.r.squared , pval = summary(std.lm)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
-  std.cal = bind_rows(std.cal, this.row)
+  dat1 = filter(std.df, Date==x & Sample != "std1")
+  std.lm1 = lm(Area.adj ~ ppm, dat)
+  date1 = unique(dat1$Date)
+  this.row1 = bind_cols(Date = date, coeff = summary(std.lm1)$coefficients[2,1], adjR2 = summary(std.lm1)$adj.r.squared , pval = summary(std.lm1)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
+  std.cal1 = bind_rows(std.cal, this.row)
 }
 
-std.cal
+std.cal1
 ```
 
 
@@ -199,15 +204,15 @@ Calibration curve - no std1 or std4
 
 ```{r}
 # Linear regressions
-std.cal = tibble()
+std.cal14 = tibble()
 for (x in unique(std.df$Date)) {
-  dat = filter(std.df, Date==x & Sample != "std1")
-  std.lm = lm(Area.adj ~ ppm, dat)
-  this.row = bind_cols(coeff = summary(std.lm)$coefficients[2,1], adjR2 = summary(std.lm)$adj.r.squared , pval = summary(std.lm)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
-  std.cal = bind_rows(std.cal, this.row)
+  dat14 = filter(std.df, Date==x & Sample != "std1")
+  std.lm14 = lm(Area.adj ~ ppm, dat14)
+  this.row14 = bind_cols(coeff = summary(std.lm14)$coefficients[2,1], adjR2 = summary(std.lm14)$adj.r.squared , pval = summary(std.lm14)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
+  std.cal14 = bind_rows(std.cal14, this.row14)
 }
 
-std.cal
+std.cal14
 ```
 
 Same result. Will add more higher ppm standards and omit stds 1 and 4 for future runs.
@@ -224,18 +229,21 @@ sample.df = anti_join(area.df, std.df) %>%
   mutate(ppm = 0) # dummy ppm
 ```
 
-Plot against standards:
+Plot:
 
 ```{r}
+# Observe progression CO2 production
 sample.df %>%
+  filter(Sample != "foo") %>% # remove "foo" samples which are not data
+  mutate(Control = if_else(Sample %in% c(379:381, "atmosphere"), "Y", "N")) %>% # distinguish negative controls and atmosphere sample
   ggplot(aes(y=C1213, x=TP)) +
-  scale_y_continuous(limits=c(0,5000000)) +
-  labs(x="50% split", t="Area") +
+  labs(y="Area") +
   geom_boxplot() +
+  geom_jitter(aes(color = Control)) +
   theme_test() +
   theme(panel.grid = element_blank())
 
-# stds
+# Compare samples against range of standards
 std.df %>%
   ggplot(aes(x=ppm, y=Area.adj)) +
   geom_point(shape=1) +
@@ -246,4 +254,60 @@ std.df %>%
   theme()
 ```
 
-Might consider adding a std 10 that is 6 or 7 mL 100% CO2 as well...
+Might consider adding a std 10 that is 6 or 7 mL 100% CO2 as well if samples keep climbing.
+
+
+### Calculate CO2
+
+Use standard regressions to convert sample areas into ppm
+
+```{r}
+# Convert sample area to ppm using calibration curves
+sample.conv = tibble()
+for (d in unique(sample.df$Date)) {
+  cal = std.cal %>% filter(Date==d)
+  conv = sample.df %>% 
+    filter(Date==d) %>%
+    mutate(ppm = (C1213 - cal$intercept)/cal$slope)
+  sample.conv = rbind(sample.conv, conv)
+}
+
+# Sanity check, plot against standards
+std.df %>%
+  ggplot(aes(x=ppm, y=Area.adj)) +
+  geom_point(shape=1) +
+  geom_point(aes(y=C1213, x=ppm, color=Date), data=sample.conv) +
+  #scale_y_continuous(limits=c(0,500000)) +
+  #scale_x_continuous(limits=c(0, 20000)) +
+  theme_test() +
+  theme()
+```
+
+Calculate mol CO2
+
+```{r}
+# NEED TO DOUBLE CHECK CALCULATIONS????????????
+
+# Ideal gas law: n=(P*V)/(R*temp)
+# NOTE: pressure does not matter for this calulation because it's all relative to the stds
+R = 0.082057338 # universal gas constant, (L*atm)/(mol*K)
+temp = 296.48 # K, 74F in lab throughout experiment
+V = 0.013 # L, headspace of 30 mL serum bottle with sand ########### NEED TO CHECK##########
+mwCO2 = 44.01 # molecular weight (g/mol) of CO2
+P = 1 #atm, assumes 1 atm in ucosms during sampling
+
+# Calculate per time point
+molCO2100 = P*V/(R*temp) # total mol of CO2 in headspace, if it were 100% CO2
+mgCO2100 = molCO2100 * mwCO2*1000 # mol * g/mol * 1000mg/g = mg, mg of CO2 present if it were 100% CO2
+sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 based on ppm?????????????????????
+
+# Substract atmosphere from each sample
+
+# Cumulative CO2 (mg)
+
+# Convert to mg C
+
+```
+
+
+
