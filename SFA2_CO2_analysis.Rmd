@@ -235,7 +235,9 @@ Plot:
 # Observe progression CO2 production
 sample.df %>%
   filter(Sample != "foo") %>% # remove "foo" samples which are not data
-  mutate(Control = if_else(Sample %in% c(379:381, "atmosphere"), "Y", "N")) %>% # distinguish negative controls and atmosphere sample
+  mutate(Control = if_else(Sample %in% c(379:381), "Y", "N")) %>% # distinguish negative controls and atmosphere sample
+  filter(!str_detect(Sample, "blank")) %>% # remove blanks
+  filter(!str_detect(Sample, "atmosphere")) %>% # remove atmospheric samples
   ggplot(aes(y=C1213, x=TP)) +
   labs(y="Area") +
   geom_boxplot() +
@@ -286,7 +288,7 @@ std.df %>%
 Calculate mol CO2
 
 ```{r}
-# NEED TO DOUBLE CHECK CALCULATIONS????????????
+# NEED TO DOUBLE CHECK SOME STUFF
 
 # Ideal gas law: n=(P*V)/(R*temp)
 # NOTE: pressure does not matter for this calulation because it's all relative to the stds
@@ -299,11 +301,11 @@ P = 1 #atm, assumes 1 atm in ucosms during sampling
 # Calculate per time point
 molCO2100 = P*V/(R*temp) # total mol of CO2 in headspace, if it were 100% CO2
 mgCO2100 = molCO2100 * mwCO2*1000 # mol * g/mol * 1000mg/g = mg, mg of CO2 present if it were 100% CO2
-sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 based on ppm?????????????????????
+sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 based on ppm
 
 # Substract atmosphere from each sample
 
-# Cumulative CO2 (mg)
+# Cumulative mg CO2
 
 # Convert to mg C
 
