@@ -226,7 +226,8 @@ I just want to make sure that the raw sample areas aren't exceeding the standard
 
 ```{r}
 sample.df = anti_join(area.df, std.df) %>%
-  mutate(ppm = 0) # dummy ppm
+  mutate(ppm = 0) %>% # dummy ppm
+  filter(!str_detect(Sample, "[a-z]")) # exclude other non-samples
 ```
 
 Plot:
@@ -234,10 +235,7 @@ Plot:
 ```{r}
 # Observe progression CO2 production
 sample.df %>%
-  filter(Sample != "foo") %>% # remove "foo" samples which are not data
-  mutate(Control = if_else(Sample %in% c(379:381), "Y", "N")) %>% # distinguish negative controls and atmosphere sample
-  filter(!str_detect(Sample, "blank")) %>% # remove blanks
-  filter(!str_detect(Sample, "atmosphere")) %>% # remove atmospheric samples
+  mutate(Control = if_else(Sample %in% c(379:381), "Y", "N")) %>% # distinguish negative control
   ggplot(aes(y=C1213, x=TP)) +
   labs(y="Area") +
   geom_boxplot() +
@@ -250,8 +248,6 @@ std.df %>%
   ggplot(aes(x=ppm, y=Area.adj)) +
   geom_point(shape=1) +
   geom_point(aes(y=C1213, x=ppm, color=Date), data=sample.df) +
-  #scale_y_continuous(limits=c(0,500000)) +
-  #scale_x_continuous(limits=c(0, 20000)) +
   theme_test() +
   theme()
 ```
@@ -261,7 +257,7 @@ Might consider adding a std 10 that is 6 or 7 mL 100% CO2 as well if samples kee
 
 ### Calculate CO2
 
-Use standard regressions to convert sample areas into ppm
+Use standard regressions to convert sample areas into ppm.
 
 ```{r}
 # Convert sample area to ppm using calibration curves
@@ -285,16 +281,18 @@ std.df %>%
   theme()
 ```
 
+One weirdly high outlier.
+
+
+
 Calculate mol CO2
 
 ```{r}
-# NEED TO DOUBLE CHECK SOME STUFF
-
 # Ideal gas law: n=(P*V)/(R*temp)
 # NOTE: pressure does not matter for this calulation because it's all relative to the stds
 R = 0.082057338 # universal gas constant, (L*atm)/(mol*K)
 temp = 296.48 # K, 74F in lab throughout experiment
-V = 0.013 # L, headspace of 30 mL serum bottle with sand ########### NEED TO CHECK##########
+V = 0.013 # L, headspace of 30 mL serum bottle with sand ########### NEED TO DBL CHECK##########
 mwCO2 = 44.01 # molecular weight (g/mol) of CO2
 P = 1 #atm, assumes 1 atm in ucosms during sampling
 
@@ -303,13 +301,40 @@ molCO2100 = P*V/(R*temp) # total mol of CO2 in headspace, if it were 100% CO2
 mgCO2100 = molCO2100 * mwCO2*1000 # mol * g/mol * 1000mg/g = mg, mg of CO2 present if it were 100% CO2
 sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 based on ppm
 
-# Substract atmosphere from each sample
-
-# Cumulative mg CO2
-
-# Convert to mg C
-
+# Cumulative mg CO2 and C
+sample.totals = sample.conv %>%
+  group_by(Sample) %>%
+  summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44))
 ```
+
+Visualize
+
+```{r}
+# Add innoculant info
+innoculant = c(rep(41, 3), rep(2, 3), rep(10, 3), rep(12, 3),rep(19, 3), rep(47, 3), rep(51, 3))
+doc = c(rep("low", 3), rep("high", 3), rep("low", 3), rep("low", 3), rep("high", 3), rep("high", 3), rep(NA, 3))
+
+# Add metadata
+sample.totals = sample.totals %>% 
+  mutate(Sample = parse_number(Sample)) %>% # convert class of samples
+  arrange(Sample) %>% # reorder order by sample number
+  bind_cols("innoculant" = innoculant) %>%
+  bind_cols("doc" = doc)
+
+# Graph
+sample.totals %>%
+  ggplot(aes(x=innoculant, y=totalCO2mg, color=doc)) +
+  geom_point() +
+  labs(title="Cumulative CO2 respiration", y="CO2 mg", x="Innoculant") +
+  theme_test()
+
+sample.totals %>%
+  ggplot(aes(x=doc, y=totalCO2mg)) +
+  geom_point() +
+  labs(title="Cumulative CO2 respiration", y="CO2 mg", x="DOC predicted") +
+  theme_test()
+```
+
 
 
 
