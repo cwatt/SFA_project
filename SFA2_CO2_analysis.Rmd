@@ -26,12 +26,11 @@ rm(list=ls())
 ```
 
 
+# Import and reformat GCMS data
 
-# Import GCMS data
+Note: Exported from Shimadzu PostRun Analysis software as ASCII using second and fourth output options.
 
-Note: Exported from PostRun Analysis software as ASCII
-
-This script is built to run on data that has been stored in a particular project directory containing a "data" directory containing sub-directories for each time point for which data was collected, containing .txt files with the GCMS output for each sample.
+This script is built to run on data that has been stored in a project directory containing a "data" directory with sub-directories for each time point that .txt files with the GCMS output for each sample.
 
 ```{r}
 # List of directories containing data files
@@ -65,7 +64,7 @@ for (i in names(files)) { # for each list of files (refers to a directory)
       str_remove("/.+.txt") %>%
       str_remove("_.+")
     
-    # Isolate the area data from the raw data files and clean up
+    # Isolate the area data and clean up
     dat = read_tsv(x, skip=7, col_names=TRUE) %>%
       select("Measurement" = Name, Area) %>% # keep only the name of sample and the area measurements collected
       drop_na() %>%
@@ -78,12 +77,17 @@ for (i in names(files)) { # for each list of files (refers to a directory)
     area.df = rbind(area.df, dat) # add to master data frame
   }
 }
+
+# Parse dates
+area.df = area.df %>%
+  mutate(Date = gsub("([0-2]{2})([0-9]{2})([0-2]{2})", "\\1-\\2-20\\3", Date)) %>%
+  mutate(Date = parse_date(Date, "%m-%d-%Y"))
 ```
 
 
 # Calculate total area
 
-TIC area often glitches and does not record (not sure why), so we will use 12C + 13C instead which is a close approximation.
+TIC area often does not record (not sure why), so we will use 12C + 13C instead which is a close approximation.
 
 ```{r}
 # Calculate
@@ -215,49 +219,69 @@ for (x in unique(std.df$Date)) {
 std.cal14
 ```
 
-Same result. Will add more higher ppm standards and omit stds 1 and 4 for future runs.
+Same result. Will add more high ppm standards and omit stds 1 and 4 for future runs.
 
 
 # Samples
 
-Isolate microcosm and atmosphere samples
-
-I just want to make sure that the raw sample areas aren't exceeding the standards.
+Isolate microcosm samples
 
 ```{r}
 sample.df = anti_join(area.df, std.df) %>%
-  mutate(ppm = 0) %>% # dummy ppm
-  filter(!str_detect(Sample, "[a-z]")) # exclude other non-samples
+  mutate(dummy_ppm = 0) %>% # dummy ppm for graphing with standards on ppm axis
+  filter(!str_detect(Sample, "[a-z]")) %>% # exclude other non-samples 
+  mutate(Sample, Sample = parse_number(Sample))# convert to numeric
 ```
 
-Plot:
+Add metadata information about innoculants
 
 ```{r}
-# Observe progression CO2 production
-sample.df %>%
-  mutate(Control = if_else(Sample %in% c(379:381), "Y", "N")) %>% # distinguish negative control
-  ggplot(aes(y=C1213, x=TP)) +
-  labs(y="Area") +
-  geom_boxplot() +
-  geom_jitter(aes(color = Control)) +
-  theme_test() +
-  theme(panel.grid = element_blank())
+# Import metadata
+meta = read_csv("SFA2_headspace_metadata.csv")
 
+# Merge with CO2 data
+sample.df = full_join(sample.df, meta, by="Sample")
+```
+
+Visualize
+
+```{r}
 # Compare samples against range of standards
 std.df %>%
   ggplot(aes(x=ppm, y=Area.adj)) +
   geom_point(shape=1) +
-  geom_point(aes(y=C1213, x=ppm, color=Date), data=sample.df) +
-  theme_test() +
-  theme()
+  geom_point(aes(y=C1213, x=dummy_ppm, color=Date), data=sample.df) +
+  labs(title="Samples vs. standards") +
+  theme_test()
+
+# Observe progression of CO2 production
+sample.df %>%
+  mutate(Control = if_else(Sample %in% c(379:384), "Y", "N")) %>% # distinguish negative control
+  ggplot(aes(y=C1213, x=Date)) +
+  labs(y="Area") +
+  geom_jitter(aes(color = Control)) +
+  labs(title="Quick look - respiration over time") +
+  theme_test()
 ```
 
-Might consider adding a std 10 that is 6 or 7 mL 100% CO2 as well if samples keep climbing.
+Outlier ~Dec. 15, looking at lab notes it seems I may have accidentally sampled twice into the same vial for this sample. THis means this value is ~2x more than what it should be. I'll correct this by halving the area value to approximate the correct measurement.
+
+```{r}
+# Isolate outlier and correct
+outlier = sample.df %>%
+  subset(Sample==363 & TP=="tp6") %>%
+  mutate(Ctotal = Ctotal/2, C12 = C12/2, C13 = C13/2, C1213 = C1213/2) # halve measurements
+
+# Replace in dataframe
+sample.df = sample.df %>%
+  filter(!(Sample==363 & TP=="tp6")) %>%
+  bind_rows(outlier)
+```
 
 
 ### Calculate CO2
 
-Use standard regressions to convert sample areas into ppm.
+Use calibration curve to convert sample areas into ppm.
 
 ```{r}
 # Convert sample area to ppm using calibration curves
@@ -269,7 +293,11 @@ for (d in unique(sample.df$Date)) {
     mutate(ppm = (C1213 - cal$intercept)/cal$slope)
   sample.conv = rbind(sample.conv, conv)
 }
+```
 
+Sanity check visualization
+
+```{r}
 # Sanity check, plot against standards
 std.df %>%
   ggplot(aes(x=ppm, y=Area.adj)) +
@@ -280,9 +308,6 @@ std.df %>%
   theme_test() +
   theme()
 ```
-
-One weirdly high outlier.
-
 
 
 Calculate mol CO2
@@ -303,38 +328,60 @@ sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 
 
 # Cumulative mg CO2 and C
 sample.totals = sample.conv %>%
-  group_by(Sample) %>%
+  group_by(Sample, Innoculant, DOC_predict) %>%
   summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44))
 ```
 
 Visualize
 
 ```{r}
-# Add innoculant info
-innoculant = c(rep(41, 3), rep(2, 3), rep(10, 3), rep(12, 3),rep(19, 3), rep(47, 3), rep(51, 3))
-doc = c(rep("low", 3), rep("high", 3), rep("low", 3), rep("low", 3), rep("high", 3), rep("high", 3), rep(NA, 3))
-
-# Add metadata
-sample.totals = sample.totals %>% 
-  mutate(Sample = parse_number(Sample)) %>% # convert class of samples
-  arrange(Sample) %>% # reorder order by sample number
-  bind_cols("innoculant" = innoculant) %>%
-  bind_cols("doc" = doc)
-
-# Graph
 sample.totals %>%
-  ggplot(aes(x=innoculant, y=totalCO2mg, color=doc)) +
+  ggplot(aes(x=Innoculant, y=totalCO2mg, color=DOC_predict)) +
   geom_point() +
   labs(title="Cumulative CO2 respiration", y="CO2 mg", x="Innoculant") +
   theme_test()
 
 sample.totals %>%
-  ggplot(aes(x=doc, y=totalCO2mg)) +
+  ggplot(aes(x=DOC_predict, y=totalCO2mg)) +
   geom_point() +
   labs(title="Cumulative CO2 respiration", y="CO2 mg", x="DOC predicted") +
   theme_test()
 ```
 
+# CO2 respiration over time
 
+Are there treatment effects in different phases of the incubation?
 
+Early = tp 3-7
+Late = tp 8+
+
+Based on earlier visual of respiration over time, seems to be a shift in activity after tp 7.
+
+```{r}
+# Split into early and late
+sample.early = subset(sample.conv, TP %in% c("tp0","tp1","tp2","tp3","tp4","tp5","tp6","tp7"))
+sample.late = anti_join(sample.conv, sample.early)
+
+# Calculate cumulative CO2 for early and late
+sample.total.early = sample.early %>%
+  group_by(Sample, Innoculant, DOC_predict) %>%
+  summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>%
+  add_column(Incubation_stage = "early")
+
+sample.total.late = sample.late %>%
+  group_by(Sample, Innoculant, DOC_predict) %>%
+  summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>%
+  add_column(Incubation_stage = "late")
+
+sample.total.split = bind_rows(sample.total.early, sample.total.late)
+```
+
+Visualize
+
+```{r}
+sample.total.split %>%
+  ggplot(aes(x=Incubation_stage, y=totalCO2mg, color=DOC_predict)) +
+  geom_boxplot() +
+  theme_test()
+```
 
