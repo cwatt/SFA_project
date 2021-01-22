@@ -72,8 +72,8 @@ dil <- 23 # hand-dilution of samples before running
 ```{r, echo=FALSE}
 # Import raw data with header notes removed manually in excel or text editor
 # The data was export in two separate files, one for the standards and one for the samples
-samples.raw = read.csv("~/SFAgrowthrate/SFAphase1.5/DOC/SFA1.5_DOCmeasurements_090820.csv")
-stds.raw = read.csv("~/SFAgrowthrate/SFAphase1.5/DOC/SFA1.5_DOCstds_090820.csv")
+samples.raw = read.csv("~/SFAgrowthrate/data_DOC/SFA1.5/SFA1.5_DOCmeasurements_090820.csv")
+stds.raw = read.csv("~/SFAgrowthrate/data_DOC/SFA1.5//SFA1.5_DOCstds_090820.csv")
 
 # Merge files for easier data frame cleaning
 raw = rbind(stds.raw, samples.raw)
