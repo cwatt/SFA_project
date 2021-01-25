@@ -348,6 +348,11 @@ sample.totals %>%
   theme_test()
 ```
 
+```{r, eval=FALSE}
+saveRDS(sample.totals, file="data_CO2/SFA2/SFA2_CO2.rds")
+```
+
+
 # CO2 respiration over time
 
 Are there treatment effects in different phases of the incubation?

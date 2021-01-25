@@ -82,6 +82,49 @@ summary(head.doc.lmer)
 ```
 
 
-check DOC vs CO2
+# DOC vs CO2
 
-check DOC vs protein
+Is there a relationship between DOC and CO2?
+
+```{r}
+# Import CO2 data
+co2 = readRDS("data_CO2/SFA2/SFA2_CO2.rds") %>%
+  rename(DOC_pheno = DOC_predict)
+
+doc.co2 = full_join(headspace.doc, co2, by=c("Sample", "Innoculant", "DOC_pheno"))
+```
+
+**Visualize**
+
+```{r}
+doc.co2 %>%
+  filter(DOC_pheno != "NA") %>%
+  ggplot(aes(x=doc, y=totalCO2mg)) +
+  geom_point(aes(color=DOC_pheno)) +
+  geom_smooth(method="lm") +
+  theme_test()
+```
+
+No relationship between DOC and CO2.
+
+# DOC vs protein
+
+Assessing to check that the starting volume of innoculant did not affect DOC outcome. Making sure the protein measurement allowed us to control for starting biomass.
+
+```{r}
+# Import protein metadata
+prot = read_csv("~/SFAgrowthrate/protein_extractions/SFA1_washprotein_metadata.csv")
+head.doc.prot = left_join(headspace.doc, prot, by=c("Innoculant"="Sample"))
+```
+
+**Visualize**
+
+```{r}
+doc.prot %>% 
+  ggplot(aes(x=Volume, y=doc)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test()
+```
+
+No clear relationship.
