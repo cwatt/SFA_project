@@ -425,7 +425,7 @@ Negative controls rep 1 and 2 contaminated at differing points in experiment.
 ```{r}
 # Convert ppm to mol CO2
 # Ideal gas law: n=(P*V)/(R*temp)
-# NOTE: pressure does not matter for this calulation because it's all relative to the stds
+# NOTE: pressure does not matter for this calculation because it's all relative to the stds
 
 R = 0.082057338 # universal gas constant, (L*atm)/(mol*K)
 temp = 296.48 # K, 74F in lab throughout experiment
@@ -436,11 +436,14 @@ mwC =12.011 # molecular weight of C
 
 molCO2 <- 1*V/(R*temp)
 mgCO2 <- molCO2*mwCO2*1000 # NOTE: This is the mg of CO2 present if the headspace contained 100% (1000000 ppm) CO2 at 1 atm
-samples.df <- mutate(samples.df, CO2mg=mgCO2*(ppm*10^-6)) # g CO2 for each sample based on ppm measured at each time point
+samples.df <- mutate(samples.df, CO2mg=mgCO2*(ppm*10^-6)) # mg CO2 for each sample based on ppm measured at each time point
+
+# Sam's calculation dbl check
+samples.df <- mutate(samples.df, samCO2 = (1000*mwCO2*(ppm*V*1000*10^-9))/(temp*R)) # same thing
 
 # Subtract ambient CO2
 
-# Calculate g CO2 in average ambient sample
+# Calculate mg CO2 in average ambient sample
 V2 = 0.0373 # L, ambient bottle had no sand and so more headspace
 molCO2.amb <- V2/(R*temp)
 mgCO2.amb <- molCO2*mwCO2*1000

@@ -20,19 +20,16 @@ library(tidyverse)
 require(broom)
 library(reshape2)
 library(car)
-
-# Set working directory to location of files
-setwd("~/SFAgrowthrate/SFAphase1/DOC")
 ```
 
 ```{r}
 # Import data
-rep1.avg=read.csv("~/SFAgrowthrate/SFAphase1/DOC/SFA1_DOC_1-51_processed_summary.csv")
-rep2.avg=read.csv("~/SFAgrowthrate/SFAphase1/DOC/SFA1_DOC_52-102_processed_summary.csv")
-rep3.avg=read.csv("~/SFAgrowthrate/SFAphase1/DOC/SFA1_DOC_103-153_processed_summary.csv")
+rep1.avg=read.csv("data_DOC/SFA1/SFA1_DOC_1-51_processed_summary.csv")
+rep2.avg=read.csv("data_DOC/SFA1/SFA1_DOC_52-102_processed_summary.csv")
+rep3.avg=read.csv("data_DOC/SFA1/SFA1_DOC_103-153_processed_summary.csv")
 
 # Import metadata
-meta=read.csv("~/SFAgrowthrate/SFAphase1/DOC/SFA1_DOC_metadata.csv")
+meta=read.csv("data_DOC/SFA1/SFA1_DOC_metadata.csv")
 ```
 
 ```{r, results="show"}
@@ -69,6 +66,15 @@ ggplot(data.melt, aes(y=value, x=Soil.sample, color=s.type)) +
   labs(title="DOC samples", x="Sample", y="DOC (ppm)")
 
 ```
+
+Convert ppm to mg
+
+```{r}
+# 10 mL used to extract DOC from microcosm
+data.smry = mutate(data.smry, mgDOC = 10*avg*10^-6*1000,
+                   data.smry, mgDOC2 = (10*avg)/1000) # 10 mL of water used to extract, avg is in ppm, *10^-6 converts to proportion, *1000 converts g to mg
+```
+
 
 ```{r, eval=FALSE, include=FALSE}
 # Save data

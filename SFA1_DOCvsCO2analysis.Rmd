@@ -16,7 +16,6 @@ knitr::opts_knit$set(root.dir = 'home/cassi/SFAgrowthrate/SFAphase1.5/stdcheck_0
 ```{r}
 rm(list=ls())
 
-library(plyr)
 library(tidyverse)
 require(broom)
 library(reshape2)
@@ -27,10 +26,10 @@ library(car)
 # Import data
 
 # DOC
-load("~/SFAgrowthrate/SFAphase1/r.output/SFA1_DOC.data.RData")
+load("data_DOC/SFA1/SFA1_DOC.data.RData")
 
 # CO2
-load("~/SFAgrowthrate/SFAphase1/r.output/SFA1_CO2.data.RData")
+load("data_CO2/SFA1/SFA1_CO2.data.RData")
 
 ```
 
