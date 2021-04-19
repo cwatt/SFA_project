@@ -1,0 +1,165 @@
+---
+title: "GCMS CO2 analysis - template for single run"
+author: "Cassandra Wattenburger"
+date: "3/5/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+
+# Import libraries, clear working directory
+
+```{r}
+library(tidyverse)
+
+sessionInfo()
+
+rm(list=ls())
+```
+
+
+# Import and reformat GCMS data
+
+Note: Exported from Shimadzu PostRun Analysis software as ASCII using second and fourth output options.
+
+**USER INPUT REQUIRED**
+
+* dir = ____, replace with path to directory containing data files
+* in str_remove(x, ____), use regex to strip the path to the file away
+
+```{r}
+# Replace "path/to/dir" with the path to the directory containing the .txt files
+dir <- "user/input/here"
+
+# Create list of file paths
+files <- list.files(path=dir, pattern="*.txt", full.names=TRUE, recursive=FALSE)
+
+# Import and clean data
+area.df <- tibble()
+for (i in files) { # for each file in the directory
+  # Create name for sample based on file name
+  name <- str_remove(x, "user_input_here") %>% # use regex rules to remove the path prior to the sample name from the string
+      str_remove(".txt") # remove .txt from the string
+  # Import and clean up
+  dat <- read_tsv(i, skip=7, col_names=TRUE) %>%
+      select("Measurement" = Name, Area) %>%
+      drop_na() %>%
+      mutate(Measurement = case_when(Measurement == "TIC" ~ "C_total",
+                              Measurement == "m/z 44" ~ "C12",
+                              Measurement == "m/z 45" ~ "C13",
+             Sample = name))
+  # Combine into one large dataframe
+  area.df <- rbind(area.df, dat)
+}
+```
+
+
+# Calculate total peak area
+
+Note: TIC area often does not record (not sure why), so we will use 12C + 13C instead which is a close approximation.
+
+```{r}
+# Calculate total C
+area.df <- area.df %>%
+  pivot_wider(names_from = Measurement, values_from = Area) %>%
+  mutate(C1213 = C12+C13)
+```
+
+
+# Standards
+
+Note: Script works if you named your samples std0, std1, std2, etc... Otherwise edit accordingly.
+
+Separate from other samples:
+
+```{r}
+std.df = area.df %>%
+  filter(str_detect(Sample, "std"))
+```
+
+Add ppm:
+
+```{r}
+std.df = std.df %>%
+  mutate(ppm = case_when(Sample == "std0" ~ 0,
+                         Sample == "std1" ~ 769,
+                         Sample == "std2" ~ 1538,
+                         Sample == "std3" ~ 3077,
+                         Sample == "std4" ~ 7692,
+                         Sample == "std5" ~ 15385,
+                         Sample == "std6" ~ 30769,
+                         Sample == "std7" ~ 76923,
+                         Sample == "std7.5" ~ 153856,
+                         Sample == "std8" ~ 230769,
+                         Sample == "std8.5" ~ 307692,
+                         Sample == "std9" ~ 384615)) 
+```
+
+Visualize:
+
+```{r}
+std.df %>%
+  ggplot(aes(x=ppm, y=Area)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test()
+```
+
+Linear regression:
+
+```{r}
+# Linear regression
+std.lm = lm(Area ~ ppm, std.df)
+summary(std.lm)
+
+# Isolate intercept and slope
+intercept <- summary(std.lm)$coefficients[1,1]
+slope <- slope = summary(std.lm)$coefficients[2,1]
+```
+
+
+# Samples
+
+Isolate sample data:
+
+Note: Works if your sample names are numbers.
+
+```{r}
+sample.df = anti_join(area.df, std.df) %>%
+  filter(!str_detect(Sample, "[a-z]")) %>% # exclude other non-samples ie atmopsphere sample and blanks
+  mutate(Sample, Sample = parse_number(Sample)) # convert to numeric
+```
+
+Use standards to convert sample areas into ppm:
+
+```{r}
+# Convert sample area to ppm using regression
+sample.df <- mutate(ppm = (C1213 - intercept)/slope) # y = mx + b, solving for x
+```
+
+Convert ppm to CO2:
+
+**USER INPUT REQUIRED**
+
+* V, replace with volume of microcosm used for samples, minus any space occupied by the sample itself
+
+```{r}
+# Ideal gas law: n=(P*V)/(R*temp)
+# NOTE: pressure does not matter for this calulation because it's all relative to the stds
+R = 0.082057338 # universal gas constant, (L*atm)/(mol*K)
+temp = 296.48 # K, 74F in lab throughout experiment
+V = 0.013 # L, headspace of microcosm
+mwCO2 = 44.01 # molecular weight (g/mol) of CO2
+P = 1 # atm, assumes 1 atm in microcosms during sampling
+
+# Calculate CO2
+molCO2100 = P*V/(R*temp) # total mol of CO2 in headspace, if it were 100% CO2
+mgCO2100 = molCO2100 * mwCO2*1000 # mol * g/mol * 1000mg/g = mg, mg of CO2 present if it were 100% CO2
+sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 based on ppm
+```
+

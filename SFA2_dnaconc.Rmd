@@ -1,0 +1,57 @@
+---
+title: "SFA2_DNA_concentrations"
+author: "Cassandra Wattenburger"
+date: "4/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+
+sessionInfo()
+```
+
+# Import data
+
+```{r}
+# Create list of files in directory
+files <- list.files(path="data_picogreen/SFA2", full.names=TRUE, recursive=FALSE)
+
+# Import DNA conc. data
+dna <- tibble()
+for (i in files) {
+  if (str_detect(i, c("tidy", ".txt"))) {
+    dat <- read_tsv(i) %>%
+      select(Sample, AdjConc) %>%
+      mutate(Sample = as.double(Sample))
+    dna <- bind_rows(dna, dat)
+  } else {
+    next
+  }
+}
+
+# Add metadata
+meta <- read_csv("SFA2_metadata.csv")
+dna.meta <- inner_join(dna, meta)
+```
+
+# Visualize
+
+```{r}
+dna.meta %>%
+  mutate(Innoculant = as_factor(Innoculant)) %>%
+  ggplot(aes(x=Day, y=AdjConc)) +
+  geom_point(aes(color=Innoculant)) +
+  theme_test()
+```
+
+
+
