@@ -19,7 +19,8 @@ library(tidyverse)
 sessionInfo()
 ```
 
-# Import data
+Import data
+-----------
 
 ```{r}
 # Create list of files in directory
@@ -28,7 +29,7 @@ files <- list.files(path="data_picogreen/SFA2", full.names=TRUE, recursive=FALSE
 # Import DNA conc. data
 dna <- tibble()
 for (i in files) {
-  if (str_detect(i, c("tidy", ".txt"))) {
+  if (str_detect(i, c("tidy", ".txt")) & !str_detect(i, "redo")) { # select files tidied using picogreen_tidy.py
     dat <- read_tsv(i) %>%
       select(Sample, AdjConc) %>%
       mutate(Sample = as.double(Sample))
@@ -40,18 +41,271 @@ for (i in files) {
 
 # Add metadata
 meta <- read_csv("SFA2_metadata.csv")
-dna.meta <- inner_join(dna, meta)
+dna.meta <- full_join(dna, meta) %>%
+  arrange(Sample)
 ```
 
-# Visualize
+Visualize DNA concentrations
+----------------------------
 
 ```{r}
 dna.meta %>%
   mutate(Innoculant = as_factor(Innoculant)) %>%
   ggplot(aes(x=Day, y=AdjConc)) +
   geom_point(aes(color=Innoculant)) +
+  #facet_wrap(~Innoculant) +
+  labs(y="DNA conc. (ng/uL)") +
+  theme_test() 
+
+# Graph each innoculant separately with sample labels
+for (x in as.character(unique(dna.meta$Innoculant))) {
+    p <- dna.meta %>%
+    filter(Innoculant == x) %>%
+    ggplot(aes(x=Day, y=AdjConc)) +
+    geom_point(alpha=0.5) +
+    geom_text(aes(label=Sample), size=3, hjust=0, vjust=0) +
+    labs(y="DNA conc. (ng/uL)", title=paste("Innoculant", x)) +
+    theme_test()
+    print(p)
+}
+
+hist(dna.meta$AdjConc, breaks=15)
+
+```
+
+Incoprorate redo DNA extractions
+--------------------------------
+
+```{r}
+# Import DNA conc. data
+for (i in files) {
+  if (str_detect(i, c("tidy", "redos", ".txt"))) { # select files tidied using picogreen_tidy.py
+    dna.redo <- read_tsv(i) %>%
+      select(Sample, AdjConc) %>%
+      mutate(Sample = as.double(Sample)) %>%
+      add_column(Status = rep("redo", nrow(.)))
+  } else {
+    next
+  }
+}
+
+# Add metadata
+redo.meta <- inner_join(dna.redo, meta) %>%
+  arrange(Sample)
+
+# First pass DNA extractions
+dna.meta <- add_column(dna.meta, Status = rep("original", nrow(dna.meta)))
+
+# Add redos
+dna.meta <- bind_rows(dna.meta, redo.meta)
+```
+
+
+```{r}
+redos <- c(163, 164, 165, 166, 218, 219, 220, 235, 236, 237, 252, 253, 269, 271, 275, 276, 277, 280, 281, 282, 287, 288, 310, 312, 325, 341)
+
+dna.meta %>%
+  filter(Sample %in% redos) %>%
+  mutate(Sample = as.factor(Sample)) %>%
+  ggplot(aes(x=Sample, y=AdjConc)) +
+  geom_point(aes(color=Status)) +
+  labs() +
+  theme_test()
+
+dna.meta %>%
+  filter(Sample %in% redos) %>%
+  mutate(Sample = as.factor(Sample)) %>%
+  ggplot(aes(y=AdjConc)) +
+  geom_boxplot(aes(color=Status)) +
+  labs() +
+  theme_test()
+```
+
+Redo DNA extraction seems to have improved yield overall.
+
+Visualize DNA concentrations with redos subbed in
+-------------------------------------------------
+
+```{r}
+# Graph each innoculant over time
+for (x in as.character(unique(dna.meta$Innoculant))) {
+    p <- dna.meta %>%
+    filter(!(Status == "original" & Sample %in% redos)) %>%
+    filter(Innoculant == x) %>%
+    ggplot(aes(x=Day, y=AdjConc)) +
+    geom_point(alpha=0.5) +
+    geom_text(aes(label=Sample), size=3, hjust=0, vjust=0) +
+    labs(y="DNA conc. (ng/uL)", title=paste("Innoculant", x)) +
+    theme_test()
+    print(p)
+}
+  
+```
+
+Identify a threshold for spike-in levels
+----------------------------------------
+
+Average DNA concentrations by inncoulants and day.
+
+```{r}
+# Replace redos
+dna.meta.sub <- filter(dna.meta, !(Status == "original" & Sample %in% redos))
+
+# Average
+dna.avg <- dna.meta.sub %>%  
+  group_by(Innoculant, Day) %>%
+  summarize(dna_avg = mean(AdjConc))
+  
+# Visualize
+dna.avg %>%
+  mutate(Innoculant = as.factor(Innoculant)) %>% 
+  filter(!Day == 30) %>%
+  ggplot(aes(x=Day, y=dna_avg)) +
+  geom_point(aes(color=Innoculant)) +
+  geom_line(aes(color=Innoculant)) +
+  geom_hline(yintercept=1, linetype=2) +
+  labs(y="Mean DNA conc. (ng/uL)") +
+  theme_test()
+  
+
+```
+
+Range of values above and below threshold of 1, averaged.
+
+All data:
+```{r}
+min(dna.avg$dna_avg)
+max(dna.avg$dna_avg)
+```
+
+Below 1 ng/uL:
+```{r}
+# min
+dna.avg %>%
+  filter(dna_avg < 1) %>%
+  group_by() %>%
+  summarize(min(dna_avg))
+
+# max
+dna.avg %>%
+  filter(dna_avg < 1) %>%
+  group_by() %>%
+  summarize(max(dna_avg))
+```
+
+Above 1 ng/uL:
+```{r}
+# min
+dna.avg %>%
+  filter(dna_avg > 1) %>%
+  group_by() %>%
+  summarize(min(dna_avg))
+
+# max
+dna.avg %>%
+  filter(dna_avg > 1) %>%
+  group_by() %>%
+  summarize(max(dna_avg))
+```
+
+Range of values above and below threshold of 1, raw.
+
+All data:
+```{r}
+min(dna.meta.sub$AdjConc)
+max(dna.meta.sub$AdjConc)
+```
+
+Below 1 ng/uL:
+```{r}
+# min
+dna.meta.sub %>%
+  filter(AdjConc < 1) %>%
+  group_by() %>%
+  summarize(min(AdjConc))
+
+# max
+dna.meta.sub %>%
+  filter(AdjConc < 1) %>%
+  group_by() %>%
+  summarize(max(AdjConc))
+```
+
+Above 1 ng/uL:
+```{r}
+# min
+dna.meta.sub %>%
+  filter(AdjConc > 1) %>%
+  group_by() %>%
+  summarize(min(AdjConc))
+
+# max
+dna.meta.sub %>%
+  filter(AdjConc > 1) %>%
+  group_by() %>%
+  summarize(max(AdjConc))
+```
+
+If 1 ng/uL is the threshold, each spike-group will vary in DNA concentration by a factor of 10.
+
+Divide data by threshold and calculate spike-in for each group
+------------------------
+
+Separate using the averaged dna concentrations so that replicates are kept within the same spike-group.
+
+```{r}
+# label groups based on averaged dna concentration
+dna.avg.groups <- mutate(dna.avg, spike_group = if_else(dna_avg < 1, "low", "high"))
+
+# visualize
+dna.avg.groups %>%
+  ggplot(aes(x=spike_group, y=dna_avg)) +
+  geom_boxplot() +
+  theme_test()
+
+# Apply labels to unaveraged dataset
+dna.meta.group <- dna.meta.sub %>%
+  full_join(dna.avg.groups) %>%
+  select(-dna_avg)
+
+# visualize
+dna.meta.group %>%
+  ggplot(aes(x=spike_group, y=AdjConc)) +
+  geom_boxplot() +
+  theme_test()
+```
+
+Calculate spike-in concentrations, aiming for 1% of sequenced DNA
+
+Visualize
+
+```{r}
+dna.low %>%
+  ggplot(aes(y=dna_avg)) +
+  geom_boxplot() +
+  theme_test()
+
+dna.low %>%
+  ggplot(aes(y=dna_avg)) +
+  geom_boxplot() +
   theme_test()
 ```
 
 
+Average of each group
+
+```{r}
+low.avg <- dna.low %>%
+  group_by() %>%
+  summarize(avg = mean(dna_avg))
+
+high.avg <- dna.high %>%
+  group_by() %>%
+  summarize(avg = mean(dna_avg))
+```
+
+Decisions decisions:
+* should the group average be used to calculate the spike-in amount or another metric? Higher? lower?
+* need to estimate % of DNA that is 16S and claculate 1% spike based on that (think I did something like this, find spreadsheet)
+* what volume of DNA to use for spike? 10 or 20? higher volume = less variability but also more waste if things go wrong
 
