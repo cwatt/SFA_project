@@ -153,7 +153,7 @@ dna.meta.sub <- filter(dna.meta, !(Status == "original" & Sample %in% redos))
 
 # Average
 dna.avg <- dna.meta.sub %>%  
-  group_by(Innoculant, Day) %>%
+  group_by(Innoculant, Day, DOC_pheno) %>%
   summarize(dna_avg = mean(AdjConc))
   
 # Visualize
@@ -166,7 +166,42 @@ dna.avg %>%
   geom_hline(yintercept=1, linetype=2) +
   labs(y="Mean DNA conc. (ng/uL)") +
   theme_test()
-  
+
+# log transform
+dna.avg %>%
+  mutate(Innoculant = as.factor(Innoculant)) %>% 
+  filter(!Day == 30) %>%
+  ggplot(aes(x=Day, y=log(dna_avg))) +
+  geom_point(aes(color=Innoculant)) +
+  geom_line(aes(color=Innoculant)) +
+  facet_wrap(~Innoculant) +
+  geom_vline(xintercept = 10, linetype = 2) +
+  labs(y="Log mean DNA conc. (ng/uL)") +
+  theme_test()
+
+# separate by DOC phenotype
+dna.avg %>%
+  mutate(Innoculant = as.factor(Innoculant)) %>% 
+  filter(!Day == 30) %>%
+  ggplot(aes(x=Day, y=dna_avg)) +
+  geom_point(aes(color=Innoculant)) +
+  geom_line(aes(color=Innoculant)) +
+  facet_wrap(~DOC_pheno) +
+  geom_hline(yintercept=1, linetype=2) +
+  labs(title="Separared by DOC phenotype", y="Mean DNA conc. (ng/uL)") +
+  theme_test()
+
+dna.avg %>%
+  mutate(Innoculant = as.factor(Innoculant)) %>% 
+  filter(!Day == 30) %>%
+  ggplot(aes(x=Day, y=log(dna_avg))) +
+  geom_point(aes(color=Innoculant)) +
+  geom_line(aes(color=Innoculant)) +
+  facet_wrap(~DOC_pheno) +
+  labs(title="Separared by DOC phenotype", y="Log mean DNA conc. (ng/uL)") +
+  theme_test()
+
+
 
 ```
 
@@ -277,35 +312,14 @@ dna.meta.group %>%
 
 Calculate spike-in concentrations, aiming for 1% of sequenced DNA
 
-Visualize
-
 ```{r}
-dna.low %>%
-  ggplot(aes(y=dna_avg)) +
-  geom_boxplot() +
-  theme_test()
-
-dna.low %>%
-  ggplot(aes(y=dna_avg)) +
-  geom_boxplot() +
-  theme_test()
-```
-
-
-Average of each group
-
-```{r}
-low.avg <- dna.low %>%
-  group_by() %>%
-  summarize(avg = mean(dna_avg))
-
-high.avg <- dna.high %>%
-  group_by() %>%
-  summarize(avg = mean(dna_avg))
+dna.meta.group %>%
+  group_by(spike_group) %>%
+  summarize(dna_avg = mean(AdjConc), dna_min = min(AdjConc), dna_max = max(AdjConc))
 ```
 
 Decisions decisions:
-* should the group average be used to calculate the spike-in amount or another metric? Higher? lower?
+* should the group average be used to calculate the spike-in amount or another metric? Higher? lower? <- probably worse to underestimate than overestimate
 * need to estimate % of DNA that is 16S and claculate 1% spike based on that (think I did something like this, find spreadsheet)
 * what volume of DNA to use for spike? 10 or 20? higher volume = less variability but also more waste if things go wrong
 
