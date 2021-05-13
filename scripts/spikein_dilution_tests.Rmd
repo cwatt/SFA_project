@@ -1,0 +1,106 @@
+---
+title: "Untitled"
+author: "Cassandra Wattenburger"
+date: "5/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+
+sessionInfo()
+```
+
+Dilution series test 1 - 05/07/21
+---------------------------------
+
+Import data
+
+```{r}
+dil <- read_csv("../data_qPCR/spikein_dilution_test_050721.csv")
+dil
+```
+
+Visualize
+
+```{r}
+dil %>%
+  ggplot(aes(y=log(Conc),x=Cq)) +
+  geom_point() +
+  labs(y="log Conc. (pg/uL)", x="Cq") +
+  geom_vline(xintercept=dil[dil$Conc==0,]$Cq, linetype=2) +
+  geom_text(aes(label=Conc), hjust=0, vjust=0) +
+  annotate("text", x=24, y=0, label="Dimers from neg. ctrl") +
+  theme_test()
+```
+
+
+Dilution series test 2 - 5 uL template - 05/10/21
+---------------------------------
+
+Added more template to try to get amplicon to outpace dimer amplification.
+
+Import data
+
+```{r}
+dil2 <- read_csv("../data_qPCR/spikein_dilution_test_051021.csv")
+dil2
+```
+
+Visualize
+
+```{r}
+dil2 %>%
+  ggplot(aes(y=log(Conc),x=Cq)) +
+  geom_point() +
+  labs(y="log Conc. (pg/uL)", x="Cq") +
+  geom_smooth(method="lm", linetype=2) +
+  #geom_vline(xintercept=dil[dil$Conc==0,]$Cq, linetype=2) +
+  geom_text(aes(label=Conc), hjust=0, vjust=0) +
+  #annotate("text", x=24, y=0, label="Dimers from neg. ctrl") +
+  theme_test()
+```
+
+Linear regression
+
+```{r}
+reg <- dil2 %>%
+  filter(Conc > 0) %>%
+  lm(log(Conc) ~ Cq, .)
+summary(reg)
+```
+
+Dilution series test 3 - new primers - 05/12/21
+-----------------------------------------------
+
+Ordered 16S V4 primers without Kozich barcodes or Illumina adapters
+
+Import data
+
+```{r}
+dil3 <- read_csv("../data_qPCR/spikein_dilution_test_newprimers_051221.csv")
+dil3
+```
+
+Visualize
+
+```{r}
+dil3 %>%
+  ggplot(aes(x=Cq, y=log(Conc))) +
+  geom_point() +
+  facet_wrap(~Primer) +
+  labs(y="log Conc. (pg/uL)", x="Cq") +
+  geom_smooth(method="lm", linetype=2) +
+  geom_text(aes(label=Conc), hjust=0, vjust=0) +
+  theme_test()
+```
+
+Definitely messed up reagents in the Kozich primers.

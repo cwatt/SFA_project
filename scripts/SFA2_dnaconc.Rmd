@@ -24,7 +24,7 @@ Import data
 
 ```{r}
 # Create list of files in directory
-files <- list.files(path="data_picogreen/SFA2", full.names=TRUE, recursive=FALSE)
+files <- list.files(path="../data_picogreen/SFA2", full.names=TRUE, recursive=FALSE)
 
 # Import DNA conc. data
 dna <- tibble()
@@ -40,7 +40,7 @@ for (i in files) {
 }
 
 # Add metadata
-meta <- read_csv("SFA2_metadata.csv")
+meta <- read_csv("../metadata/SFA2_metadata.csv")
 dna.meta <- full_join(dna, meta) %>%
   arrange(Sample)
 ```
@@ -154,7 +154,7 @@ dna.meta.sub <- filter(dna.meta, !(Status == "original" & Sample %in% redos))
 # Average
 dna.avg <- dna.meta.sub %>%  
   group_by(Innoculant, Day, DOC_pheno) %>%
-  summarize(dna_avg = mean(AdjConc))
+  summarize(dna_avg = mean(AdjConc), dna_sd = sd(AdjConc))
   
 # Visualize
 dna.avg %>%
@@ -310,16 +310,64 @@ dna.meta.group %>%
   theme_test()
 ```
 
-Calculate spike-in concentrations, aiming for 1% of sequenced DNA
-
 ```{r}
 dna.meta.group %>%
   group_by(spike_group) %>%
-  summarize(dna_avg = mean(AdjConc), dna_min = min(AdjConc), dna_max = max(AdjConc))
+  filter(Day > 0) %>%
+  summarize(dna_avg = mean(AdjConc), dna_median = median(AdjConc), dna_min = min(AdjConc), dna_max = max(AdjConc))
 ```
 
-Decisions decisions:
-* should the group average be used to calculate the spike-in amount or another metric? Higher? lower? <- probably worse to underestimate than overestimate
-* need to estimate % of DNA that is 16S and claculate 1% spike based on that (think I did something like this, find spreadsheet)
-* what volume of DNA to use for spike? 10 or 20? higher volume = less variability but also more waste if things go wrong
+```{r}
+dna.meta.group %>%
+  ggplot(aes(x=Day, y=AdjConc)) +
+  geom_point(aes(color=spike_group)) +
+  facet_wrap(~Innoculant) +
+  theme_test()
+
+for (x in as.character(unique(dna.meta.group$Innoculant))) {
+    p <- dna.meta.group %>%
+    filter(!(Status == "original" & Sample %in% redos)) %>%
+    filter(Innoculant == x) %>%
+    ggplot(aes(x=Day, y=AdjConc, color=spike_group)) +
+    geom_point(alpha=0.5) +
+    geom_hline(yintercept = 1) +
+    geom_text(aes(label=Sample), size=3, hjust=0, vjust=0) +
+    labs(y="DNA conc. (ng/uL)", title=paste("Innoculant", x)) +
+    theme_test()
+    print(p)
+}
+
+# label borderline samples
+dna.meta.group <- mutate(dna.meta.group, borders = case_when(spike_group=="low" & AdjConc <= 1 ~ "low",
+                                                                  spike_group=="high" & AdjConc >= 1 ~ "high",
+                                                                  spike_group=="low" & AdjConc >= 1 ~ "both",
+                                                                  spike_group=="high" & AdjConc <= 1 ~ "both"))
+
+# Number of samples in each spike group
+dna.meta.group %>%
+  group_by(borders) %>%
+  summarize(count(.))
+```
+
+
+Figure for SFA progress report:
+
+```{r}
+dna.plot <- dna.avg %>%
+  mutate(Innoculant = as.factor(Innoculant),
+         DOC_pheno = fct_recode(DOC_pheno, 'DOC phenotype: high'="high", 'DOC phenotype: low'="low")) %>%
+  filter(Day < 30) %>%
+  ggplot(aes(x=Day, y=dna_avg)) +
+  geom_point(aes(color=Innoculant)) +
+  geom_errorbar(aes(ymin=dna_avg-dna_sd, ymax=dna_avg+dna_sd), color="gray") +
+  geom_line(aes(color=Innoculant)) +
+  facet_wrap(~DOC_pheno) +
+  labs(y="Mean DNA conc. (ng/uL)") +
+  theme_test() +
+  theme(text = element_text(size=15))
+dna.plot
+
+ggsave(dna.plot, file="../figures/SFA2_dnaconc.png", units="mm", width=200, height=100)
+```
+
 

@@ -24,12 +24,12 @@ library(car)
 
 ```{r}
 # Import data
-rep1.avg=read.csv("data_DOC/SFA1/SFA1_DOC_1-51_processed_summary.csv")
-rep2.avg=read.csv("data_DOC/SFA1/SFA1_DOC_52-102_processed_summary.csv")
-rep3.avg=read.csv("data_DOC/SFA1/SFA1_DOC_103-153_processed_summary.csv")
+rep1.avg=read.csv("../data_DOC/SFA1/SFA1_DOC_1-51_processed_summary.csv")
+rep2.avg=read.csv("../data_DOC/SFA1/SFA1_DOC_52-102_processed_summary.csv")
+rep3.avg=read.csv("../data_DOC/SFA1/SFA1_DOC_103-153_processed_summary.csv")
 
 # Import metadata
-meta=read.csv("data_DOC/SFA1/SFA1_DOC_metadata.csv")
+meta=read.csv("../data_DOC/SFA1/SFA1_DOC_metadata.csv")
 ```
 
 ```{r, results="show"}
@@ -42,7 +42,6 @@ DOC.data=merge(data, meta, by.x="Sample.ID", by.y="Microcosm", all=TRUE)
 
 ```{r, eval=FALSE}
 save(DOC.data, file="~/SFAgrowthrate/SFAphase1/r.output/SFA1_DOC.data.RData")
-
 ```
 
 ```{r}

@@ -7,13 +7,14 @@ data_CO2
 data_DOC
 data_soilgeochem
 data_waterloss
+data_protein
 fieldsite_monkeyrun
 pictures
 preliminary_exps
-protein_extractions
 protocols
 r.objects
 script_templates
+figures
 
 # Files
 *.csv

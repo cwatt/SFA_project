@@ -22,11 +22,8 @@ knitr::opts_knit$set(root.dir = 'home/cassi/SFAgrowthrate/SFAphase1.5/GCMS/data/
 ```
 
 ```{r, message=FALSE}
-library("ggplot2")
-library("stringr")
-library("plyr")
-library("dplyr")
-library("broom")
+library(tidyverse)
+library(broom)
 
 rm(list=ls())
 ```
@@ -40,7 +37,7 @@ sessionInfo()
 # Import data
 
 # List of directories containing data files
-dir <- list.dirs(path="~/SFAgrowthrate/SFAphase1.5/GCMS/data", full.names=TRUE, recursive=FALSE)
+dir <- list.dirs(path="~/SFAgrowthrate/data_CO2/SFA1.5/data", full.names=TRUE, recursive=FALSE)
 
 files <- list()
 
@@ -160,7 +157,7 @@ for (i in unique(stds.df$std)) {
 stds.nona.df <- na.omit(stds.df)
 
 # Summary statistics
-stds.summary.df <- ddply(stds.nona.df, .(std), summarize, mean=mean(area.conv), sd=sd(area))
+stds.summary.df <- stds.nona.df %>% group_by(std) %>% summarise(mean = mean(area.conv), sd=sd(area))
 stds.summary.df <- mutate(stds.summary.df, cutoff=sd*2) # defining outliers outside 2 standard deviations of mean
 stds.summary.df <- mutate(stds.summary.df, cutoff_min=mean-cutoff)
 stds.summary.df <- mutate(stds.summary.df, cutoff_max=mean+cutoff)
@@ -349,35 +346,28 @@ samples.df <- mutate(samples.df, ppm.conv = ppm*presconv)
 # Distinguish negative controls
 samples.df <- mutate(samples.df, type = ifelse(samples.df$sample==13, "negative", "sample"))
 
-# Summary statistics
-samples.summary.df <- ddply(samples.df, .(sample, date), summarize, mean=mean(ppm.conv), sd=sd(ppm.conv))
-
-# Distinguish negative controls
-samples.summary.df <- mutate(samples.summary.df, type = ifelse(samples.summary.df$sample==13, "negative", "sample"))
-
 # TP0 value
 ## using as subtractant for each time point because ambient values are weirdly high
-tp0 = samples.summary.df[samples.summary.df$date=="062420",]
-tp0 = na.omit(tp0)
-tp0.value = mean(tp0$mean)
-# this value ~500 ppm which resembles expected atmospheric CO2 ppm (415), Bradfield has poor ventillation so I'm not surprised it's a little high
+tp0 <- samples.df %>%
+  filter(date=="062420") %>% # tp0 only
+  mutate(ppm.conv2 = if_else(ppm.conv < 0, 0, ppm.conv)) %>%
+  summarize(ppm.mean = mean(ppm.conv2, na.rm=TRUE)) %>%
+  as.numeric()
 
-# Subtract ambient CO2 from each time point
-samples.summary.df = mutate(samples.summary.df, mean.amb = mean-tp0.value)
+# Subtract tp0 CO2 from each time point
+samples.df <- mutate(samples.df, ppm.amb = ppm.conv-tp0)
+
 # Convert negative values to 0
-samples.summary.df = mutate(samples.summary.df, mean.final = ifelse(mean.amb < 0, 0, mean.amb))
-
+samples.df <- mutate(samples.df, ppm.final = if_else(ppm.amb < 0, 0, ppm.amb))
 ```
 
 ```{r}
 # Graph ppm per day
-ggplot(samples.summary.df, aes(x=sample, y=mean.final, color=type)) +
-  geom_point() +
-  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd)) +
+ggplot(samples.df, aes(x=sample, y=ppm.final, color=type)) +
+  geom_boxplot() +
   facet_wrap(~date) +
   labs(title="Headspace sample respiration by day", y="CO2 ppm") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
 ```
 
 ### Calculate cumulative CO2
@@ -395,40 +385,40 @@ mwC = 12.011 # molecular weight of C
 
 molCO2 <- 1*V/(R*temp)
 mgCO2 <- molCO2*mwCO2*1000 # NOTE: This is the mg of CO2 present if the headspace contained 100% (1000000 ppm) CO2 at 1 atm
-samples.summary.df <- mutate(samples.summary.df, CO2mg=mean.final*(ppm*10^-6)) # mg CO2 for each sample based on ppm measured at each time point
+samples.df <- mutate(samples.df, CO2mg=mgCO2*(ppm.final*10^-6)) # mg CO2 for each sample based on ppm measured at each time point
 
 # Sum all time points
-totalresp.df <- samples.df %>% group_by(id, sample) %>% summarize(totalCO2 = sum(CO2mg))
-totalresp.df <- as.data.frame(totalresp.df)
+totalresp.df <- samples.df %>% group_by(sample, rep) %>% summarize(CO2.total = sum(CO2mg, na.rm=TRUE))
 
-# Convert to g C
-totalresp.df <- mutate(totalresp.df, totalC=(totalCO2*(mwC/mwCO2)))
+# Reformating
 
-# Summary statistics
-totalresp.df <- na.omit(totalresp.df) # remove NAs
-totalresp.summary.df <- ddply(totalresp.df, .(sample), summarize, meanCO2=mean(totalCO2), meanC=mean(totalC), sdCO2=sd(totalCO2), sdC=sd(totalC))
+# New sample labels (bullshit I have to do because of poor planning)
+totalresp.df$ucosm <- rownames(totalresp.df)
+totalresp.df$ucosm <- as.double(totalresp.df$ucosm)
 
-# Distinguish negative controls
-totalresp.summary.df <- mutate(totalresp.summary.df, type = ifelse(totalresp.summary.df$sample==13, "negative", "sample"))
+# Metadata
+meta <- read_csv("data_DOC/SFA1.5/SFA1.5_DOC_metadata.csv")
+  
+# Merge
+totalresp.meta <- inner_join(meta, totalresp.df) %>%
+  select(-c(ucosm, sample, rep))
 
-# Reorder samples
-totalresp.reorder = arrange(totalresp.summary.df, meanCO2)
+# Summarize
+totalresp.summary <- totalresp.meta %>%
+  group_by(Sample, DOC) %>%
+  summarize(CO2.mean = mean(CO2.total))
 
 ```
 
 ```{r}
 # Graph cumulative CO2
-ggplot(totalresp.summary.df, aes(x=sample, y=meanCO2)) +
-  geom_point() +
-  geom_errorbar(aes(ymin=meanCO2-sdCO2, ymax=meanCO2+sdCO2)) +
-  labs(title="Cumulative CO2 respired", y="CO2 (mg)") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplot(totalresp.summary.df, aes(x=sample, y=meanC)) +
-  geom_point() +
-  geom_errorbar(aes(ymin=meanC-sdC, ymax=meanC+sdC)) +
-  labs(title="Cumulative C respired", y="C (mg)") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+totalresp.summary %>%
+  ggplot(aes(x=DOC, y=CO2.mean)) +
+  geom_boxplot() +
+  #geom_text(aes(label=Sample), hjust=0, vjust=0) +
+  labs(y="Cumulative CO2 (mg)", x="DOC phenotype") +
+  theme_test() +
+  theme(text=element_text(size=20))
 
 ```
 
