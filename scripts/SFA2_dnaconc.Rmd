@@ -1,5 +1,5 @@
 ---
-title: "SFA2_DNA_concentrations"
+title: "SFA2 - DNA concentrations"
 author: "Cassandra Wattenburger"
 date: "4/7/2021"
 output: html_document
@@ -200,9 +200,6 @@ dna.avg %>%
   facet_wrap(~DOC_pheno) +
   labs(title="Separared by DOC phenotype", y="Log mean DNA conc. (ng/uL)") +
   theme_test()
-
-
-
 ```
 
 Range of values above and below threshold of 1, averaged.
@@ -349,10 +346,37 @@ dna.meta.group %>%
   summarize(count(.))
 ```
 
+```{r, eval=FALSE}
+write_csv(dna.meta.group, "../data_picogreen/SFA2_dnaspikes.csv")
+```
 
-Figure for SFA progress report:
+
+Sample dilutions
+----------------
+
+If the sample is less than 1 ng/uL, no dilution. If the sample is > 1 ng/uL, dilute to 1 ng/uL.
+
+This is to prevent bias during PCR due to unequal template addition. Unfortunately, I can't add enough DNA to bring the low concentration samples up to 2 ng in the reaction because I am low on volume. This is a compromise.
 
 ```{r}
+# Calculate dilutions for each sample
+dna.meta.sub <- dna.meta.sub %>%
+  mutate(conc_goal = if_else(AdjConc <= 1, AdjConc, 1),
+         template_uL = round((conc_goal*20)/AdjConc, 0), # C1V1=C2V2, rounded to nearest whole uL
+         mgH2O_uL = 20-template_uL) %>%
+  arrange(Sample)
+```
+
+```{r, eval=FALSE}
+dna.meta.sub %>%
+  select(Sample, template_uL, mgH2O_uL) %>%
+  write_csv(., file="../data_intermediate/SFA2_dnadilutions.csv")
+```
+
+
+
+```{r, eval=FALSE, include=FALSE, echo=FALSE}
+# Figure for SFA progress report
 dna.plot <- dna.avg %>%
   mutate(Innoculant = as.factor(Innoculant),
          DOC_pheno = fct_recode(DOC_pheno, 'DOC phenotype: high'="high", 'DOC phenotype: low'="low")) %>%

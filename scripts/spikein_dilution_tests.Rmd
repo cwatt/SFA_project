@@ -104,3 +104,51 @@ dil3 %>%
 ```
 
 Definitely messed up reagents in the Kozich primers.
+
+
+Dilution series test 4 - tween and polya - 05/21/21
+-----------------------------------------------
+
+See if tween (0.1%) and poly(a) (1 pg/uL) increase amplificaton. Bind less to tube walls
+
+Import data
+
+```{r}
+dil4 <- read_csv("../data_qPCR/spikein_tweenpolya_test_052121.csv")
+dil4
+```
+
+Visualize
+
+```{r}
+dil4 %>%
+  ggplot(aes(x=Cq, y=log(Conc), shape=Solution)) +
+  geom_point(alpha=0.6) +
+  labs(y="log Conc. (pg/uL)", x="Cq") +
+  geom_text(aes(label=Conc), hjust=0, vjust=0) +
+  theme_test()
+
+dil4 %>%
+  ggplot(aes(x=Cq, y=log(Conc), color=Solution)) +
+  geom_point() +
+  facet_wrap(~Solution) +
+  geom_smooth(method="lm", linetype=2) +
+  labs(y="log Conc. (pg/uL)", x="Cq") +
+  geom_text(aes(label=Conc), hjust=0, vjust=0) +
+  theme_test()
+```
+
+Linear regressions
+
+```{r}
+reg4.mgh2o <- dil4 %>%
+  filter(Conc > 0 & Solution=="mgH2O") %>%
+  lm(log(Conc) ~ Cq, .)
+summary(reg4.mgh2o)
+
+reg4.tweenpolya <- dil4 %>%
+  filter(Conc > 0 & Solution=="tweenpolya") %>%
+  lm(log(Conc) ~ Cq, .)
+summary(reg4.tweenpolya)
+```
+

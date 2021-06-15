@@ -33,8 +33,6 @@ meta = read.csv("../data_DOC/SFA2/SFA2_doc_metadata.csv")
 
 # Merge
 doc.meta = full_join(meta, doc, by=c("Sample" = "sample_id"))
-
-# Sample means
 ```
 
 # Visualize
@@ -57,7 +55,7 @@ doc.plot <- doc.meta %>%
   ggplot(aes(DOC_pheno, y=doc)) +
   geom_boxplot() +
   labs(x="DOC phenotype", y="DOC conc. (ppm)") +
-  annotate("text", x=2.1, y=950, label="P-value = 0.0123*") +
+  annotate("text", x=2.1, y=950, label="P-value = 0.0123") +
   theme_test() +
   theme(text = element_text(size=15))
 doc.plot

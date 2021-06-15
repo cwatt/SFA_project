@@ -69,7 +69,7 @@ doc.plot <- doc.mean %>%
   ggplot(aes(x=DOC, y=sample.mean)) +
   geom_boxplot() +
   labs(x="DOC phenotype", y="Mean DOC conc. (ppm)") +
-  annotate("text", x=2.1, y=1300, label="P-value < 0.0001") +
+  annotate("text", x=2.1, y=1350, label="P-value < 0.0001") +
   theme_test() +
   theme(text = element_text(size=15))
 doc.plot

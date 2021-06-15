@@ -1,0 +1,67 @@
+---
+title: "SFA2 - meltcurve troubleshoot"
+author: "Cassandra Wattenburger"
+date: "6/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+
+sessionInfo()
+```
+
+Some of the meltcurves on PCRs are very high. Want to see if this is systematic based on experimental design. Could indicate that too much internal standard was added.
+
+Import data
+-----------
+
+Melt curve data and DNA concentration data.
+
+```{r}
+melt <- read_csv("../data_qPCR/SFA2_meltcurve_troubleshoot.csv")
+dna <- read_csv("../data_picogreen/SFA2_dnaspikes.csv")
+
+melt_dna <- left_join(melt, dna) %>%
+  mutate(melt_curve, melt_curve = if_else(melt_curve==2, "high", if_else(melt_curve==1, "intermediate", "normal")),
+         melt_curve = as_factor(melt_curve),
+         melt_curve = fct_relevel(melt_curve, c("normal", "intermediate", "high")))
+```
+
+In melt$melt_curve, 0 means normal, 1 means inbetween, and 2 means high.
+
+Investigate
+-----------
+
+```{r}
+ggplot(melt_dna, aes(x=AdjConc, y=melt_curve, color=melt_curve)) +
+  geom_jitter() +
+  labs(x="DNA concentraion (ng/uL)", y="Melt curve temp.") +
+  theme_test()
+```
+
+Definitely a relationship between DNA concentration and melt curve temp.
+
+```{r}
+ggplot(melt_dna, aes(x=spike_group, y=melt_curve, color=melt_curve)) +
+  geom_jitter() +
+  labs(x="Spike-in level", y="Melt curve temp.") +
+  theme_test()
+```
+
+```{r}
+ggplot(melt_dna, aes(x=Day, y=melt_curve, color=melt_curve)) +
+  geom_jitter() +
+  labs(x="Day", y="Melt curve temp.") +
+  theme_test()
+```
+
+
