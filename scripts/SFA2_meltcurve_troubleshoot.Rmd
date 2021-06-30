@@ -60,8 +60,41 @@ ggplot(melt_dna, aes(x=spike_group, y=melt_curve, color=melt_curve)) +
 ```{r}
 ggplot(melt_dna, aes(x=Day, y=melt_curve, color=melt_curve)) +
   geom_jitter() +
+  geom_vline(xintercept = 7) +
   labs(x="Day", y="Melt curve temp.") +
   theme_test()
 ```
+
+
+Percent spike in high vs normal meltcurves
+------------------------------------------
+
+Calculating percent of total DNA the spike comprises in each sample.
+
+```{r}
+melt_dna <- melt_dna %>% 
+  mutate(spike_total = if_else(spike_group == "low", 0.034, 0.171),
+         dna_total = AdjConc*1000*15,
+         spike_perc = (spike_total/(dna_total+spike_total)*100))
+
+melt_dna %>%
+  ggplot(aes(x=Day, y=spike_perc, color=melt_curve)) +
+  geom_jitter() +
+  labs(x="Day", y="% spike-in") +
+  theme_test()
+
+melt_dna %>%
+  ggplot(aes(x=melt_curve, y=spike_perc, color=melt_curve)) +
+  geom_jitter() +
+  labs(x="Melt curve", y="% spike-in") +
+  theme_test()
+  
+```
+
+There doesn't seem to be a strict cut off for when the melt-curve becomes reliably high based on spike-in %... I was hoping there would be.
+
+Most of the "normal" melt curves lie below 0.0005% of the total DNA. Maybe that is a good target?
+
+
 
 
