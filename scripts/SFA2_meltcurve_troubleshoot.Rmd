@@ -96,5 +96,30 @@ There doesn't seem to be a strict cut off for when the melt-curve becomes reliab
 Most of the "normal" melt curves lie below 0.0005% of the total DNA. Maybe that is a good target?
 
 
+Troubleshoot 07/02/21
+---------------------
+
+See lab notebook 3 page 72
+
+```{r}
+troubleshoot <- read_csv("../data_qPCR/SFA2_spikeintroubleshoot_070221.csv")
+
+troubleshoot %>%
+  ggplot(aes(y=spike_actual, x=dna_conc, color=melt_curve)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0.0002, linetype=2) +
+  theme_test()
+
+troubleshoot %>%
+  ggplot(aes(y=spike_actual, x=dna_conc, color=melt_curve)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0.0002, linetype=2) +
+  facet_wrap(~Day) +
+  theme_test()
+
+```
+
+It looks like samples with spike added at below 0.0002% were OK, need to try this concentration at lower DNA concentration samples.
+
 
 

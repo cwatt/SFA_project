@@ -374,6 +374,68 @@ dna.meta.sub %>%
 ```
 
 
+New spike-in calculations
+-------------------------
+
+```{r}
+# Find high DNA outliers
+# My previous library had a problem with having way too much DNA, so want to remove anything that will raise DNA average too much
+dna.meta.sub %>%
+  ggplot(aes(x=Sample, y=AdjConc)) +
+  geom_point() +
+  geom_text(aes(label=Sample), vjust="outward") +
+  theme_test()
+
+outliers <- c(338, 290, 327, 363, 272, 303)
+
+# Sample DNA mean excluding day 0 (mostly plant DNA) and high outliers
+sample_dna_mean <- dna.meta.sub %>% 
+  filter(Day != 0, !(Sample %in% outliers)) %>%
+  group_by() %>%
+  summarize(mean = mean(AdjConc, na.rm=TRUE))
+
+# Day 0 mean
+day0_dna_mean <- dna.meta.sub %>%
+  filter(Day==0) %>%
+  group_by() %>%
+  summarize(mean = mean(AdjConc, na.rm=TRUE))
+
+# Subtract day 0 mean from sample average
+# This number will be used to calculate new spike-in
+actual_dna_mean <- sample_dna_mean - day0_mean
+
+# Calculate total DNA in each sample based on the average
+total_dna_mean <- sample_dna_mean*15*1000 # 15 uL, convert from ng to pg
+
+# Calculate amount of spike to reach 0.0001% of total DNA
+total_spike_pg <- total_dna_mean*0.000001
+total_spike_pg
+
+# Spike concentration to make (plan to add 5 uL to each sample)
+spike_conc <- total_spike_pg/5
+
+# Total volume of spike needed for all samples (8 uL to account for liquid loss during pipetting)
+vol_total <- 8*384
+
+# Volume needed to dilute spike from 0.1 pg/uL
+spike_vol <- (vol_total*spike_conc)/0.1
+spike_vol
+water_vol <- vol_total - spike_vol
+water_vol
+
+# Prepare spike-in separately for each replicate of experiment
+spike_vol/3
+water_vol/3
+```
+
+
+
+
+
+
+
+
+
 
 ```{r, eval=FALSE, include=FALSE, echo=FALSE}
 # Figure for SFA progress report

@@ -8,6 +8,7 @@ data_DOC
 data_soilgeochem
 data_waterloss
 data_protein
+data_amplicon
 fieldsite_monkeyrun
 pictures
 preliminary_exps

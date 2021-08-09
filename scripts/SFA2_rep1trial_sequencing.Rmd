@@ -1,0 +1,173 @@
+---
+title: "SFA2 rep1 trial"
+author: "Cassandra Wattenburger"
+date: "7/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+library(ape)
+
+sessionInfo()
+```
+# Notes
+
+Did a trial sequencing run to see if the amount of spike-in that I added to these samples was appropriate. I suspect there is way to much in some samples based on the meltcurves during barcoding.
+
+
+Import data
+-----------
+
+```{r}
+# ASV counts
+count <- read_tsv("../data_amplicon/SFA2rep1_trial/output/final/SFA2rep1trial.counts-final.tsv", skip=1, col_names=TRUE) %>%
+  rename(ASV=`#OTU ID`)
+
+# Taxonomy table
+tax <- read_tsv("../data_amplicon/SFA2rep1_trial/output/final/SFA2rep1trial.taxonomy-final.tsv")
+
+# Sample metadata
+meta <- read_tsv("../data_amplicon/SFA2rep1_trial/SFA2rep1_metadata.tsv")
+```
+
+Evaluate spike-in
+-----------------
+
+```{r}
+# Calculate total reads per sample
+read_totals <- colSums(count[,-1]) #%>% as_tibble()
+
+# Isolate Aquifex reads
+count_tax <- full_join(count, tax) 
+count_aquifex <- filter(count_tax, Genus=="Aquifex")
+
+# Spike-in read counts per sample
+aquifex_totals <- count_aquifex %>%
+  select(-ASV, -Domain, -Phylum, -Class, -Order, -Family, -Genus, -Species) %>%
+  colSums() %>%
+  as_tibble
+
+# Isolate plant reads
+count_plant <- filter(count_tax, Family %in% c("Mitochondria", "Chloroplast"))
+
+plant_totals <- count_plant %>%
+  select(-ASV, -Domain, -Phylum, -Class, -Order, -Family, -Genus, -Species) %>%
+  colSums() %>%
+  as_tibble
+
+# Calculate % spike-in per sample
+samples <- colnames(count[-1]) %>% as.double()
+reads <- bind_cols(samples, read_totals, aquifex_totals, plant_totals) %>%
+  rename(SampleID=...1, total_reads=...2, aquifex_reads=value...3, plant_reads=value...4) %>%
+  mutate(prop_reads = aquifex_reads/total_reads,
+         prop_reads_noplant = aquifex_reads/(total_reads - plant_reads),
+         prop_plant = plant_reads/total_reads) %>%
+  inner_join(meta)
+```
+
+Minimum, maximum, average, median proportion of spike per sample:
+
+```{r}
+min(reads$prop_reads_noplant)
+max(reads$prop_reads_noplant)
+mean(reads$prop_reads_noplant)
+median(reads$prop_reads_noplant)
+```
+
+Visualize:
+
+```{r}
+reads %>% 
+  ggplot(aes(x=SampleID, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads") +
+  theme_test()
+
+reads %>% 
+  ggplot(aes(x=Day, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads") +
+  theme_test()
+
+reads %>% 
+  ggplot(aes(x=read_totals, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads", y="Sample read depth") +
+  theme_test()
+```
+
+Compare to DNA concentration and percent spike added relative to that
+
+```{r}
+dna <- read_csv("../data_picogreen/SFA2_dnaspikes.csv") %>%
+  select(SampleID=Sample, dna_conc=AdjConc, spike_group)
+
+reads <- inner_join(reads, dna) %>%
+  mutate(spike_added_pg = if_else(spike_group=="low", 0.0341, 0.1707),
+         total_dna_pg = dna_conc*15*1000, # dna_conc is ng/uL, 15 uL of sample total
+         prop_dna = spike_added_pg/(total_dna_pg+spike_added_pg)) # double check
+
+reads %>% 
+  ggplot(aes(x=prop_dna, y=prop_reads_noplant)) +
+  geom_point(aes(color=Type)) +
+  #geom_hline(yintercept=0.01, linetype=2) +
+  #geom_hline(yintercept=0.1, linetype=2) +
+  labs(y="Spike-in proportion of reads", x="Spike-in proportion of total DNA") +
+  theme_test() 
+```
+
+Lines are at 1% and 10% of reads (10% is near maximum so for Dunlop growth rate experiment).
+
+Predict proportion of spike DNA to add that approaches ~1% of read sequences:
+
+```{r}
+# Using linear regression
+reads_lm <- lm(prop_reads~prop_dna, data=reads)
+summary(reads_lm)
+
+predict <- (0.01 - as.numeric(coefficients(reads_lm)[1]))/as.numeric(coefficients(reads_lm)[2])
+predict
+```
+
+Well, nevermind.
+
+Compare spike-in read proportion to meltcurves:
+
+```{r}
+melt <- read_csv("../data_qPCR/SFA2_meltcurve_troubleshoot.csv") %>%
+  select(SampleID=Sample, melt_curve) %>%
+  mutate(melt_curve=case_when(melt_curve==0 ~ "normal",
+                              melt_curve==1 ~ "intermediate",
+                              melt_curve==2 ~ "high"))
+
+reads <- inner_join(reads, melt)
+
+reads %>%
+  ggplot(aes(x=melt_curve, y=prop_reads_noplant)) +
+  geom_jitter() +
+  labs(y="Spike-in proportion of reads", x="Meltcurve temperature") +
+  theme_test()
+```
+
+Proportion plant reads:
+
+```{r}
+reads %>%
+  ggplot(aes(x=Day, y=prop_plant)) +
+  geom_point() +
+  theme_test() +
+  labs(y="Proportion plant sequences")
+```
+
+
+
+

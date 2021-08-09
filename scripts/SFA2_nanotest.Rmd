@@ -1,0 +1,189 @@
+---
+title: "SFA2 - nano sequencing test"
+author: "Cassandra Wattenburger"
+date: "7/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+
+sessionInfo()
+```
+
+# Project overview: SFA nano sequencing test
+
+I'm testing 0.00005% spike-in in a random subset of samples from the SFA2 experiment. Hoping to achieve lower levels of spike-in reads.
+
+
+DNA quantification
+------------------
+
+Picogreen assay
+
+```{r}
+dna <- read_tsv("../data_picogreen/tidy_SFA2_nanotest_071521.txt") %>%
+  select(Sample, dna_conc = AdjConc)
+meta <- read_tsv("../data_amplicon/SFA2_nanotest/SFA2_nanotest_metadata.tsv") %>%
+  rename(Sample = SampleID)
+
+dna_meta <- full_join(meta, dna)
+```
+
+```{r}
+dna_meta %>% 
+  ggplot(aes(x=Day, y=dna_conc)) +
+  geom_point() +
+  theme_test()
+```
+
+### DNA dilutions after spike-in
+
+Don't dilute anything below 1 ng/uL, dilute everything above 1 ng/uL down to ~1 ng/uL.
+
+```{r}
+dna_dilute <-  dna_meta %>%
+  mutate(dna_total_wspike = (dna_conc*1000*15 + 0.014),
+         dna_conc_wspike = (dna_total_wspike/20)/1000,
+         dilute = if_else(dna_conc_wspike > 1, "Y", "N"),
+         dilute_dna_vol = if_else(dilute=="Y", 20/dna_conc_wspike, 20),
+         dilute_water_vol = 20-dilute_dna_vol) %>%
+  select(Sample, dilute_dna_vol, dilute_water_vol)
+dna_dilute
+
+
+```
+
+Sequencing results
+------------------
+
+Import count table, taxonomy, and metadata.
+
+```{r}
+count <- read_tsv("../data_amplicon/SFA2_nanotest/final/SFA2nano.counts-final.tsv", col_names = TRUE) %>%
+  rename(ASV=`#OTU ID`)
+tax <- read_tsv("../data_amplicon/SFA2_nanotest/final/SFA2nano.taxonomy-final.tsv")
+meta <- read_tsv("../data_amplicon/SFA2_nanotest/SFA2_nanotest_metadata.tsv")
+```
+
+Evaluate spike-in
+
+```{r}
+# Read depth per sample
+read_totals <- colSums(count[,-1])
+
+# Isolate Aquifex reads
+count_tax <- full_join(count, tax) 
+count_aquifex <- filter(count_tax, Genus=="Aquifex")
+
+# Isolate mitochondrial reads
+count_mito <- filter(count_tax, Family=="Mitochondria")
+count_chloro <- filter(count_tax, Family=="Chloroplast")
+count_plant <- bind_rows(count_mito, count_chloro)
+
+# Spike-in read counts per sample
+aquifex_totals <- count_aquifex %>%
+  select(-ASV, -Domain, -Phylum, -Class, -Order, -Family, -Genus, -Species) %>%
+  colSums() %>%
+  as_tibble
+
+# Plant read counts
+plant_totals <- count_plant %>%
+  select(-ASV, -Domain, -Phylum, -Class, -Order, -Family, -Genus, -Species) %>%
+  colSums() %>%
+  as_tibble
+
+# Calculate % spike-in per sample
+samples <- colnames(count[-1]) %>% as.double()
+reads <- bind_cols(samples, read_totals, aquifex_totals, plant_totals) %>%
+  rename(SampleID = ...1, total_reads = ...2, aquifex_reads = value...3, plant_reads = value...4) %>%
+  mutate(prop_reads = aquifex_reads/total_reads,
+         prop_reads_noplant = aquifex_reads/(total_reads-plant_reads),
+         prop_plant = plant_reads/total_reads) %>%
+  inner_join(meta)
+```
+
+Minimum, maximum, average, median proportion of spike per sample:
+
+```{r}
+min(reads$prop_reads)
+max(reads$prop_reads)
+mean(reads$prop_reads)
+median(reads$prop_reads)
+```
+
+w/plant read sequences removed:
+
+```{r}
+min(reads$prop_reads_noplant)
+max(reads$prop_reads_noplant)
+mean(reads$prop_reads_noplant)
+median(reads$prop_reads_noplant)
+```
+
+Visualize:
+
+```{r}
+reads %>% 
+  ggplot(aes(x=SampleID, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads") +
+  theme_test()
+
+reads %>% 
+  ggplot(aes(x=Day, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads") +
+  theme_test()
+
+reads %>% 
+  ggplot(aes(x=read_totals, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads", y="Sample read depth") +
+  theme_test()
+```
+
+```{r}
+reads_dna <- inner_join(reads, dna, by = c("SampleID" = "Sample")) %>%
+         mutate(total_dna_pg = dna_conc*15*1000, # dna_conc is ng/uL, 15 uL sample
+         prop_dna = 0.0134/(total_dna_pg + 0.0134)) # double check
+
+reads_dna %>% 
+  filter(dna_conc > 0) %>%
+  ggplot(aes(x=dna_conc, y=prop_reads_noplant)) +
+  geom_point(aes(color=Type)) +
+  #geom_hline(yintercept=0.01, linetype=2) +
+  #geom_hline(yintercept=0.1, linetype=2) +
+  labs(y="Spike-in proportion of reads", x="DNA conc. (ng/uL)") +
+  theme_test() 
+
+reads_dna %>% 
+  filter(dna_conc > 0) %>%
+  ggplot(aes(x=prop_dna, y=prop_reads_noplant)) +
+  geom_point(aes(color=Type)) +
+  #geom_hline(yintercept=0.01, linetype=2) +
+  #geom_hline(yintercept=0.1, linetype=2) +
+  labs(y="Spike-in proportion of reads", x="Spike-in proportion of total DNA") +
+  theme_test() 
+
+```
+
+Proportion of mplant reads:
+
+```{r}
+reads %>%
+  ggplot(aes(x=Day, y=prop_plant)) +
+  geom_point() +
+  theme_test() +
+  labs(y="Proportion of plant sequences")
+```
+
+

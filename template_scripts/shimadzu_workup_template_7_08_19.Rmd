@@ -1,0 +1,347 @@
+---
+title: "Shimadzu NPOC/TN Workup Template"
+author: "Taylor Cyle"
+date: "7/08/2019"
+output: html_document
+---
+
+Run specific: Put your run specific info here
+
+Ex -> Fresh stds were made as is typical:
+      KHP - 100 mg C/L  
+      KNO3 - 100 mg N/L
+      Glycine as 1 mM
+      Alanine as 1 mM
+      Glucose as 1 mM
+
+This file is based off a file export from Shimadzu using the ASCII export to txt by injection macro.
+Designed of a standard run using combined NPOC/TN standard
+Combined NPOC/TN Sample analysis (3/5 injections)
+Inclusion of a external check std
+
+Requires: 
+  -csv data file with headers chopped off, renamed "raw_mod.csv"
+  -sample_ids.csv file to import sample id values (this is where you import your run specific information - individual sample names, dilutions, other meta-data)
+  
+Code changes based on run:
+  -Check Standard input in Code Chunk #1
+        -Names need to match those you input on your original spreadsheet
+        -Math should match the concentrations you ran at...
+  -Line 141 - Multiples of samples? (NPOC/TN together or separate)
+  -Line 279 may needed changing depending on length of run and # of check stds run
+  -Line 288-289 are drift cutoff limits (as %, currently 2%)
+  -Last column rearragements may change based on metadata included in your sample_names file
+  -Line 321 - TN offset correction (likely needed the way the machine currently runs)
+    -Could easily modify this to do a NPOC offset correction as well, if desired.
+    
+
+If things break - TROUBLESHOOTING:
+-If external stds figure shows up blank, then you have a plyr, dplyr package confusion event
+-To correct, use the following code 
+              detach("package:tidyverse")
+              detach("package:dplyr")
+              detach("package:plyr")
+    -Then re-run script from beginning
+
+-Sometimes I have POSIX issues when reading in the file. Not sure what is causing this currently, but sometimes I need to touch up the POSIX code lines to make sure the chk minutes are correct (Lines 177 & 270)
+
+```{r, echo = FALSE}
+# Code changes based on run 
+
+# Insert check standard value chosen (ppm C and N)
+# Ideally you are running a check standard every 10 samples or so
+# You can then use this value to look for drift and adjust calculated values
+chk <- 25
+
+mmol_chk_1 <- 1   # mM of ext chk std
+mmol_chk_2 <- 1   # mM of ext chk std
+mmol_chk_3 <- 1   # mM of ext chk std
+
+ext_1_c <- 2    # C atoms in check
+ext_1_n <- 1    # N atoms in check
+ext_2_c <- 3    # C atoms in check
+ext_2_n <- 1    # N atoms in check
+ext_3_c <- 6    # C atoms in check
+ext_3_n <- 0    # N atoms in check
+
+c_mass <- 12.011
+n_mass <- 14.0067
+
+# Names of importance as input to Shimadzu Instrument
+# This will change depending on how you input sample names 
+# I typically have blanks, external standard, a check standard, and perhaps 2 sample types. If you have morem you can add sample_name variables below. I'm simply using this to subset the dataframes for further processing below.
+
+ext_name_1 <- 'Glycine - 1 mM'
+ext_name_2 <- 'Alanine - 1 mM'
+ext_name_3 <- 'Glucose - 1 mM'
+check_name_1 <- '25 ppm Check STD'
+sample_name_1 <- 'Cassi Sample'
+
+# If you add more sample types above, it will require more inclusions in Code chunk 3 as well as here
+# Specifics on external std chosen must be changed 
+```
+
+```{r, echo = FALSE}
+# library(rstudioapi)
+library(plyr)
+library(tidyverse)
+require(broom)
+
+# # set working directory to file location
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+#import  data - requires the header notes to be manually cut off using excel or textedit
+mydat = read.csv("raw_mod.csv", fileEncoding = "UTF-8-BOM")
+head(mydat)
+
+#change column names
+names(mydat)[names(mydat) == 'Date...Time'] <- 'DT'
+names(mydat)[names(mydat) == 'Sample.Name'] <- 's.type'
+names(mydat)[names(mydat) == 'Analysis.Inj..'] <- 'analys.type'
+
+#std data
+stds <- mydat[which(mydat$Type =='Standard'), c(1,2,3,9,10,11,12,13,14,16,17)]
+TN.std <- stds[which(stds$Anal. == 'TN'), ]
+TN.std <- TN.std[which(TN.std$Excluded == 0), ]
+NPOC.std <- stds[which(stds$Anal. == 'NPOC'), ]
+NPOC.std <- NPOC.std[which(NPOC.std$Excluded == 0), ]
+```
+
+```{r, echo = FALSE}
+#linear calibration for absorbance to use for future sample corrections
+
+#NPOC
+cal_lm <- lm(Area ~ Conc., data = NPOC.std)
+plot(Area ~ Conc., data = NPOC.std, main = "Initial Cal Curve NPOC") +
+  abline(cal_lm)
+summary(cal_lm)
+cal.NPOC <- as.data.frame(tidy(cal_lm))
+
+#TN
+cal_lm <- lm(Area ~ Conc., data = TN.std)
+plot(Area ~ Conc., data = TN.std, main = "Initial Cal Curve TN") +
+  abline(cal_lm)
+summary(cal_lm)
+cal.TN <- as.data.frame(tidy(cal_lm))
+```
+
+```{r, echo = FALSE}
+# below code will change as a function of how you name your samples in the Shimadzu software
+# be sure to change green text to match your data file
+# also...multiples will change if NPOC/TN run concurrently or separately -- see below comments
+
+#remove stds and unnecessary columns
+mysamp <- mydat[which(mydat$Type !='Standard' & mydat$Excluded == 0), c(3,9,12,13,14)]
+
+#subset external check 
+ext.chk <-mysamp[which(mysamp$s.type == ext_name_1 | mysamp$s.type == ext_name_2 | mysamp$s.type == ext_name_3), ]
+
+#subset check stds
+mychk <- mysamp[which(mysamp$s.type == check_name_1), ]
+id =  rep(1:(nrow(mychk)/6), each = 6)
+mychk$id = id
+
+#samples only
+mysamp <- mysamp[which(mysamp$s.type == sample_name_1), ]
+# id =  rep(1:(nrow(mysamp)/3/2), each = 3)    # Use if 
+# mysamp$id = rep(id,2)                       # separate NPOC/TN runs
+
+id =  rep(1:(nrow(mysamp)/6), each = 6)    # Use if
+mysamp$id = id                            # normal NPOC/TN run combined
+
+# look at external check standard to make sure it seems alright!
+# summarize in new dataframe
+ext_prop <- ext.chk %>% group_by(s.type, analys.type) %>% summarize(mean = mean(Conc.))
+ext_prop <- ext_prop %>% mutate(recovery = case_when(
+  s.type == ext_name_1 & analys.type == 'NPOC' ~ mean/mmol_chk_1/ext_1_c/c_mass, 
+  s.type == ext_name_1 & analys.type == 'TN' ~ mean/mmol_chk_1/ext_1_n/n_mass,
+  s.type == ext_name_2 & analys.type == 'NPOC' ~ mean/mmol_chk_2/ext_2_c/c_mass,
+  s.type == ext_name_2 & analys.type == 'TN' ~ mean/mmol_chk_2/ext_2_n/n_mass,
+  s.type == ext_name_3 & analys.type == 'NPOC' ~ mean/mmol_chk_3/ext_3_c/c_mass, 
+  s.type == ext_name_3 & analys.type == 'TN' ~ mean/mmol_chk_3/ext_3_n/n_mass))
+
+# Change inf for Gluc-n to NA
+ is.na(ext_prop) <- sapply(ext_prop, is.infinite)
+
+ggplot(ext_prop, aes(s.type, recovery)) + geom_bar(aes(fill = analys.type), position = "dodge", stat = "identity") +
+  coord_cartesian(ylim=c(0.7,1.1)) +
+  labs(x = "Analysis", y = "Proportion of Expected") +
+  ggtitle("External Check Recovery") + 
+    theme_bw() + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank())
+
+
+# plot check stds through time to assess for drift
+
+# convert date/time to POSIXct (format= specifies input format)
+mychk$DT_new = as.POSIXct(mychk$DT, format="%m/%d/%Y %H:%M")
+ 
+#pull start time
+t1 = mychk[1,7]
+
+# #create time elapsed column
+mychk$minutes = round((mychk$DT_new - t1)/60, 2)
+```
+
+
+```{r, echo = FALSE}
+# summarize by mean of each sample injection sequence
+chk_times <- mychk %>% group_by(id) %>% summarize(mean_min = mean(minutes))
+chk_conc <- mychk %>% group_by(analys.type, id) %>% summarize(mean_conc = mean(Conc.))
+mychk <- inner_join(chk_times, chk_conc, by = 'id')
+rm(chk_conc)
+rm(chk_times)
+mean_check_area_C <- NPOC.std %>% group_by(Conc.) %>% summarize(mean_area = mean(Area))
+mean_check_area_C <- mean_check_area_C %>% mutate(calc.conc = (mean_area-cal.NPOC[1,2])/cal.NPOC[2,2])
+mean_check_area_N <- TN.std %>% group_by(Conc.) %>% summarize(mean_area = mean(Area))
+mean_check_area_N <- mean_check_area_N %>% mutate(calc.conc = (mean_area-cal.TN[1,2])/cal.TN[2,2])
+orig_NPOC_chk <- mean_check_area_C[mean_check_area_C$Conc. == chk, c("calc.conc")]
+orig_TN_chk <- mean_check_area_N[mean_check_area_N$Conc. == chk, c("calc.conc")]
+mychk <- mychk %>% mutate(percent_drift = if_else(analys.type == 'NPOC',(((mean_conc/(100/chk)) - orig_NPOC_chk$calc.conc)/orig_NPOC_chk$calc.conc)*100, (((mean_conc/(100/chk)) - orig_TN_chk$calc.conc)/orig_TN_chk$calc.conc)*100))
+mychk <- mychk %>% mutate(prop_drift = if_else(analys.type == 'NPOC',(mean_conc/(100/chk))/ orig_NPOC_chk$calc.conc, (mean_conc/(100/chk))/orig_TN_chk$calc.conc))
+
+mychk$mean_min <- as.numeric(mychk$mean_min)
+
+# Plot Check Stds through time...
+
+ggplot(mychk, aes(mean_min, percent_drift, colour = analys.type, fill = analys.type)) + 
+  geom_point() +
+  labs(x = "Time (min)", y = "% Drift from Original Curve Value") +
+  ggtitle("Check Standard Drift - Percentage Basis") + 
+    theme_bw() + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank())
+
+ggplot(mychk, aes(mean_min, prop_drift, colour = analys.type, fill = analys.type)) + 
+  geom_point() +
+  labs(x = "Time (min)", y = "Proportion of Original Value") +
+  ggtitle("Check Standard Drift - Proportional Basis") + 
+    theme_bw() + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank())
+
+# Fit lines between standards as a function of time
+# Can remove/add as needed depended on the length of the run
+
+#NPOC Drift Correction
+n <- nrow(mychk)/2 #number of intervals between chk stds
+cal.chk.NPOC <- as_tibble(matrix(nrow=2,ncol=n))
+
+for (i in 1:(n-1)){
+  chk_lm <- lm(prop_drift ~ mean_min, data = mychk[(mychk$id == i | mychk$id == (i+1)) & mychk$analys.type == 'NPOC',])
+cal.chk <- tidy(chk_lm)
+
+cal.chk.NPOC[ ,1] <- cal.chk[ ,1]
+cal.chk.NPOC[ ,(i+1)] <- cal.chk[ ,2]
+}
+
+cal.chk.NPOC <- as.data.frame(cal.chk.NPOC)
+
+#TN Drift Correction
+n <- nrow(mychk)/2
+cal.chk.TN <- as_tibble(matrix(nrow=2,ncol=n))
+
+for (i in 1:(n-1)){
+  chk_lm <- lm(prop_drift ~ mean_min, data = mychk[(mychk$id == i | mychk$id == (i+1)) & mychk$analys.type == 'TN',])
+cal.chk <- tidy(chk_lm)
+
+cal.chk.TN[ ,1] <- cal.chk[ ,1]
+cal.chk.TN[ ,(i+1)] <- cal.chk[ ,2]
+}
+cal.chk.TN <- as.data.frame(cal.chk.TN)
+rm(chk_lm,cal.chk)
+```
+
+```{r, echo = FALSE}
+# bring in sample names from external file
+names <- read.csv("sample_ids.csv")
+mysamp <- inner_join(mysamp, names, by = 'id', all = TRUE)
+rm(names)
+
+# re-calculate concentrations based on our own std curve (if needed)
+# mysamp <- mysamp %>% mutate(Conc. = if_else(analys.type == 'NPOC',
+#                   (Area-cal.NPOC[1,2])/cal.NPOC[2,2],
+#                       (Area-cal.TN[1,2])/cal.TN[2,2]))
+```
+
+
+```{r, echo = FALSE}
+# DONT FORGET...CHANGE NUMBER OF BOUNDARIES BASED ON LENGTH OF RUN
+
+# convert date/time to POSIXct (format= specifies input format)
+mysamp$DT_new = as.POSIXct(mysamp$DT, format="%m/%d/%Y %H:%M")
+
+# create time elapsed since t1 chk column (in minutes
+mysamp$chk_min = round((mysamp$DT_new - t1)*60, 2)
+mysamp$chk_min = as.numeric(mysamp$chk_min)
+
+# drift corrections
+# check time boundaries - more may be necessary for longer runs
+# boundaries will be one less than check std points
+b1 <- as.numeric(unique(mychk[mychk$id == 2,2]))
+b2 <- as.numeric(unique(mychk[mychk$id == 3,2]))
+b3 <- as.numeric(unique(mychk[mychk$id == 4,2]))
+# b4 <- as.numeric(unique(mychk[mychk$id == 5,2]))
+# b5 <- as.numeric(unique(mychk[mychk$id == 6,2]))
+# b6 <- as.numeric(unique(mychk[mychk$id == 7,2]))
+# b7 <- as.numeric(unique(mychk[mychk$id == 8,2]))
+
+# Correction script - Should correction happen? Cutoffs 
+npoc_lim <- 2       #NPOC drift limitation
+tn_lim <- 2         #TN drift limitation
+
+m1c <- max(abs(mychk[mychk$analys.type == "NPOC", "percent_drift"]))  
+m1n <- max(abs(mychk[mychk$analys.type == "TN", "percent_drift"])) 
+
+# 1st create corrected column filled with original conc values
+mysamp <- mysamp %>% mutate(corr_conc = Conc.)
+
+#NPOC correction
+if (m1c > npoc_lim) {
+
+mysamp <- mysamp %>% mutate(corr_conc = case_when(analys.type == "NPOC" & chk_min < b1 ~ Conc./(chk_min*cal.chk.NPOC[2,2]+cal.chk.NPOC[1,2]),
+                                              analys.type == "NPOC" & chk_min < b2 & chk_min > b1~ Conc./(chk_min*cal.chk.NPOC[2,3]+cal.chk.NPOC[1,3]),
+                                              analys.type == "NPOC" & chk_min < b3 & chk_min > b2~ Conc./(chk_min*cal.chk.NPOC[2,4]+cal.chk.NPOC[1,4]),
+                                              analys.type == "TN" ~ corr_conc))
+}
+
+#TN correction
+if (m1n > tn_lim) {
+
+mysamp <- mysamp %>% mutate(corr_conc = case_when(analys.type == "TN" & chk_min < b1 ~ Conc./(chk_min*cal.chk.TN[2,2]+cal.chk.TN[1,2]),
+                                              analys.type == "TN" & chk_min < b2 & chk_min > b1~ Conc./(chk_min*cal.chk.TN[2,3]+cal.chk.TN[1,3]),
+                                              analys.type == "TN" & chk_min < b3 & chk_min > b2~ Conc./(chk_min*cal.chk.TN[2,4]+cal.chk.TN[1,4]),
+                                              analys.type == "NPOC" ~ corr_conc))
+}
+```
+
+```{r, echo = FALSE}
+# delete/reorder columns
+# delete/reorder columns
+final <- mysamp[,c(6:11,3,14)]
+
+# #External check, offset correction (TN Only)
+# n_offset_prop <- as.numeric(1/((ext_prop[2,4]+ext_prop[6,4])/2))
+# final <- final %>% mutate(corr_conc = case_when(analys.type == "TN" ~ 
+#                                                   corr_conc * n_offset_prop,
+#                                     analys.type == "NPOC" ~ corr_conc))
+
+#correct for dilution
+final <- mutate(final, dil_corr_conc = corr_conc * dilution)
+final$dil_corr_conc <- round(final$dil_corr_conc, 2)
+
+# Summarize to trim down to means
+final_mean <- final %>% group_by(id, analys.type) %>% summarize(mean = mean(dil_corr_conc))
+final <- inner_join(final_mean, final, by = 'id')
+
+#remove duplicates from join operation
+final <- final[!duplicated(final[c(1:2)]), ]
+
+#delete/reorder columns
+final <- final[,c(1,4:8,2,3)]
+colnames(final)[7] <- "analys.type"
+
+#round to 2 decimal places
+final$mean <- round(final$mean, 2)
+
+#save output to csv file for further use elsewhere
+write.csv(final, file ="npoc.tn.output.csv", row.names = FALSE)
+```

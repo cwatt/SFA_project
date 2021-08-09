@@ -1,0 +1,50 @@
+---
+title: "SFA2 - nano sequencing test v2"
+author: "Cassandra Wattenburger"
+date: "8/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+
+sessionInfo()
+```
+
+# Project overview: SFA nano sequencing test v2
+
+I'm testing 0.000025% spike-in in a random subset of samples from the SFA2 experiment (leftover from first nano test run).
+
+Dilutions
+---------
+
+Dilutinganything > 1 ng/uL to 1 ng/uL, lower concentrations unchanged. 
+
+```{r}
+dna <- read_tsv("../data_picogreen/tidy_SFA2_nanotest_071521.txt") %>%
+  select(Sample, dna_conc = AdjConc)
+meta <- read_tsv("../data_amplicon/SFA2_nanotest/SFA2_nanotest_metadata.tsv") %>%
+  rename(Sample = SampleID)
+
+dna_meta <- full_join(meta, dna)
+```
+
+```{r}
+dna_meta %>% 
+  ggplot(aes(x=Day, y=dna_conc)) +
+  geom_point() +
+  theme_test()
+```
+
+```{r}
+dna_meta <- mutate(dna_meta, water_add = if_else(dna_conc > 1, dna_conc*15, 0))
+```
+

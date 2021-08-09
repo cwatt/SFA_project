@@ -1,0 +1,368 @@
+---
+title: "Shimadzu NPOC/TN data workup"
+author: "Cassi Wattenburger"
+date: "7/24/2019"
+output: html_document
+---
+
+Script based heavily on Taylor Cyle's script, shimadzu_workup_template.Rmd.
+
+Re-scripting/organizing it myself to make sure I understand everything.
+
+Meant to be run with samples analyzed using Shimadzu NPOC/TN simultaneous measurement, 3/5 injections.
+
+### Script requirements
+* Shimadzu exported data with header info and blank rows removed (first 26 lines of .txt file)
+* Sample metadata file with atleast an "ID"id column and "dilution" column (ie 8 if you diluted samples by hand 8-fold prior to measuring NOT the same as auto-dilute which the machine performs for you)
+
+### Run specific info
+* NPOC standard = 100 ppm KHP
+* TON standard = 100 ppm KNO3
+* Ext check 1 = 1 mM glycine
+* Ext check 2 = 1 mM alanine
+* Ext check 3 = 1 mM glucose
+
+## Project: Preliminary microcosms test 2 DOC extraction
+* DOC extracted from preliminary microcosms test 2 on 07/19/19
+* Testing DOC from materials used (Blanks) and effects of diluting before or after freezing (is flocculation an issue?)
+
+## Step 0: Clear workspace, attach packages, set working directory
+```{r, echo=FALSE}
+rm(list=ls())
+
+library(plyr)
+library(tidyverse)
+require(broom)
+
+# Set working directory to location of files
+setwd("~/sfadocprelim2019/microcosms2/DOC/")
+```
+
+
+```{r, echo=FALSE}
+# Names of external/internal checks and samples as entered into Shimadzu software
+ext1.name <- '1 mM Glycine'
+ext2.name <- '1 mM Alanine'
+ext3.name <- '1 mM Glucose'
+int1.name <- '25 ppm Check STD'
+sam1.name <- 'Cassi'
+#sample2.name <- 'whatever'
+
+# Internal check info
+int.ppm <- 25 # expected concentration of internal checks in ppm
+
+# External check info
+ext1.mmol <- 1 # expected concentration of external check 1 in mmol
+ext2.mmol <- 1 # expected concentration of external check 2 in mmol
+ext3.mmol <- 1 # expected concentration of external check 3 in mmol
+
+ext1.c <- 2 # number C atoms in external check 1
+ext1.n <- 1 # number N atoms in external check 1
+ext2.c <- 3 # number C atoms in external check 2
+ext2.n <- 1 # number N atoms in external check 2
+ext3.c <- 6 # number C atoms in external check 3
+ext3.n <- 0 # number N atoms in external check 3
+
+# Mass of C and N
+c.mass <- 12.011
+n.mass <- 14.0067
+```
+
+## Step 1: Import data and subset standards, checks, samples
+```{r, echo=FALSE}
+# Import raw data with header notes removed manually in excel or text editor
+raw = read.csv("raw_mod_072419.csv", fileEncoding = "UTF-8-BOM")
+
+# Remove excluded injections
+raw <- raw[which(raw$Excluded == 0),]
+
+# Fix column names
+names(raw)[names(raw) == 'Date...Time'] <- 'DT'
+names(raw)[names(raw) == 'Sample.Name'] <- 's.type'
+names(raw)[names(raw) == 'Analysis.Inj..'] <- 'analys.type'
+
+# Subset standard data and remove unnecessary columns
+stds <- raw[which(raw$Type =='Standard'), c(1,2,3,9,10,11,12,13,14,16,17)]
+TN.std <- stds[which(stds$Anal. == 'TN'), ]
+NPOC.std <- stds[which(stds$Anal. == 'NPOC'), ]
+
+# Subset internal checks
+ints <- raw[which(raw$s.type == int1.name),]
+
+# Subset external checks and remove unnecessary columns
+exts <- raw[which(raw$s.type == ext1.name | raw$s.type == ext2.name | raw$s.type == ext3.name), c(3,9,12,13,14)]
+
+# Subset samples
+samples <- raw[which(raw$s.type == sam1.name),] # | raw$s.type == sam2.name etc...
+id =  rep(1:(nrow(samples)/6), each = 6)   
+samples$id = id                            
+```
+
+## Step 2: Assess standard curves
+```{r, echo=FALSE}
+# NPOC
+npoc.lm <- lm(Area ~ Conc., data = NPOC.std)
+plot(Area ~ Conc., data = NPOC.std, main = "Initial Cal Curve NPOC") +
+  abline(npoc.lm)
+summary(npoc.lm)
+cal.NPOC <- as.data.frame(tidy(npoc.lm))
+
+# TN
+tn.lm <- lm(Area ~ Conc., data = TN.std)
+plot(Area ~ Conc., data = NPOC.std, main = "Initial Cal Curve TN") +
+  abline(npoc.lm)
+summary(tn.lm)
+cal.TN <- as.data.frame(tidy(tn.lm))
+```
+
+## Step 3: Assess external checks
+```{r, echo=FALSE}
+# Summarize external check data
+ext.summary <- exts %>% group_by(s.type, analys.type) %>% summarize(mean = mean(Conc.))
+
+# Convert external check data
+## Formaula = actual mean conc. / expected conc. / # C/N atoms / mass C/N
+ext.convert <- ext.summary %>% mutate(recovery = case_when(
+  s.type == ext1.name & analys.type == 'NPOC' ~ mean/ext1.mmol/ext1.c/c.mass,
+  s.type == ext1.name & analys.type == 'TN' ~ mean/ext1.mmol/ext1.n/n.mass,
+  s.type == ext2.name & analys.type == 'NPOC' ~ mean/ext2.mmol/ext2.c/c.mass,
+  s.type == ext2.name & analys.type == 'TN' ~ mean/ext2.mmol/ext2.n/n.mass,
+  s.type == ext3.name & analys.type == 'NPOC' ~ mean/ext3.mmol/ext3.c/c.mass,
+  s.type == ext3.name & analys.type == 'TN' ~ mean/ext3.mmol/ext3.n/n.mass))
+
+# Plot recovery of external checks as proportion of expected
+ggplot(ext.convert, aes(s.type, recovery)) + geom_bar(aes(fill = analys.type), position = "dodge", stat = "identity") +
+  coord_cartesian(ylim=c(0.7,1.1)) +
+  labs(x = "Analysis", y = "Proportion of Expected") +
+  ggtitle("External Check Recovery") + 
+    theme_bw() + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank()) +
+  geom_hline(yintercept=1.0)
+```
+
+## Step 4: Assess internal checks for drift over time
+```{r, echo=FALSE}
+# Give each internal check a unique id (3 injections per check for each type NPOC/TN)
+id = rep(1:(nrow(ints)/6), each = 6)
+ints$id = id
+
+# Convert date/time to POSIXct (format= specifies input format)
+ints$DT.new = as.POSIXct(ints$DT, format="%m/%d/%Y %H:%M")
+
+# Time of first check
+t1 = ints[1,19]
+
+# Create time elapsed column
+ints$minutes = round((ints$DT.new - t1)/60, 2)
+
+# Summarize mean time elapsed of each internal check group
+int.times <- ints %>% group_by(id) %>% summarize(mean.min = mean(minutes))
+int.conc <- ints %>% group_by(analys.type, id) %>% summarize(mean.conc = mean(Conc.))
+ints.summary <- inner_join(int.times, int.conc, by='id')
+
+# Calculate concentration of NPOC/TN in standards based on standard curves
+NPOC.stds.summary <- NPOC.std %>% group_by(Conc.) %>% summarize(mean.area = mean(Area))
+NPOC.stds.summary <- NPOC.stds.summary %>% mutate(calc.conc = (mean.area-cal.NPOC[1,2])/cal.NPOC[2,2])
+TN.stds.summary <- TN.std %>% group_by(Conc.) %>% summarize(mean.area = mean(Area))
+TN.stds.summary <- TN.stds.summary %>% mutate(calc.conc = (mean.area-cal.TN[1,2])/cal.TN[2,2])
+
+# Actual concentrations expected from internal checks based on standard curves
+NPOC.std.25ppm <- NPOC.stds.summary[NPOC.stds.summary$Conc. == int.ppm, c("calc.conc")]
+TN.std.25ppm <- TN.stds.summary[TN.stds.summary$Conc. == int.ppm, c("calc.conc")]
+
+# Calculate percent and proportion drift
+ints.summary <- ints.summary %>% mutate(percent.drift = if_else(analys.type == 'NPOC',(((mean.conc/(100/int.ppm)) - NPOC.std.25ppm$calc.conc)/NPOC.std.25ppm$calc.conc)*100, (((mean.conc/(100/int.ppm)) - TN.std.25ppm$calc.conc)/TN.std.25ppm$calc.conc)*100))
+
+ints.summary <- ints.summary %>% mutate(prop.drift = if_else(analys.type=='NPOC', (mean.conc/(100/int.ppm))/NPOC.std.25ppm$calc.conc, (mean.conc/(100/int.ppm))/TN.std.25ppm$calc.conc))
+ints.summary$mean.min <- as.numeric(ints.summary$mean.min)
+
+# Plot internal standards over time
+ggplot(ints.summary, aes(mean.min, percent.drift, colour = analys.type, fill = analys.type)) + 
+  geom_point() +
+  labs(x = "Time (min)", y = "% Drift from Original Curve Value") +
+  ggtitle("Check Standard Drift - Percentage Basis") + 
+    theme_bw() + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank()) +
+  geom_smooth(method='lm')
+
+ggplot(ints.summary, aes(mean.min, prop.drift, colour = analys.type, fill = analys.type)) + 
+  geom_point() +
+  labs(x = "Time (min)", y = "Proportion of Original Value") +
+  ggtitle("Check Standard Drift - Proportional Basis") + 
+    theme_bw() + theme(panel.grid.major = element_blank(), 
+                       panel.grid.minor = element_blank()) +
+  geom_smooth(method='lm')
+
+```
+
+## Step 5: Correct drift
+```{r, echo=FALSE}
+# NPOC drift correction
+n <- nrow(ints.summary)/2 #????????? don't quite understand
+
+drift.fix.NPOC <- as_tibble(matrix(nrow=2,ncol=n))
+
+for (i in 1:(n-1)){
+  chk.lm <- lm(prop.drift ~ mean.min, data=ints.summary[(ints.summary$id==i | ints.summary$id==(i+1)) & ints.summary$analys.type=='NPOC',])
+  cal.chk <- tidy(chk.lm)
+  drift.fix.NPOC[,1] <- cal.chk[,1]
+  drift.fix.NPOC[,(i+1)] <- cal.chk[,2]
+}
+drift.fix.NPOC <- as.data.frame(drift.fix.NPOC)
+
+#TN drift correction
+drift.fix.TN <- as_tibble(matrix(nrow=2,ncol=n))
+
+for (i in 1:(n-1)){
+  chk.lm <- lm(prop.drift ~ mean.min, data=ints.summary[(ints.summary$id==i | ints.summary$id==(i+1)) & ints.summary$analys.type=='TN',])
+  cal.chk <- tidy(chk.lm)
+  drift.fix.TN[,1] <- cal.chk[,1]
+  drift.fix.TN[,(i+1)] <- cal.chk[,2]
+}
+drift.fix.TN <- as.data.frame(drift.fix.TN)
+```
+
+```{r, echo=FALSE}
+# Import sample ID file and merge with sample data
+sam.id <- read.csv("sample_id_072419.csv")
+samples <- inner_join(samples, sam.id, by='id', all=TRUE)
+
+#### OPTIONAL ####
+
+
+# Re-calculate sample concentrations based on std curve (if necessary) ### when necessary vs not necessary?
+samples <- samples %>% mutate(Conc.=if_else(analys.type=='NPOC',
+                                            (Area-cal.NPOC[1,2])/cal.NPOC[2,2],
+                                            (Area-cal.TN[1,2])/cal.TN[2,2]))
+
+##################
+
+# Convert date/time to POSIXct
+samples$DT.new = as.POSIXct(samples$DT, format="%m/%d/%Y %H:%M")
+
+# Create time elapsed (minutes) since first intneral check
+samples$min.elapsed = round((samples$DT.new - t1)*60, 2)
+samples$min.elapsed = as.numeric(samples$min.elapsed)
+
+
+#### INPUT NECESSARY ####
+
+
+# Drift corrections
+## Correct sample based on nearest internal check's drift
+## Number of time boundaries will be one less than number of internal checks
+b1 <- as.numeric(unique(ints.summary[ints.summary$id==2,2]))
+b2 <- as.numeric(unique(ints.summary[ints.summary$id==3,2]))
+b3 <- as.numeric(unique(ints.summary[ints.summary$id==4,2]))
+b4 <- as.numeric(unique(ints.summary[ints.summary$id==5,2]))
+b5 <- as.numeric(unique(ints.summary[ints.summary$id==6,2]))
+#b6 <- as.numeric(unique(ints.summary[ints.summary$id==7,2])) etc...
+
+
+#########################
+
+# Set drift limit cutoffs
+npoc.lim <- 2       #NPOC drift limitation, if exceeds 2% then correct it
+tn.lim <- 2         #TN drift limitation
+
+# Check maximum drift for each analysis type
+max.drift.c <- max(abs(ints.summary[ints.summary$analys.type == "NPOC", "percent.drift"]))  
+max.drift.n <- max(abs(ints.summary[ints.summary$analys.type == "TN", "percent.drift"])) 
+
+# Make column for drift corrected data
+samples <- samples %>% mutate(corr.conc = Conc.) 
+
+
+#### INPUT NECESSARY ####
+# adjust for number of time boundaries
+
+# NPOC drift correction
+if (max.drift.c > npoc.lim) {
+  samples.corr.npoc <- samples %>% mutate(corr.conc = case_when(analys.type=="NPOC" & min.elapsed < b1 ~ 
+                                                    Conc./(min.elapsed*drift.fix.NPOC[2,2]+drift.fix.NPOC[1,2]),
+                                                    analys.type=="NPOC" & min.elapsed < b2 & min.elapsed > b1 ~
+                                                    Conc./(min.elapsed*drift.fix.NPOC[2,3]+drift.fix.NPOC[1,3]),
+                                                    analys.type=="NPOC" & min.elapsed < b3 & min.elapsed > b2 ~
+                                                    Conc./(min.elapsed*drift.fix.NPOC[2,4]+drift.fix.NPOC[1,4]),
+                                                    analys.type=="NPOC" & min.elapsed < b3 & min.elapsed > b2 ~
+                                                    Conc./(min.elapsed*drift.fix.NPOC[2,4]+drift.fix.NPOC[1,4]),
+                                                    analys.type=="NPOC" & min.elapsed < b4 & min.elapsed > b3 ~
+                                                    Conc./(min.elapsed*drift.fix.NPOC[2,5]+drift.fix.NPOC[1,5]),
+                                                    analys.type=="NPOC" & min.elapsed < b5 & min.elapsed > b4 ~
+                                                    Conc./(min.elapsed*drift.fix.NPOC[2,6]+drift.fix.NPOC[1,6]),
+                                                    analys.type=="NPOC" & min.elapsed > b5 ~
+                                                    Conc./(min.elapsed*drift.fix.NPOC[2,7]+drift.fix.NPOC[1,7])))
+}
+
+# Clean up
+samples.corr.npoc <- samples.corr.npoc[!is.na(samples.corr.npoc$corr.conc),]
+
+# TN drift correction
+if (max.drift.n > tn.lim) {
+  samples.corr.tn <- samples %>% mutate(corr.conc = case_when(analys.type=="TN" & min.elapsed < b1 ~ 
+                                                    Conc./(min.elapsed*drift.fix.TN[2,2]+drift.fix.TN[1,2]),
+                                                    analys.type=="TN" & min.elapsed < b2 & min.elapsed > b1 ~
+                                                    Conc./(min.elapsed*drift.fix.TN[2,3]+drift.fix.TN[1,3]),
+                                                    analys.type=="TN" & min.elapsed < b3 & min.elapsed > b2 ~
+                                                    Conc./(min.elapsed*drift.fix.TN[2,4]+drift.fix.TN[1,4]),
+                                                    analys.type=="TN" & min.elapsed < b3 & min.elapsed > b2 ~
+                                                    Conc./(min.elapsed*drift.fix.TN[2,4]+drift.fix.TN[1,4]),
+                                                    analys.type=="TN" & min.elapsed < b4 & min.elapsed > b3 ~
+                                                    Conc./(min.elapsed*drift.fix.TN[2,5]+drift.fix.TN[1,5]),
+                                                    analys.type=="TN" & min.elapsed < b5 & min.elapsed > b4 ~
+                                                    Conc./(min.elapsed*drift.fix.TN[2,6]+drift.fix.TN[1,6]),
+                                                    analys.type=="TN" & min.elapsed > b5 ~
+                                                    Conc./(min.elapsed*drift.fix.TN[2,7]+drift.fix.TN[1,7])))
+}
+
+# Clean up
+samples.corr.tn <- samples.corr.tn[!is.na(samples.corr.tn$corr.conc),]
+
+#########################
+
+# Delete unneeded columns and reorder
+samples.corr.npoc <- samples.corr.npoc[,c(4,12,13,14,18,19,20,23,26)]
+samples.corr.npoc <- samples.corr.npoc[,c(7,1,5,6,8,2,3,4,9)]
+colnames(samples.corr.npoc) <- c("Project", "ShimadzuID","ID","SampleName","Dilution","Analysis","Area","Conc.","Corr.Conc.")
+
+samples.corr.tn <- samples.corr.tn[,c(4,12,13,14,18,19,20,23,26)]
+samples.corr.tn <- samples.corr.tn[,c(7,1,5,6,8,2,3,4,9)]
+colnames(samples.corr.tn) <- c("Project", "ShimadzuID","ID","SampleName","Dilution","Analysis","Area","Conc.","Corr.Conc.")
+
+# Join data
+samples.final <- rbind(samples.corr.npoc, samples.corr.tn)
+
+# Correct for hand-dilution (not dilutions done by Shimadzu, which are already accounted for)
+samples.final <- samples.final %>% mutate(FinalConc. = Corr.Conc.*Dilution)
+head(samples.final)
+
+# Summarize data (average injections of same sample)
+samples.final.summary <- samples.final %>% group_by(ID, SampleName, Analysis) %>% summarize(mean = mean(FinalConc.))
+
+samples.final.summary$mean <- round(samples.final.summary$mean, 2)
+samples.final.summary
+
+# Save output for further analysis
+write.csv(samples.final.summary, file ="final_data.csv", row.names = FALSE)
+
+```
+
+## Quick work up: Does Pre/Post dilution affect DOC measurement?
+```{r, echo=FALSE}
+
+# Add dilution treatment column
+Treatment <- c(rep("Blank", 4), rep("After", 4), rep("Before", 4))
+samples.final.summary$Treatment <- Treatment
+
+# Test before and after on NPOC conc.
+final.npoc <- subset(samples.final.summary, Analysis=="NPOC")
+before <- "Before"
+after <- "After"
+final.npoc.dil <- final.npoc[which(final.npoc$Treatment == "Before" | final.npoc$Treatment == "After"),]
+
+# Paired T-test
+test <- t.test(mean ~ Treatment, data=final.npoc.dil, paired = TRUE)
+test
+```
+
+Not significant. No evidence that diluting before or after freezing sample affects measurement.
