@@ -1033,3 +1033,8 @@ Usage: [34mqiime phylogeny midpoint-root[0m [OPTIONS]
 [32m[I 17:11:49.518 NotebookApp][m Saving file at /dada2_pipeline_080521.ipynb
 [32m[I 17:12:54.470 NotebookApp][m Saving file at /dada2_pipeline_080521.ipynb
 [32m[I 17:12:55.319 NotebookApp][m Starting buffering for d4e480de-7fb3-4c90-9f89-3c3b3d6de036:19b1f24378de48ef821361cce7c4c15e
+[32m[I 13:11:29.108 NotebookApp][m Kernel started: 1d4a3b90-cd4c-4513-8845-99b7592de3bb, name: python3
+[32m[I 13:13:29.371 NotebookApp][m Saving file at /growthrate_dada2_copy.ipynb
+[32m[I 13:59:45.742 NotebookApp][m Starting buffering for 1d4a3b90-cd4c-4513-8845-99b7592de3bb:6ca3dead66d746c7882f960cb733dcbb
+[32m[I 13:59:46.769 NotebookApp][m Starting buffering for ad373a7a-7f94-4af1-9366-5b031c885be7:49a5fd532d344ada8b7dc07f4ebe3fcd
+[32m[I 14:19:56.523 NotebookApp][m Starting buffering for 7be276c6-712e-46a3-bb93-99f6554ba323:8afc84cac2dc4eaa8488ce3a101838cb

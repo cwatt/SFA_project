@@ -168,6 +168,41 @@ reads %>%
   labs(y="Proportion plant sequences")
 ```
 
+Aquifex spike-in ASVs
+---------------------
+
+Why are there so many ASVs for Aquifex when I only included one sequence? DADA2 is up to something...
+
+```{r}
+# Reformating
+aquifex_asvs <- count_aquifex$ASV
+
+aquifex_df <- count_aquifex %>%
+  column_to_rownames(var = "ASV") %>%
+  select(-(Domain:Species)) %>%
+  t() %>%
+  as_tibble()
+
+sample_aquifex_totals <- rowSums(aquifex_df) %>%
+  as_tibble()
+
+aquifex_df <- aquifex_df %>% 
+  bind_cols(sample_aquifex_totals) %>%
+  rename(total_reads = value)
+
+# Calculate % of total reads for each Aquifex ASV
+aquifex_perc_df <- aquifex_df %>%
+  mutate_all(funs("_prop" = (./total_reads)*100)) %>%
+  select(ends_with("_prop"))
+
+aquifex_perc_summary <- aquifex_prop_df %>%
+  group_by()
+  
+
+
+
+```
+
 
 
 
