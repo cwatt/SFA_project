@@ -195,13 +195,29 @@ aquifex_perc_df <- aquifex_df %>%
   mutate_all(funs("_prop" = (./total_reads)*100)) %>%
   select(ends_with("_prop"))
 
-aquifex_perc_summary <- aquifex_prop_df %>%
-  group_by()
-  
-
-
-
+aquifex_perc_summary <- aquifex_perc_df %>%
+  select(-total_reads__prop) %>%
+  pivot_longer(cols = everything(), names_to = "ASV", values_to = "percent") %>%
+  group_by(ASV) %>%
+  summarize(avg = mean(percent), sd = sd(percent)) %>%
+  arrange(-avg)
 ```
+
+Variable internal standard ASV lengths
+--------------------------------------
+
+The internal standard is 292 bp long.
+
+```{r}
+asv_lengths <- read_tsv("../data_amplicon/SFA2rep1_trial/output/final/aquifex_seq_lengths.tsv")
+
+asv_lengths %>%
+  ggplot() +
+  geom_histogram(aes(x=length)) +
+  labs(x="Aquifex ASV length") +
+  theme_test()
+```
+
 
 
 

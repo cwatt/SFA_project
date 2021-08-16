@@ -187,3 +187,18 @@ reads %>%
 ```
 
 
+Variable internal standard ASV lengths
+--------------------------------------
+
+The internal standard is 292 bp long.
+
+```{r}
+asv_lengths <- read_tsv("../data_amplicon/SFA2_nanotest/final/aquifex_seq_lengths.tsv")
+
+asv_lengths %>%
+  ggplot() +
+  geom_histogram(aes(x=length)) +
+  labs(x="Aquifex ASV length") +
+  theme_test()
+```
+
