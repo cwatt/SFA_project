@@ -48,3 +48,112 @@ dna_meta %>%
 dna_meta <- mutate(dna_meta, water_add = if_else(dna_conc > 1, dna_conc*15, 0))
 ```
 
+Sequencing results
+------------------
+
+Import count table, taxonomy, and metadata.
+
+```{r}
+count <- read_tsv("../data_amplicon/SFA2_nano_v2/final/SFA2nano2.counts-final.tsv", col_names = TRUE) %>%
+  rename(ASV=`#OTU ID`)
+tax <- read_tsv("../data_amplicon/SFA2_nano_v2/final/SFA2nano2.taxonomy-final.tsv")
+meta <- read_tsv("../data_amplicon/SFA2_nano_v2/SFA2_nano2_metadata.tsv")
+```
+
+Evaluate spike-in
+
+```{r}
+# Read depth per sample
+read_totals <- colSums(count[,-1])
+
+# Isolate Aquifex reads
+count_tax <- full_join(count, tax) 
+count_aquifex <- filter(count_tax, Genus=="Aquifex")
+
+# Isolate mitochondrial reads
+count_mito <- filter(count_tax, Family=="Mitochondria")
+count_chloro <- filter(count_tax, Family=="Chloroplast")
+count_plant <- bind_rows(count_mito, count_chloro)
+
+# Spike-in read counts per sample
+aquifex_totals <- count_aquifex %>%
+  select(-ASV, -Domain, -Phylum, -Class, -Order, -Family, -Genus, -Species) %>%
+  colSums() %>%
+  as_tibble
+
+# Plant read counts
+plant_totals <- count_plant %>%
+  select(-ASV, -Domain, -Phylum, -Class, -Order, -Family, -Genus, -Species) %>%
+  colSums() %>%
+  as_tibble
+
+# Calculate % spike-in per sample
+samples <- colnames(count[-1]) %>% as.double()
+reads <- bind_cols(samples, read_totals, aquifex_totals, plant_totals) %>%
+  rename(SampleID = ...1, total_reads = ...2, aquifex_reads = value...3, plant_reads = value...4) %>%
+  mutate(prop_reads = aquifex_reads/total_reads,
+         prop_reads_noplant = aquifex_reads/(total_reads-plant_reads),
+         prop_plant = plant_reads/total_reads) %>%
+  inner_join(meta)
+```
+
+Minimum, maximum, average, median proportion of spike per sample:
+
+```{r}
+min(reads$prop_reads)
+max(reads$prop_reads)
+mean(reads$prop_reads)
+median(reads$prop_reads)
+```
+
+w/plant read sequences removed:
+
+```{r}
+min(reads$prop_reads_noplant)
+max(reads$prop_reads_noplant)
+mean(reads$prop_reads_noplant)
+median(reads$prop_reads_noplant)
+```
+
+Visualize:
+
+```{r}
+reads %>% 
+  filter(Type == "Growth") %>%
+  ggplot(aes(x=SampleID, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads") +
+  theme_test()
+
+reads %>% 
+  filter(Type == "Growth") %>%
+  ggplot(aes(x=Day, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads") +
+  theme_test()
+
+reads %>% 
+  ggplot(aes(x=read_totals, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads", y="Sample read depth") +
+  theme_test()
+
+read_dna <- inner_join(reads, dna_meta)
+
+read_dna %>% 
+  ggplot(aes(x=dna_conc, y=prop_reads_noplant, color=Type)) +
+  geom_point() +
+  labs(y="Spike-in proportion of reads", y="Sample read depth") +
+  theme_test()
+```
+
+Compare spike-in concentrations
+-------------------------------
+
+
+
+```{r}
+
+```
+
+
