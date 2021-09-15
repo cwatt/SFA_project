@@ -79,13 +79,13 @@ count_plant <- bind_rows(count_mito, count_chloro)
 aquifex_totals <- count_aquifex %>%
   select(-ASV, -Domain, -Phylum, -Class, -Order, -Family, -Genus, -Species) %>%
   colSums() %>%
-  as_tibble
+  as_tibble()
 
 # Plant read counts
 plant_totals <- count_plant %>%
   select(-ASV, -Domain, -Phylum, -Class, -Order, -Family, -Genus, -Species) %>%
   colSums() %>%
-  as_tibble
+  as_tibble()
 
 # Calculate % spike-in per sample
 samples <- colnames(count[-1]) %>% as.double()

@@ -1,0 +1,144 @@
+---
+title: "SFA2 - Internal standard check"
+author: "Cassandra Wattenburger"
+date: "9/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+### Import count and taxonomy data
+
+```{r}
+# Rep 1
+count_rep1 <- read_tsv(file="../data_amplicon/SFA2_full/rep1/final/SFA2_rep1.counts-final.tsv")
+tax_rep1 <- read_tsv(file="../data_amplicon/SFA2_full/rep1/final/SFA2_rep1.taxonomy-final.tsv")
+
+# Rep 2
+count_rep2 <- read_tsv(file="../data_amplicon/SFA2_full/rep2/final/SFA2_rep2.counts-final.tsv")
+tax_rep2 <- read_tsv(file="../data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxonomy-final.tsv")
+
+# Rep 3
+count_rep3 <- read_tsv(file="../data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
+tax_rep3 <- read_tsv(file="../data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
+
+# Metadata
+meta <- read_tsv(file = "../data_amplicon/SFA2_full/SFA2_metadata.tsv")
+```
+
+### Isolate Aquifex ASVs
+
+Create function that isolates Aquifex ASVs from count data:
+
+```{r}
+aquifex_count <- function(tax, count) { 
+  asvs <- tax %>% 
+    filter(Genus == "Aquifex") %>% 
+    select(ASV)
+  aqui_count <- count %>% 
+           filter(ASV %in% asvs$ASV)
+}
+```
+
+Generate Aquifex count tables:
+
+```{r}
+aqui_count_rep1 <- aquifex_count(tax_rep1, count_rep1)
+aqui_count_rep2 <- aquifex_count(tax_rep2, count_rep2)
+aqui_count_rep3 <- aquifex_count(tax_rep3, count_rep3)
+
+# Merge and reformat
+aqui_count <- inner_join(aqui_count_rep1, aqui_count_rep2) %>%
+  inner_join(aqui_count_rep3) %>% # merge replicates into one df
+  pivot_longer(cols = -ASV, names_to = "Sample", values_to = "count") %>% # long format
+  mutate(Sample = as.numeric(Sample)) %>%
+  inner_join(meta, by="Sample") # add metadata
+```
+
+### Calculate proportion of Aquifex internal standard in each sample.
+
+Create function to calculate total reads per sample:
+
+```{r}
+total_reads <- function(count) {
+  count %>% 
+    gather(Sample, value, -ASV) %>% # transpose
+    spread(ASV, value) %>%
+    mutate(total = rowSums(.[-1])) %>% # calculate row sums
+    select(Sample, total)
+}
+```
+
+Add sample read totals to Aquifex count data:
+
+```{r}
+total_rep1 <- total_reads(count_rep1)
+total_rep2 <- total_reads(count_rep2)
+total_rep3 <- total_reads(count_rep3)
+
+# Merge
+total_reads <- bind_rows(total_rep1, total_rep2) %>%
+  bind_rows(total_rep3) %>%
+  mutate(Sample = as.numeric(Sample))
+
+aqui_total_reads <- inner_join(aqui_count, total_reads, by="Sample") %>%
+  select(Sample, count, total, everything(), -c(ASV, revC_fwd, primer_num))
+```
+
+Calculate proportion of Aquifex reads per sample:
+
+```{r}
+aqui_prop <- mutate(aqui_total_reads, prop = count/total)
+```
+
+Summary statistics:
+
+Minimum (not including 0s), maximum, average.
+
+```{r}
+aqui_prop %>% filter(prop > 0) %>% arrange(prop) %>% slice(1) %>% .$prop
+max(aqui_prop$prop)
+mean(aqui_prop$prop)
+```
+
+How many samples have no spike-in? Which ones?
+
+```{r}
+aqui_prop %>% 
+  filter(prop == 0)
+```
+
+Visualize:
+
+```{r}
+aqui_prop %>%
+  filter(Type != "pcr_control") %>%
+  mutate(Replicate = as.factor(Replicate)) %>%
+  ggplot(aes(x=Sample, y=prop, color=Replicate)) +
+  geom_point() +
+  labs(y="Proportion Aquifex ASV") +
+  theme_test()
+
+aqui_prop %>%
+  filter(Type != "pcr_control") %>%
+  mutate(Replicate = as.factor(Replicate)) %>%
+  ggplot(aes(x=total, y=prop, color=Replicate)) +
+  geom_point() +
+  labs(y="Proportion Aquifex ASV") +
+  theme_test()
+```
+
+

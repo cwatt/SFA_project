@@ -74,6 +74,19 @@ reads <- bind_cols(samples, read_totals, aquifex_totals, plant_totals) %>%
   inner_join(meta)
 ```
 
+```{r, eval=FALSE}
+# Subtract total reads form aquifex reads
+reads <- reads %>%
+  mutate(reads_nospike = total_reads - aquifex_reads) %>%
+  filter(Type == "Growth")
+
+min(reads$reads_nospike)
+max(reads$reads_nospike)
+mean(reads$reads_nospike)
+median(reads$reads_nospike)
+```
+
+
 Minimum, maximum, average, median proportion of spike per sample:
 
 ```{r}

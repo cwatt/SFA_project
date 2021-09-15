@@ -1751,3 +1751,292 @@ Debug info has been saved to /tmp/qiime2-q2cli-err-b_1xj4ac.log[0m
 [32m[I 13:49:54.850 NotebookApp][m Saving file at /SFA2.nanotestv2.dada2.ipynb
 [32m[I 13:56:48.238 NotebookApp][m Saving file at /SFA2.nanotestv2.dada2.ipynb
 [32m[I 13:56:48.944 NotebookApp][m Starting buffering for b5230248-288b-439d-84f1-9fa1b8179418:c6c2e80269c34d488b92059e2d9ab251
+[33m[W 11:25:20.175 NotebookApp][m 401 POST /login?next=%2Ftree (127.0.0.1) 2.680000ms referer=http://localhost:3331/login?next=%2Ftree
+^[[A^[[A^[[A^[[A^[[A^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[Bhist                                                                                                                [33m[W 11:26:11.545 NotebookApp][m 401 POST /login?next=%2Ftree (127.0.0.1) 2.450000ms referer=http://localhost:3331/login?next=%2Ftree
+[32m[I 11:27:06.078 NotebookApp][m 302 GET /?token=8dc5f6a8336c8ac6204fb5a84bf884bbc1f59246fcc9744b (127.0.0.1) 0.910000ms
+[32m[I 11:57:53.605 NotebookApp][m Kernel started: e5c853c8-e748-4f6a-b778-fdccf096559b, name: python3
+[32m[I 13:08:15.317 NotebookApp][m Starting buffering for e5c853c8-e748-4f6a-b778-fdccf096559b:cb19279985f74ec6877ff4f41eb9beeb
+[32m[I 13:09:02.310 NotebookApp][m Restoring connection for e5c853c8-e748-4f6a-b778-fdccf096559b:cb19279985f74ec6877ff4f41eb9beeb
+[32m[I 13:13:52.187 NotebookApp][m Starting buffering for e5c853c8-e748-4f6a-b778-fdccf096559b:cb19279985f74ec6877ff4f41eb9beeb
+[32m[I 11:59:12.012 NotebookApp][m Copying SFA2.nanotestv2.dada2.ipynb to 
+[32m[I 11:59:25.396 NotebookApp][m Kernel started: 86bea41b-dc0e-46b6-95c2-b53e9ff56a25, name: python3
+[32m[I 12:03:25.452 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:05:25.420 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:07:25.764 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:09:25.751 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:15:01.216 NotebookApp][m Starting buffering for 86bea41b-dc0e-46b6-95c2-b53e9ff56a25:ab666c31cd3145de9d18b4c26a3ad033
+[32m[I 12:15:14.645 NotebookApp][m Restoring connection for 86bea41b-dc0e-46b6-95c2-b53e9ff56a25:ab666c31cd3145de9d18b4c26a3ad033
+[32m[I 12:17:25.474 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:19:25.415 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:21:25.759 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:23:25.760 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:33:25.420 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:33:45.971 NotebookApp][m Saving file at /SFA2full.dada2.091321.ipynb
+[32m[I 12:34:31.619 NotebookApp][m Saving file at /cutadapt.dada2.testing.ipynb
+[32m[I 12:34:37.991 NotebookApp][m Starting buffering for 86bea41b-dc0e-46b6-95c2-b53e9ff56a25:ab666c31cd3145de9d18b4c26a3ad033
+[35m[C 12:55:29.374 NotebookApp][m Bad config encountered during initialization: The 'port' trait of a NotebookApp instance expected an int, not the str 'SFA2'.
+[32m[I 12:56:15.463 NotebookApp][m Serving notebooks from local directory: /home/cassi/SFAgrowthrate/scripts
+[32m[I 12:56:15.463 NotebookApp][m Jupyter Notebook 6.3.0 is running at:
+[32m[I 12:56:15.463 NotebookApp][m http://localhost:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+[32m[I 12:56:15.463 NotebookApp][m  or http://127.0.0.1:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+[32m[I 12:56:15.463 NotebookApp][m Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[35m[C 12:56:15.494 NotebookApp][m 
+    
+    To access the notebook, open this file in a browser:
+        file:///home/cassi/.local/share/jupyter/runtime/nbserver-17221-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+     or http://127.0.0.1:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+[32m[I 12:56:24.176 NotebookApp][m 302 GET /?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 0.710000ms
+[32m[I 13:01:28.290 NotebookApp][m Kernel started: 366eea28-64b8-4941-9db7-4fc1a40ca7bb, name: python3
+[32m[I 13:03:28.401 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 13:05:28.354 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 13:05:40.524 NotebookApp][m Starting buffering for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 13:05:40.756 NotebookApp][m Kernel restarted: 366eea28-64b8-4941-9db7-4fc1a40ca7bb
+[32m[I 13:05:40.900 NotebookApp][m Restoring connection for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 13:05:41.209 NotebookApp][m Replaying 3 buffered messages
+[32m[I 13:07:28.319 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 13:09:29.213 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 13:11:28.369 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 13:47:28.430 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 13:49:28.306 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 13:51:33.516 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 13:59:36.375 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:05:28.317 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:08:46.076 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:08:52.923 NotebookApp][m Starting buffering for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 14:08:53.137 NotebookApp][m Kernel restarted: 366eea28-64b8-4941-9db7-4fc1a40ca7bb
+[32m[I 14:08:53.235 NotebookApp][m Restoring connection for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 14:08:53.560 NotebookApp][m Replaying 3 buffered messages
+[32m[I 14:09:28.301 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:11:28.312 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:12:05.126 NotebookApp][m Starting buffering for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 14:12:05.355 NotebookApp][m Kernel restarted: 366eea28-64b8-4941-9db7-4fc1a40ca7bb
+[32m[I 14:12:05.458 NotebookApp][m Restoring connection for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 14:12:05.966 NotebookApp][m Replaying 3 buffered messages
+[32m[I 14:13:28.540 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:15:28.333 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:16:02.655 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:16:07.516 NotebookApp][m Starting buffering for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 14:16:07.729 NotebookApp][m Kernel restarted: 366eea28-64b8-4941-9db7-4fc1a40ca7bb
+[32m[I 14:16:07.798 NotebookApp][m Restoring connection for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 14:16:08.307 NotebookApp][m Replaying 3 buffered messages
+[32m[I 14:17:28.304 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[31m[1mThere was a problem importing /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate:
+
+  /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/forward.fastq.gz is not a(n) FastqGzFormat file:
+
+  Missing sequence for record beginning on line 30081[0m
+
+[32m[I 14:19:28.373 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:21:28.747 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:25:28.349 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 14:27:38.067 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 16:59:21.950 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:01:41.926 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:04:02.047 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:06:21.884 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:07:20.644 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:07:23.662 NotebookApp][m Starting buffering for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 17:07:23.875 NotebookApp][m Kernel restarted: 366eea28-64b8-4941-9db7-4fc1a40ca7bb
+[32m[I 17:07:23.946 NotebookApp][m Restoring connection for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 17:07:24.252 NotebookApp][m Replaying 3 buffered messages
+[32m[I 17:08:41.882 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:11:01.888 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:27:23.253 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:29:41.915 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+Traceback (most recent call last):
+  File "/home/cassi/anaconda3/envs/qiime2-2021.4-cutadapt3.4/lib/python3.8/site-packages/q2cli/builtin/tools.py", line 157, in import_data
+    artifact = qiime2.sdk.Artifact.import_data(type, input_path,
+  File "/home/cassi/anaconda3/envs/qiime2-2021.4-cutadapt3.4/lib/python3.8/site-packages/qiime2/sdk/result.py", line 233, in import_data
+    md5sums = util.md5sum_directory(path)
+  File "/home/cassi/anaconda3/envs/qiime2-2021.4-cutadapt3.4/lib/python3.8/site-packages/qiime2/core/util.py", line 126, in md5sum_directory
+    sums[os.path.relpath(path, start=directory)] = md5sum(path)
+  File "/home/cassi/anaconda3/envs/qiime2-2021.4-cutadapt3.4/lib/python3.8/site-packages/qiime2/core/util.py", line 110, in md5sum
+    with open(str(filepath), mode='rb') as fh:
+FileNotFoundError: [Errno 2] No such file or directory: '/home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/forward.fastq.gz'
+
+[31m[1mAn unexpected error has occurred:
+
+  [Errno 2] No such file or directory: '/home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/forward.fastq.gz'
+
+See above for debug info.[0m
+[32m[I 17:32:01.954 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32mImported /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate as EMPPairedEndDirFmt to /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.qza[0m
+[32m[I 17:34:22.765 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[31m[1mPlugin error from demux:
+
+  Mismatched sequence ids: M02465:668:000000000-DCP45:1:1102:11477:2164, M02465:668:000000000-DCP45:1:1102:13511:2164, and M02465:668:000000000-DCP45:1:1102:13511:2164
+
+Debug info has been saved to /tmp/qiime2-q2cli-err-zr_o5fgy.log[0m
+[32m[I 17:36:41.950 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:39:01.996 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:40:33.691 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:46:10.931 NotebookApp][m Starting buffering for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 17:46:11.151 NotebookApp][m Kernel restarted: 366eea28-64b8-4941-9db7-4fc1a40ca7bb
+[32m[I 17:46:11.247 NotebookApp][m Restoring connection for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 17:46:11.536 NotebookApp][m Replaying 3 buffered messages
+[32m[I 17:46:40.207 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:48:32.914 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:53:01.877 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:55:24.639 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 17:57:41.999 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+python: can't open file '/home/cassi/scripts/concatenate_barcodes_qiime2.py': [Errno 2] No such file or directory
+[32m[I 18:00:02.499 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 18:02:21.918 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32mImported /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate as EMPPairedEndDirFmt to /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.qza[0m
+[32m[I 18:04:41.924 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.demux-details.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.demux.qzv[0m
+[32m[I 18:07:01.893 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 18:09:22.772 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32mSaved FeatureTable[Frequency] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.table.qza[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.rep-seqs.qza[0m
+[32mSaved SampleData[DADA2Stats] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.denoising-stats.qza[0m
+[32m[I 18:11:42.748 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.table.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.rep-seqs.qzv[0m
+[32m[I 18:14:02.394 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 18:16:22.800 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32mSaved FeatureData[Taxonomy] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.taxonomy.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.taxonomy-summary.qzv[0m
+[32m[I 18:18:41.883 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/tree/SFA2nano2_cutadapt.rep-seqs-merged.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/tree/SFA2nano2_cutadapt.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/tree/SFA2nano2_cutadapt.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/tree/SFA2nano2_cutadapt.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/tree/SFA2nano2_cutadapt.tree-rooted.qza[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/SFA2_nano2_cutadapt.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/intermediate/[0m
+[32m[I 18:21:01.871 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/tree/SFA2nano2_cutadapt.tree-rooted.qza as NewickDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/cutadapt_testing/tree/[0m
+[32m[I 18:21:30.944 NotebookApp][m Saving file at /cutadapt.testing.dada2.ipynb
+[32m[I 18:21:31.931 NotebookApp][m Starting buffering for 366eea28-64b8-4941-9db7-4fc1a40ca7bb:cbb7ee37e6b045a0ab89ade9a838a7bf
+[32m[I 11:01:27.259 NotebookApp][m Copying cutadapt.testing.dada2.ipynb to 
+[32m[I 11:01:39.628 NotebookApp][m Kernel started: 9ec8566d-dfd2-4702-9d04-8cf4f62684a1, name: python3
+[32m[I 11:03:39.110 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:05:09.382 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:57690e95c9604249855680363d7eb8ae
+[32m[I 11:05:09.596 NotebookApp][m Kernel restarted: 9ec8566d-dfd2-4702-9d04-8cf4f62684a1
+[32m[I 11:05:09.681 NotebookApp][m Restoring connection for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:57690e95c9604249855680363d7eb8ae
+[32m[I 11:05:10.188 NotebookApp][m Replaying 3 buffered messages
+[32m[I 11:05:39.167 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:07:39.145 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:09:39.096 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:11:39.155 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:11:54.114 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:13:39.761 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:22:28.121 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:57690e95c9604249855680363d7eb8ae
+[32m[I 11:22:28.338 NotebookApp][m Kernel restarted: 9ec8566d-dfd2-4702-9d04-8cf4f62684a1
+[32m[I 11:22:28.392 NotebookApp][m Restoring connection for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:57690e95c9604249855680363d7eb8ae
+[32m[I 11:22:28.901 NotebookApp][m Replaying 3 buffered messages
+[32m[I 11:23:39.777 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:25:39.770 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:33:39.100 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:59:39.085 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:01:39.084 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:03:39.145 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:05:39.086 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:07:39.079 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:09:39.101 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:11:39.143 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:13:39.122 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:15:39.086 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:19:39.172 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 14:47:01.400 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 14:47:12.945 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 14:47:17.190 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 14:47:28.351 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:57690e95c9604249855680363d7eb8ae
+[32m[I 16:05:31.389 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 16:33:31.419 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 16:37:31.384 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mImported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate as EMPPairedEndDirFmt to /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.qza[0m
+[32mImported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate as EMPPairedEndDirFmt to /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.qza[0m
+[32mImported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate as EMPPairedEndDirFmt to /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.qza[0m
+[32m[I 16:53:31.397 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 16:55:31.368 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux-details.qza[0m
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.demux-details.qza[0m
+[32m[I 18:55:31.227 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 18:57:31.369 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.demux-details.qza[0m
+[32m[I 19:17:31.385 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 19:31:31.373 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.demux.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.demux.qzv[0m
+[32m[I 19:37:31.382 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 20:11:31.214 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 20:13:31.256 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 20:15:31.219 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 20:17:31.222 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 20:19:31.404 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 20:24:51.975 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 20:24:57.484 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:37abcbd48d7e459a808003e76d8546a3
+[32mSaved FeatureTable[Frequency] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.table.qza[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.rep-seqs.qza[0m
+[32mSaved SampleData[DADA2Stats] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.denoising-stats.qza[0m
+[32mSaved FeatureTable[Frequency] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.table.qza[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.rep-seqs.qza[0m
+[32mSaved SampleData[DADA2Stats] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.denoising-stats.qza[0m
+[32mSaved FeatureTable[Frequency] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.table.qza[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.rep-seqs.qza[0m
+[32mSaved SampleData[DADA2Stats] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.denoising-stats.qza[0m
+[32m[I 08:06:45.553 NotebookApp][m Discarding 2 buffered messages for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:37abcbd48d7e459a808003e76d8546a3
+[32m[I 08:26:45.231 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.table.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.rep-seqs.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.table.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.rep-seqs.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.table.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.rep-seqs.qzv[0m
+[32m[I 08:58:45.204 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 09:06:45.201 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved FeatureData[Taxonomy] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.taxonomy.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.taxonomy-summary.qzv[0m
+[32mSaved FeatureData[Taxonomy] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.taxonomy.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.taxonomy-summary.qzv[0m
+[32mSaved FeatureData[Taxonomy] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.taxonomy.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.taxonomy-summary.qzv[0m
+[32m[I 09:26:45.208 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged.qza[0m
+[32m[I 09:30:45.058 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32m[I 09:32:45.188 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza as NewickDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/[0m
+[32m[I 09:34:45.202 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 09:57:00.756 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 09:57:03.134 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:27b750bb6d7a498496d3d231e4753f4b
+[32m[I 10:48:33.160 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 10:50:33.085 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 10:52:33.444 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 10:54:33.099 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza as NewickDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/[0m
+[32m[I 10:56:33.277 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 10:57:55.239 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 10:57:56.071 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:110b443020ce41d08640cdd6e4406ffc

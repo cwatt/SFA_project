@@ -1,0 +1,175 @@
+---
+title: "SFA2 - prerocessing"
+author: "Cassandra Wattenburger"
+date: "9/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("ape")
+library("phyloseq")
+
+sessionInfo()
+```
+
+### Import data
+
+```{r}
+# Rep 1
+count_rep1 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.counts-final.tsv")
+tax_rep1 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.taxonomy-final.tsv")
+
+# Rep 2
+count_rep2 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.counts-final.tsv")
+tax_rep2 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxonomy-final.tsv")
+
+# Rep 3
+count_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
+tax_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
+
+# Tree
+tree <- read.tree(file="~/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+
+# Metadata
+meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_metadata.tsv")
+```
+
+Combine replicate data
+
+```{r}
+count <- full_join(count_rep1, count_rep2, by="ASV") %>%
+  full_join(count_rep3, by="ASV")
+
+tax <- full_join(tax_rep1, tax_rep2) %>%
+  full_join(tax_rep3)
+```
+
+### Import into phyloseq
+
+```{r}
+# Reformat and import count table
+count_matrix <- count %>%
+  column_to_rownames(var="ASV") %>%
+  rename_with(~ gsub("(.+)", "sa\\1", .x)) %>%
+  as.matrix()
+
+phy_count <- otu_table(count_matrix, taxa_are_rows=TRUE)
+
+# Reformat and import taxonomy table
+tax_matrix <- tax %>% 
+  column_to_rownames(var="ASV") %>% 
+  as.matrix()
+
+phy_tax <- tax_table(tax_matrix)
+
+# Metadata import
+phy_meta <- sample_data(meta)
+
+# Create phyloseq object
+physeq <- phyloseq(phy_count, phy_tax, phy_meta, tree)
+
+physeq
+```
+
+### Remove non-prokaryotic ASVs
+
+Mitochondrial, chloroplast, protist, unknown domain sequences.
+
+```{r}
+physeq_remove_asvs <- taxa_names(subset_taxa(physeq, Class=="Chloroplast" | Family=="Mitochondria" |
+                                          Domain=="Unassigned" | Domain=="putative Unassigned" |
+                                          Domain=="putative Bacteria"))
+physeq_all_asvs <- taxa_names(physeq)
+physeq_keep_asvs <- physeq_all_asvs[!(physeq_all_asvs %in% physeq_remove_asvs)]
+physeq_pruned <- prune_taxa(physeq_keep_asvs, physeq)
+
+physeq_pruned
+```
+
+### Sparcity filters
+
+Keep only ASVs that occur in at least three samples.
+
+```{r}
+asvs_pass <- count %>%
+  mutate(across(-ASV, ~if_else(.x > 0, 1, 0), {.cols})) %>%
+  mutate(total = rowSums(.[-1])) %>%
+  filter(total > 2) %>%
+  .$ASV
+
+physeq_filtered <- prune_taxa(asvs_pass, physeq_pruned)
+
+physeq_filtered
+```
+
+### Read depth
+
+```{r}
+# Extract count and metadata from processed phyloseq object
+count_processed <- data.frame(otu_table(physeq_filtered))
+meta_processed <- data.frame(sample_data(physeq_filtered)) %>%
+  select(-Sample) %>%
+  rownames_to_column(var="Sample")
+
+# Calculate read depth per sample
+read_depth <- count_processed %>%
+  rownames_to_column(var="ASV") %>%
+  gather(Sample, count, -ASV) %>%
+  spread(ASV, count) %>%
+  mutate(total = rowSums(.[-1])) %>%
+  select(Sample, total) %>%
+  inner_join(meta_processed)
+  
+read_depth %>%
+  mutate(Replicate = as_factor(Replicate)) %>%
+  filter(Type != "pcr_control") %>%
+  ggplot(aes(x=reorder(Sample, -total), y=total, fill=Replicate)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test()
+```
+
+Given the nature and goals of the experiment and the wide variation in read depth (which I think is biologically real), I'm not going to rarefy this data.
+
+### Normalize to the internal standard
+
+Isolate Aquifex ASV count data:
+
+```{r}
+# Extract taxonomy table from phyloseq
+tax_processed <- data.frame(tax_table(physeq_filtered))
+
+# Isolate Aquifex ASV
+aquifex <- tax_processed %>%
+  filter(Genus == "Aquifex") %>%
+  rownames_to_column(var="ASV") %>%
+  select(ASV) %>%
+  .$ASV
+
+aquifex
+```
+
+Normalize:
+
+```{r}
+# Normalize all taxa to the internal std in each sample (divide by aquifex count)
+count_normalized <- count_processed %>%
+  rownames_to_column(var="ASV") %>%
+  gather(Sample, value, -ASV) %>%
+  spread(ASV, value) %>%
+  mutate(across(-Sample, ~ .x/`445e8681c3c1a735760e6c394f5f4d0a`, {.col}))
+```
+
+
+
+

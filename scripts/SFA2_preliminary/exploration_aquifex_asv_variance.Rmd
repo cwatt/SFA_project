@@ -1,0 +1,91 @@
+---
+title: "WIP - Aquifex ASV variants"
+author: "Cassandra Wattenburger"
+date: "9/8/2021"
+output: html_document
+---
+---
+title: "WIP - Aquifex ASV variation"
+author: "Cassandra Wattenburger"
+date: "9/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+rm(list=ls())
+library("tidyverse")
+sessionInfo()
+```
+
+Import data and calculate:
+
+```{r}
+# Isolate Aquifex ASVs from raw data
+count <- read_tsv(file="../data_amplicon/SFA2_nanotest/final/SFA2nano.counts-final.tsv")
+tax <- read_tsv(file="../data_amplicon/SFA2_nanotest/final/SFA2nano.taxonomy-final.tsv")
+
+aquifex_asvs <- tax %>%
+  filter(Genus=="Aquifex") %>%
+  select(ASV)
+
+aquifex_count <- count %>%
+  rename(ASV = `#OTU ID`) %>%
+  filter(ASV %in% aquifex_asvs$ASV) %>%
+  column_to_rownames(var = "ASV")
+
+# Calculate relative abundance of each ASV per sample
+aquifex_count <- t(aquifex_count) %>% as.tibble()
+aquifex_relabund <- aquifex_count %>%
+  add_column(total = rowSums(aquifex_count)) %>%
+  mutate(across(everything(), ~ (.x/total), .names = "{.col}")) %>%
+  select(-total) %>%
+  na.omit()
+
+# Average relative abundance for each ASV across all samples
+avg <- aquifex_relabund %>%
+  colMeans() %>%
+   as.data.frame()
+
+# Maximum and minimum relative abundance for each ASV across all samples
+min <- as.data.frame(apply(aquifex_relabund, 2, min))
+max <-  as.data.frame(apply(aquifex_relabund, 2, max))
+
+# Number of samples each ASV appears in
+aquifex_occur <- t(aquifex_count) %>% as.data.frame()
+occur <- aquifex_occur %>%
+  mutate(across(everything(), ~if_else(.x > 0, 1, 0), {.cols})) %>%
+  rowSums() %>%
+  bind_cols(aquifex_asvs, .) %>%
+  column_to_rownames(var="ASV")
+```
+
+Results:
+
+```{r}
+# Create summary table
+aquifex_summary <- bind_cols(avg, max, min, occur) %>%
+  rownames_to_column(var="ASV")
+colnames(aquifex_summary) <- c("ASV", "relabund_avg", "relabund_max", "relabund_min", 
+                               "num_samples")
+aquifex_summary 
+
+# Visual
+aquifex_relabund %>%
+  pivot_longer(everything(), names_to = "ASV", values_to="relabund") %>%
+  ggplot() +
+    geom_boxplot(aes(x=ASV, y=relabund, group=ASV)) +
+  labs(title = "Aquifex ASV variants", x="ASV variants", y="relative abundance of variant") +
+  theme_test() +
+  theme(axis.text.x = element_text(angle=45))
+```
+
+```{r, eval=FALSE, include=FALSE}
+write_tsv(aquifex_summary, file="SFA2nano_aquifex_asv_var_summary.tsv")
+```
+
