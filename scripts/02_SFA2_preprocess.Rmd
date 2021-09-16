@@ -139,11 +139,11 @@ read_depth %>%
   theme_test()
 ```
 
-Given the nature and goals of the experiment and the wide variation in read depth (which I think is biologically real), I'm not going to rarefy this data.
+### Identify samples to resequence
 
-### Normalize to the internal standard
+Based on combination of amount of internal standard, read depth, and ASV richness.
 
-Isolate Aquifex ASV count data:
+Build dataframe with spike-in, read depth, and ASV richness information.
 
 ```{r}
 # Extract taxonomy table from phyloseq
@@ -159,9 +159,174 @@ aquifex <- tax_processed %>%
 aquifex
 ```
 
-Normalize:
+```{r}
+# Aquifex reads
+total_std <- count_processed %>%
+  rownames_to_column(var="ASV") %>% 
+  filter(ASV == "445e8681c3c1a735760e6c394f5f4d0a") %>% 
+  select(-ASV) %>%
+  gather(variable, value) %>% 
+  rename(Sample = variable, aquifex_count = value) %>% 
+  full_join(read_depth, by="Sample")
+
+# ASV richness
+richness <- count_processed %>% 
+  mutate(across(everything(), ~ if_else(.x > 0, 1, 0), {.cols})) %>%
+  colSums() %>%
+  data.frame() %>% 
+  rownames_to_column(var="Sample")
+
+# Import DNA conc. data
+dna <- read_csv(file="~/SFAgrowthrate/data_picogreen/SFA2_dnaconc.csv")
+
+# Combine and add DNA concentration data
+std_depth_rich <- full_join(total_std, richness) %>% 
+  
+  select(c(Sample, Type:PCR_plate, aquifex_count, total, richness = `.`)) %>% 
+  mutate(Replicate = as_factor(Replicate))
+```
+
+Aquifex read counts
 
 ```{r}
+std_depth_rich %>% 
+  ggplot(aes(x=Sample, y=aquifex_count, color=Replicate)) +
+  geom_point() +
+  labs(y="Aquifex ASV reads") +
+  theme_test()
+
+std_depth_rich %>% 
+  ggplot(aes(x=Day, y=aquifex_count, color=Replicate)) +
+  geom_point() +
+  labs(y="Aquifex ASV reads") + 
+  theme_test()
+```
+
+Samples with no Aquifex reads:
+
+```{r}
+samples_nostd <- std_depth_rich %>% 
+  filter(aquifex_count == 0) %>%
+  .$Sample
+
+samples_nostd
+```
+
+These likely had high biomass and the spike amount was too low. I will need to add more spike for resequencing.
+
+Samples with low or borderline Aquifex reads:
+
+More difficult to gauge. 
+
+
+
+
+
+
+
+
+
+
+
+
+Read depth coverage
+
+```{r}
+std_depth_rich %>%
+  mutate(Replicate = as_factor(Replicate)) %>% 
+  ggplot(aes(x=Sample, y=total, color=Replicate)) +
+  geom_point() +
+  labs(y="Read depth") +
+  theme_test()
+```
+
+Samples with low coverage:
+
+```{r}
+std_depth_rich %>%
+  filter(total < 1000)
+
+std_depth_rich %>%
+  filter(total < 2500)
+
+std_depth_rich %>%
+  filter(total < 5000)
+```
+
+
+```{r}
+samples_lowdepth <- std_depth_rich %>%
+  filter(total < 2500) %>%
+  .$Sample
+```
+
+Sample richness
+
+```{r}
+std_depth_rich %>%
+  ggplot(aes(x=Sample, y=richness)) +
+  geom_point() +
+  labs(y="Total ASVs") +
+  theme_test()
+```
+
+Read depth vs richness
+
+```{r}
+std_depth_rich %>%
+  ggplot(aes(x=total, y=richness, color=Replicate)) +
+  geom_point() +
+  labs(y="Total ASVs", x="Read depth") +
+  theme_test()
+```
+
+Replicate one has better read coverage and has higher richness for many samples as a result. Rarefying would help with that.
+
+Average richness in high vs low (< 2500) depth samples:
+
+```{r}
+low_depth_asv <- std_depth_rich %>%
+  filter(Sample %in% samples_lowdepth)
+
+`%!in%` <- Negate(`%in%`)
+
+higher_depth_asv <- std_depth_rich %>%
+  filter(Sample %!in% samples_lowdepth)
+
+mean(low_depth_asv$richness)
+mean(higher_depth_asv$richness)
+```
+
+Many fewer ASVs in lower read depth samples. Low coverage samples would likely benefit from resequencing.
+
+
+
+
+
+
+Overlapping redo samples:
+
+```{r}
+intersect(samples_lowdepth, samples_nostd)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Normalize to the internal standard
+
+```{}
 # Normalize all taxa to the internal std in each sample (divide by aquifex count)
 count_normalized <- count_processed %>%
   rownames_to_column(var="ASV") %>%
@@ -170,6 +335,14 @@ count_normalized <- count_processed %>%
   mutate(across(-Sample, ~ .x/`445e8681c3c1a735760e6c394f5f4d0a`, {.col}))
 ```
 
+```{r, eval=FALSE, include=FALSE}
+saveRDS(count_normalized, file="~/SFAgrowthrate/data_intermediate/SFA2_count_normalized.rds")
+saveRDS(count_processed, file="~/SFAgrowthrate/data_intermediate/SFA2_count.rds")
+saveRDS(tax_processed, file="~/SFAgrowthrate/data_intermediate/SFA2_taxonomy.rds")
+#tree
+#meta?
+
+```
 
 
 
