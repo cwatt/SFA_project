@@ -91,9 +91,9 @@ physeq_remove_asvs <- taxa_names(subset_taxa(physeq, Class=="Chloroplast" | Fami
                                           Domain=="putative Bacteria"))
 physeq_all_asvs <- taxa_names(physeq)
 physeq_keep_asvs <- physeq_all_asvs[!(physeq_all_asvs %in% physeq_remove_asvs)]
-physeq_pruned <- prune_taxa(physeq_keep_asvs, physeq)
+physeq2 <- prune_taxa(physeq_keep_asvs, physeq)
 
-physeq_pruned
+physeq2
 ```
 
 ### Sparcity filters
@@ -101,23 +101,23 @@ physeq_pruned
 Keep only ASVs that occur in at least three samples.
 
 ```{r}
-asvs_pass <- count %>%
+asvs_sparce_pass <- count %>%
   mutate(across(-ASV, ~if_else(.x > 0, 1, 0), {.cols})) %>%
   mutate(total = rowSums(.[-1])) %>%
   filter(total > 2) %>%
   .$ASV
 
-physeq_filtered <- prune_taxa(asvs_pass, physeq_pruned)
+physeq3 <- prune_taxa(asvs_sparce_pass, physeq2)
 
-physeq_filtered
+physeq3
 ```
 
 ### Read depth
 
 ```{r}
 # Extract count and metadata from processed phyloseq object
-count_processed <- data.frame(otu_table(physeq_filtered))
-meta_processed <- data.frame(sample_data(physeq_filtered)) %>%
+count_processed <- data.frame(otu_table(physeq3))
+meta_processed <- data.frame(sample_data(physeq3)) %>%
   select(-Sample) %>%
   rownames_to_column(var="Sample")
 
@@ -147,7 +147,7 @@ Build dataframe with spike-in, read depth, and ASV richness information.
 
 ```{r}
 # Extract taxonomy table from phyloseq
-tax_processed <- data.frame(tax_table(physeq_filtered))
+tax_processed <- data.frame(tax_table(physeq3))
 
 # Isolate Aquifex ASV
 aquifex <- tax_processed %>%
@@ -166,7 +166,7 @@ total_std <- count_processed %>%
   filter(ASV == "445e8681c3c1a735760e6c394f5f4d0a") %>% 
   select(-ASV) %>%
   gather(variable, value) %>% 
-  rename(Sample = variable, aquifex_count = value) %>% 
+  rename(Sample = variable, std_count = value) %>% 
   full_join(read_depth, by="Sample")
 
 # ASV richness
@@ -176,91 +176,130 @@ richness <- count_processed %>%
   data.frame() %>% 
   rownames_to_column(var="Sample")
 
+# Combine
+std_depth_rich <- inner_join(total_std, richness) %>% 
+  select(c(Sample, Type:PCR_plate, read_depth=total, std_count, richness=`.`)) %>% 
+  mutate(Replicate = as_factor(Replicate))
+
 # Import DNA conc. data
-dna <- read_csv(file="~/SFAgrowthrate/data_picogreen/SFA2_dnaconc.csv")
+#dna <- read_csv(file="~/SFAgrowthrate/data_picogreen/SFA2_dnaconc.csv")
 
 # Combine and add DNA concentration data
-std_depth_rich <- full_join(total_std, richness) %>% 
-  
-  select(c(Sample, Type:PCR_plate, aquifex_count, total, richness = `.`)) %>% 
-  mutate(Replicate = as_factor(Replicate))
+#std_depth_rich <- full_join(total_std, richness) %>% 
+#  
+#  select(c(Sample, Type:PCR_plate, aquifex_count, total, richness = `.`)) %>% 
+#  mutate(Replicate = as_factor(Replicate))
 ```
 
-Aquifex read counts
+Evaluate
 
 ```{r}
 std_depth_rich %>% 
-  ggplot(aes(x=Sample, y=aquifex_count, color=Replicate)) +
-  geom_point() +
-  labs(y="Aquifex ASV reads") +
-  theme_test()
-
-std_depth_rich %>% 
-  ggplot(aes(x=Day, y=aquifex_count, color=Replicate)) +
+  ggplot(aes(x=Day, y=std_count, color=Replicate)) +
   geom_point() +
   labs(y="Aquifex ASV reads") + 
   theme_test()
+
+std_depth_rich %>% 
+  ggplot(aes(x=Day, y=std_count, color=Replicate)) +
+  geom_point() +
+  geom_label(aes(label=Sample)) +
+  labs(y="Aquifex ASV reads") + 
+  theme_test()
+
+# log
+std_depth_rich %>% 
+  ggplot(aes(x=Day, y=log(std_count), color=Replicate)) +
+  geom_point() +
+  geom_label(aes(label=Sample)) +
+  labs(y="Aquifex ASV reads") + 
+  theme_test()
 ```
+
+Samples 383 outlier, want to resequence.
 
 Samples with no Aquifex reads:
 
 ```{r}
 samples_nostd <- std_depth_rich %>% 
-  filter(aquifex_count == 0) %>%
+  filter(std_count == 0) %>%
   .$Sample
 
 samples_nostd
+length(samples_nostd)
 ```
 
-These likely had high biomass and the spike amount was too low. I will need to add more spike for resequencing.
+Samples with high read depth and low Aquifex reads:
 
-Samples with low or borderline Aquifex reads:
+* Indicates not enough spike-in, variability on low end likely higher and less reliable normalization
 
-More difficult to gauge. 
+```{r}
+std_depth_rich %>% 
+  ggplot(aes(x=read_depth, y=log(std_count), color=Replicate)) +
+  geom_point() +
+  theme_test()
+```
 
+Nothing stands out on high end of read depth.
 
+```{r}
+std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>% 
+  ggplot(aes(y=std_prop, x=Day, color=Replicate)) +
+  geom_point() +
+  theme_test()
 
+# Zoom in
+std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>% 
+  ggplot(aes(y=std_prop, x=Day, color=Replicate)) +
+  geom_point() +
+  ylim(0, 0.005) +
+  theme_test()
+```
 
+Suspect samples have a low proportion and count of the standard.
 
+```{r}
+std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>% 
+  filter(std_count < 30 & std_count > 0)
 
+std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>% 
+  filter(std_prop < 0.001)
 
+std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>% 
+  filter(std_count < 30 & std_count > 0 & std_prop < 0.001)
+```
 
+Samples with low spike-in for resequencing:
 
+```{r}
+samples_lowstd <- std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>%
+  filter(std_count < 30 & std_count > 0 & std_prop < 0.005) %>% 
+  .$Sample
 
+samples_lowstd
+length(samples_lowstd)
+```
 
+Samples with low coverage may also benefit from resequencing.
 
-Read depth coverage
+Read depth coverage:
 
 ```{r}
 std_depth_rich %>%
   mutate(Replicate = as_factor(Replicate)) %>% 
-  ggplot(aes(x=Sample, y=total, color=Replicate)) +
+  ggplot(aes(x=Sample, y=read_depth, color=Replicate)) +
   geom_point() +
   labs(y="Read depth") +
   theme_test()
 ```
 
-Samples with low coverage:
-
-```{r}
-std_depth_rich %>%
-  filter(total < 1000)
-
-std_depth_rich %>%
-  filter(total < 2500)
-
-std_depth_rich %>%
-  filter(total < 5000)
-```
-
-
-```{r}
-samples_lowdepth <- std_depth_rich %>%
-  filter(total < 2500) %>%
-  .$Sample
-```
-
-Sample richness
+Sample richness:
 
 ```{r}
 std_depth_rich %>%
@@ -270,11 +309,11 @@ std_depth_rich %>%
   theme_test()
 ```
 
-Read depth vs richness
+Read depth vs richness:
 
 ```{r}
 std_depth_rich %>%
-  ggplot(aes(x=total, y=richness, color=Replicate)) +
+  ggplot(aes(x=read_depth, y=richness, color=Replicate)) +
   geom_point() +
   labs(y="Total ASVs", x="Read depth") +
   theme_test()
@@ -282,58 +321,224 @@ std_depth_rich %>%
 
 Replicate one has better read coverage and has higher richness for many samples as a result. Rarefying would help with that.
 
-Average richness in high vs low (< 2500) depth samples:
+Difference in richness between samples above or below 5000 read depth:
 
 ```{r}
-low_depth_asv <- std_depth_rich %>%
-  filter(Sample %in% samples_lowdepth)
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 5000) %>%
+  filter(Replicate != 1) # remove outlying replicate
 
-`%!in%` <- Negate(`%in%`)
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 5000) %>%
+  filter(Replicate != 1) # remove outlying replicate
 
-higher_depth_asv <- std_depth_rich %>%
-  filter(Sample %!in% samples_lowdepth)
-
-mean(low_depth_asv$richness)
-mean(higher_depth_asv$richness)
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
 ```
 
-Many fewer ASVs in lower read depth samples. Low coverage samples would likely benefit from resequencing.
-
-
-
-
-
-
-Overlapping redo samples:
+""" 2500 read depth:
 
 ```{r}
-intersect(samples_lowdepth, samples_nostd)
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 2500) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 2500) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+""" 2000 read depth:
+
+```{r}
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 2000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 2000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+""" 1500 read depth:
+
+```{r}
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 1500) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 1500) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+""" 1000 read depth:
+
+```{r}
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 1000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 1000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+It looks like richness starts to suffer below 1500 reads.
+
+Low depth samples (< 2000 reads):
+
+```{r}
+samples_lowdepth <- std_depth_rich %>% 
+  filter(read_depth < 2000) %>% 
+  .$Sample
+
+samples_lowdepth
+length(samples_lowdepth)
+```
+
+Samples with low richness:
+
+* Below 10 ASVs (and lowish depth)
+
+```{r}
+samples_lowrich <- std_depth_rich %>% 
+  filter(richness < 20 & read_depth < 5000) %>%
+  .$Sample
+
+samples_lowrich
+length(samples_lowrich)
+```
+
+Redo samples:
+
+```{r}
+samples_redo <- unique(c(samples_nostd, samples_lowstd, samples_lowdepth, samples_lowrich, "sa383"))
+
+samples_redo
+length(samples_redo)
+```
+
+### Rarefy
+
+Due to the greater ead depth of replicate 1, I'll need to rarefy to reduce richness biases. However, rarefying will remove the standard from many of my samples.
+
+I plan to rarefy to correct the richness bias imposed by differences in sequencing depth, but use the unrarefied data for analysis, with taxa that did not survive rarefication removed. Because I have an internal standard, sequencing depth biases on abundances shouldn't matter after I normalize.
+
+Number of samples lost if I rarefy to 5k, 3k, 2.5k, and 2k reads:
+
+```{r}
+std_depth_rich %>% 
+  filter(read_depth < 5000) %>% 
+  nrow()
+
+std_depth_rich %>% 
+  filter(read_depth < 3000) %>% 
+  nrow()
+
+std_depth_rich %>% 
+  filter(read_depth < 2500) %>% 
+  nrow()
+
+std_depth_rich %>% 
+  filter(read_depth < 2000) %>% 
+  nrow()
+```
+
+Which samples? 2.5k and 2k:
+
+```{r}
+std_depth_rich %>% 
+  filter(read_depth < 2500) %>% 
+  print()
+
+std_depth_rich %>% 
+  filter(read_depth < 2000) %>% 
+  print()
+```
+
+I'll rarefy to 2500 and resequence the additional lost sample that is not already on the list.
+
+```{r}
+# Rarefy
+physeq4 <- rarefy_even_depth(physeq3, 2500, rngseed=2021, replace=FALSE)
+physeq4
+```
+
+Prune ASVs that did not pass the rarefication filter:
+
+```{r}
+tax_rarefied <- data.frame(tax_table(physeq4))
+asvs_survived <- tax_rarefied %>% 
+  rownames_to_column(var="ASV") %>% 
+  .$ASV
+
+# Remove taxa from non-rarefied data that did not pass rarefication
+physeq5 <- prune_taxa(asvs_survived, physeq3)
+
+physeq5
+```
+
+```{r}
+count_processed2 <- data.frame(otu_table(physeq5))
+depth_rich_processed2 <- count_processed2
+```
+
+Problem fixed or not?
+
+```{r}
+# Extract count table from phyloseq
+count_processed2 <- data.frame(otu_table(physeq5))
+
+# Calculate read depth per sample
+read_depth2 <- count_processed2 %>% 
+  head()
+
+# Calculate richness
+richness2 <- count_processed2 %>% 
+  mutate(across(everything(), ~ if_else(.x > 0, 1, 0), {.cols})) %>%
+  colSums() %>%
+  data.frame() %>% 
+  rownames_to_column(var="Sample")
+
+#Merge
+depth_rich_processed2 <- inner_join()
+
+#ggplot
 ```
 
 
+### Normalize to internal standard
 
-
-
-
-
-
-
-
-
-
-
-
-
-### Normalize to the internal standard
-
-```{}
-# Normalize all taxa to the internal std in each sample (divide by aquifex count)
-count_normalized <- count_processed %>%
+```{r}
+# Normalize
+count_coversion <- count_processed %>%
   rownames_to_column(var="ASV") %>%
   gather(Sample, value, -ASV) %>%
   spread(ASV, value) %>%
   mutate(across(-Sample, ~ .x/`445e8681c3c1a735760e6c394f5f4d0a`, {.col}))
+
+
+
 ```
+
+
+
+
+
+
 
 ```{r, eval=FALSE, include=FALSE}
 saveRDS(count_normalized, file="~/SFAgrowthrate/data_intermediate/SFA2_count_normalized.rds")
