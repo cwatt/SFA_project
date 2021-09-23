@@ -9,15 +9,16 @@ data_soilgeochem
 data_waterloss
 data_protein
 data_amplicon
+data_intermediate
 fieldsite_monkeyrun
 pictures
 preliminary_exps
 protocols
-r.objects
 script_templates
 figures
+rmarkdown_files
 
-# Files
+# Data and other files
 *.csv
 *.tsv
 *.txt

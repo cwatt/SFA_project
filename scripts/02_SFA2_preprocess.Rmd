@@ -260,7 +260,7 @@ Samples with low spike-in for resequencing (< 35 reads):
 ```{r}
 redo_lowstd <- std_depth_rich %>% 
   mutate(std_prop = std_count/read_depth) %>%
-  filter(std_count < 35 & std_count > 0) %>% 
+  filter(std_count < 30 & std_count > 0) %>% 
   .$Sample
 
 redo_lowstd
@@ -299,8 +299,6 @@ std_depth_rich %>%
   labs(y="Total ASVs", x="Read depth") +
   theme_test()
 ```
-
-Replicate one has better read coverage and has higher richness for many samples as a result. Rarefying would help with that.
 
 Difference in richness between samples above or below 5000 read depth:
 
@@ -383,39 +381,75 @@ Low depth samples (< 1500 reads):
 
 ```{r}
 redo_lowdepth <- std_depth_rich %>% 
-  filter(read_depth < 1500) %>% 
+  filter(read_depth < 3000) %>% 
   .$Sample
 
 redo_lowdepth
 length(redo_lowdepth)
 ```
 
-Look at distributions of read counts for ASVs
-
-* What proportion of ASVs in each sample have less than 30 reads?
+Investigate ASV read counts
 
 ```{r}
-count_processed %>% 
-  
-  
-
-
-
-richness <- count_processed %>% 
-  mutate(across(everything(), ~ if_else(.x > 0, 1, 0), {.cols})) %>%
-  colSums() %>%
+# Count non-missing ASVs per sample
+present <- count_processed %>%
+  mutate(across(everything(), ~if_else(.x == 0, 0, 1))) %>% 
+  colSums() %>% 
   data.frame() %>% 
-  rownames_to_column(var="Sample")
+  rownames_to_column(var="Sample") %>% 
+  select(c(Sample, total_asvs = `.`))
+  
+# Count ASVs with greater than 30 counts
+greater30 <- count_processed %>% 
+  mutate(across(everything(), ~if_else(.x > 30, 1, 0))) %>% 
+  colSums() %>% 
+  data.frame() %>% 
+  rownames_to_column(var="Sample") %>% 
+  select(c(Sample, over_30count = `.`))
 
+# Calculate proportion of ASVs below 30 counts in each sample
+asv_reads <- full_join(present, greater30, by="Sample") %>% 
+  full_join(read_depth, by="Sample") %>% 
+  mutate(prop = over_30count/total_asvs)
 ```
 
+Visualize:
 
+```{r}
+asv_reads %>% 
+  ggplot() +
+  geom_histogram(aes(x=prop)) +
+  labs(x="Proportion of ASVs with more than 30 counts") +
+  theme_test()
 
+asv_reads %>% 
+  ggplot() +
+  geom_point(aes(x=total, y=prop)) +
+  labs(x="Proportion of ASVs with more than 30 counts") +
+  theme_test()
 
+asv_reads %>% 
+  ggplot() +
+  geom_point(aes(y=over_30count, x=total)) +
+  labs(y="ASVs with over 30 reads", x="Read depth") +
+  theme_test()
+```
 
+Number of samples with < 10 or 20% of ASVs with over 30 reads:
 
+```{r}
+# 10%
+asv_reads %>% 
+  filter(prop < 0.1) %>% 
+  nrow()
 
+# 20%
+asv_reads %>% 
+  filter(prop < 0.2) %>% 
+  nrow()
+```
 
+Too many to include for redo, likely result of uneven community structure.
 
 Redo samples:
 
@@ -426,145 +460,34 @@ redo_samples
 length(redo_samples)
 ```
 
-### Rarefy
-
-Due to the greater ead depth of replicate 1, I'll need to rarefy to reduce richness biases. However, rarefying will remove the standard from many of my samples.
-
-I plan to rarefy to correct the richness bias imposed by differences in sequencing depth, but use the unrarefied data for analysis, with taxa that did not survive rarefication removed. Because I have an internal standard, sequencing depth biases on abundances shouldn't matter after I normalize.
-
-Number of samples lost if I rarefy to 5k, 3k, 2.5k, and 2k reads:
+### Normalize to the internal standard
 
 ```{r}
-std_depth_rich %>% 
-  filter(read_depth < 5000) %>% 
-  nrow()
-
-std_depth_rich %>% 
-  filter(read_depth < 3000) %>% 
-  nrow()
-
-std_depth_rich %>% 
-  filter(read_depth < 2500) %>% 
-  nrow()
-
-std_depth_rich %>% 
-  filter(read_depth < 2000) %>% 
-  nrow()
-```
-
-Which samples? 2.5k and 2k:
-
-```{r}
-std_depth_rich %>% 
-  filter(read_depth < 2500) %>% 
-  print()
-
-std_depth_rich %>% 
-  filter(read_depth < 2000) %>% 
-  print()
-```
-
-I'll rarefy to 2500 and resequence the additional lost sample that is not already on the list.
-
-```{r}
-# Rarefy
-physeq4 <- rarefy_even_depth(physeq3, 2500, rngseed=2021, replace=FALSE)
-physeq4
-```
-
-Prune ASVs that did not pass the rarefication filter:
-
-```{r}
-tax_rarefied <- data.frame(tax_table(physeq4))
-asvs_rarefied <- tax_rarefied %>% 
-  rownames_to_column(var="ASV") %>% 
-  .$ASV
-
-# Remove taxa from non-rarefied data that did not pass rarefication
-physeq5 <- prune_taxa(asvs_rarefied, physeq3)
-
-physeq5
-```
-
-How many samples contain no internal standard after rarefying?
-
-```{r}
-count_rarefied <- data.frame(otu_table(physeq4))
-
-std_rarefied <- count_rarefied %>% 
-  rownames_to_column(var="ASV") %>% 
-  filter(ASV == "445e8681c3c1a735760e6c394f5f4d0a") %>% 
-  select(-ASV) %>%
-  gather(variable, value) %>% 
-  rename(Sample = variable, std_count = value) %>% 
-  full_join(read_depth, by="Sample") %>%
-  filter(std_count == 0) %>%
-  .$Sample
-
-length(std_rarefied)
-std_rarefied
-```
-
-Reevaluate richness
-
-```{r}
-# Extract count table from phyloseq
-count_processed2 <- data.frame(otu_table(physeq5))
-
-# Calculate read depth
-read_depth2 <- count_processed2 %>% 
-  rownames_to_column(var="ASV") %>% 
-  gather(Sample, count, -ASV) %>% 
-  spread(ASV, count) %>% 
-  mutate(read_depth = rowSums(.[-1])) %>% 
-  select(Sample, read_depth)
-
-# Calculate richness
-richness2 <- count_processed2 %>% 
-  mutate(across(everything(), ~ if_else(.x > 0, 1, 0), {.cols})) %>%
-  colSums() %>%
-  data.frame() %>% 
-  rownames_to_column(var="Sample")
-
-# Merge together, add metadata
-depth_rich_processed2 <- inner_join(read_depth2, richness2, by="Sample") %>% 
-  inner_join(meta_processed, by="Sample") %>% 
-  select(c(Sample, read_depth, richness = `.`, Type:PCR_plate)) %>% 
-  mutate(Replicate = as_factor(Replicate))
-
-depth_rich_processed2 %>% 
-  ggplot(aes(x=read_depth, y=richness, color=Replicate)) +
-  geom_point() +
-  theme_test()
-
-depth_rich_processed2 %>% 
-  ggplot(aes(x=read_depth, y=richness, color=Day)) +
-  facet_wrap(~Replicate) +
-  geom_point() +
-  theme_test()
-```
-
-
-
-
-
-
-
-
-
-
-### Normalize to internal standard
-
-```{}
 # Normalize
-count_coversion <- count_processed %>%
+count_normalized<- count_processed %>%
   rownames_to_column(var="ASV") %>%
   gather(Sample, value, -ASV) %>%
   spread(ASV, value) %>%
-  mutate(across(-Sample, ~ .x/`445e8681c3c1a735760e6c394f5f4d0a`, {.col}))
+  mutate(across(-Sample, ~ .x/`445e8681c3c1a735760e6c394f5f4d0a`, {.col})) # Divide ASV counts by Aquifex ASV counts
+```
 
+Save intermediate data:
 
+```{r, eval=FALSE}
+# ASV counts
+# Reformat
+count_normalized2 <- count_normalized %>% 
+  gather(ASV, value, -Sample) %>% 
+  spread(Sample, value)
+  
+saveRDS(count_normalized2, file="../data_intermediate/SFA2_count_normalized.rds")
 
+# Taxonomy
+saveRDS(tax_processed, file="../data_intermediate/SFA2_tax_processed.rds")
+
+# Tree
+tree_processed <- phy_tree(physeq3)
+saveRDS(tree_processed, file="../data_intermediate/SFA2_tree_processed.rds")
 ```
 
 

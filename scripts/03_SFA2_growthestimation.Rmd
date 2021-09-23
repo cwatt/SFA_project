@@ -1,0 +1,113 @@
+---
+title: "SFA2 - Growth estimations"
+author: "Cassandra Wattenburger"
+date: "9/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("trelliscopejs")
+
+sessionInfo()
+```
+
+### Import data
+
+* Normalized count data
+* Taxonomy table
+* Metadata
+
+See 02_SFA2_preprocess.Rmd.
+
+```{r}
+# Count data
+count_normalized <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
+  gather(Sample, norm_abund, -ASV) %>% 
+  mutate(Sample = as.double(gsub("sa", "", Sample)))
+
+# Taxonomy
+tax <- readRDS("../data_intermediate/SFA2_tax_processed.rds") %>% 
+  rownames_to_column(var="ASV")
+
+# Metadata
+meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata.tsv")
+
+# Merge
+norm_tax_meta <- inner_join(count_normalized, tax, by="ASV") %>% 
+  inner_join(meta, by="Sample") %>% 
+  select(c(Sample, Type:Replicate, Domain:Phylum, ASV, norm_abund)) %>% 
+  mutate(Innoculant = as_factor(Innoculant),
+         Replicate = as_factor(Replicate))
+```
+
+### Prepare data
+
+Remove Aquifex ASV: "445e8681c3c1a735760e6c394f5f4d0a"
+
+```{r}
+norm_prep <- norm_tax_meta %>% 
+  filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a")
+```
+
+Remove non-present taxa
+
+```{r}
+norm_prep <- norm_prep %>% 
+  filter(norm_abund != 0)
+```
+
+Natural log transform
+
+```{r}
+norm_prep <- norm_prep %>% 
+  mutate(ln_abund = log(norm_abund))
+```
+
+Remove taxa that don't occur in at least three time points
+
+* Must have three points to fit linear model
+
+```{r}
+# Identify ASVs with less than 3 time points
+norm_occurs <- norm_prep %>% 
+  group_by(ASV, Innoculant, Replicate) %>% 
+  summarize(occurs = n()) %>% 
+  filter(occurs > 2)
+
+# Filter
+norm_prep <- inner_join(norm_prep, norm_occurs, by=c("ASV", "Innoculant", "Replicate")) %>% 
+  select(everything(), -occurs)
+```
+
+
+
+# Visualize time series
+
+Using trelliscrope package
+
+```{r, eval=FALSE}
+# Slow
+# Opens in browser
+norm_prep %>% 
+  filter(Type=="Growth") %>% 
+  ggplot(aes(x=Day, y=ln_abund, color=Innoculant)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~Replicate) +
+  facet_trelliscope(~ASV, scales="free_y", path="rmarkdown_files", self_contained=TRUE, height = 400, width = 1600) +
+  labs(y="Normalized abundance (ln)", x="Day") +
+  theme_test()
+# TROUBLESHOOT: Why multiple day 0 points???
+```
+
+
