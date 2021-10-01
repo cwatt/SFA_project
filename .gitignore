@@ -14,9 +14,9 @@ fieldsite_monkeyrun
 pictures
 preliminary_exps
 protocols
-script_templates
 figures
 rmarkdown_files
+template_scripts
 
 # Data and other files
 *.csv

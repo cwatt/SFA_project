@@ -87,7 +87,7 @@ Mitochondrial, chloroplast, protist, unknown domain sequences.
 
 ```{r}
 # Remove non-prokaryotic ASVs
-physeq_remove_asvs <- taxa_names(subset_taxa(physeq, Class=="Chloroplast" | Family=="Mitochondria" |
+physeq_remove_asvs <- taxa_names(subset_taxa(physeq, Order=="Chloroplast" | Family=="Mitochondria" |
                                           Domain=="Unassigned" | Domain=="putative Unassigned" |
                                           Domain=="putative Bacteria"))
 physeq_all_asvs <- taxa_names(physeq)

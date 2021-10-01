@@ -45,9 +45,10 @@ meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata.tsv")
 # Merge
 norm_tax_meta <- inner_join(count_normalized, tax, by="ASV") %>% 
   inner_join(meta, by="Sample") %>% 
-  select(c(Sample, Type:Replicate, Domain:Phylum, ASV, norm_abund)) %>% 
+  select(c(Sample, Type:Replicate, Domain:Species, ASV, norm_abund)) %>% 
   mutate(Innoculant = as_factor(Innoculant),
-         Replicate = as_factor(Replicate))
+         Replicate = as_factor(Replicate)) %>% 
+  mutate(across(Domain:Species, ~as.character(.x), {.col}))
 ```
 
 ### Prepare data
@@ -59,6 +60,14 @@ norm_prep <- norm_tax_meta %>%
   filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a")
 ```
 
+Remove samples that did not contain internal standard
+
+* These are now Inf because previous script attempted to divide by 0
+
+```{r}
+norm_prep <- norm_prep[!is.infinite(norm_prep$norm_abund),]
+```
+
 Remove non-present taxa
 
 ```{r}
@@ -66,34 +75,40 @@ norm_prep <- norm_prep %>%
   filter(norm_abund != 0)
 ```
 
-Natural log transform
+Average across technical replicates
+
+* For better coverage of low abundance/spotty taxa
 
 ```{r}
 norm_prep <- norm_prep %>% 
-  mutate(ln_abund = log(norm_abund))
+  group_by(Type, Innoculant, DOC_pheno, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
+  summarize(norm_avg = mean(norm_abund, na.rm = TRUE))
 ```
 
-Remove taxa that don't occur in at least three time points
-
-* Must have three points to fit linear model
+Remove taxa that didn't occur in at least three time points
 
 ```{r}
 # Identify ASVs with less than 3 time points
 norm_occurs <- norm_prep %>% 
-  group_by(ASV, Innoculant, Replicate) %>% 
+  group_by(ASV, Type, Innoculant) %>% 
   summarize(occurs = n()) %>% 
   filter(occurs > 2)
 
 # Filter
-norm_prep <- inner_join(norm_prep, norm_occurs, by=c("ASV", "Innoculant", "Replicate")) %>% 
+norm_prep <- inner_join(norm_prep, norm_occurs, by=c("ASV", "Innoculant", "Type")) %>% 
   select(everything(), -occurs)
 ```
 
+Natural log transform
 
+```{r}
+norm_prep <- norm_prep %>% 
+  mutate(ln_abund = log(norm_avg))
+```
 
 # Visualize time series
 
-Using trelliscrope package
+All ASVS:
 
 ```{r, eval=FALSE}
 # Slow
@@ -101,13 +116,58 @@ Using trelliscrope package
 norm_prep %>% 
   filter(Type=="Growth") %>% 
   ggplot(aes(x=Day, y=ln_abund, color=Innoculant)) +
+  facet_wrap(~DOC_pheno) +
   geom_point() +
   geom_line() +
-  facet_wrap(~Replicate) +
   facet_trelliscope(~ASV, scales="free_y", path="rmarkdown_files", self_contained=TRUE, height = 400, width = 1600) +
   labs(y="Normalized abundance (ln)", x="Day") +
   theme_test()
-# TROUBLESHOOT: Why multiple day 0 points???
+```
+
+Examples:
+
+```{r}
+# Function to extract taxonomic info for graphs
+extract_tax <- function(df, asv, level) { # Data frame, "ASV", "Taxonomy level"
+  temp <- df %>% 
+    filter(ASV == asv)
+  tax <- unique(temp[[level]])
+  return(tax)
+  }
+
+# Time series graphing function
+graph_timeseries <- function(df, asv) {
+  graph <- df %>%
+    filter(ASV==asv) %>% 
+    ggplot(aes(x=Day, y=ln_abund, color=Innoculant)) +
+    facet_wrap(~DOC_pheno) +
+    geom_point() +
+    geom_line() +
+    labs(y="Normalized abundance (ln)", x="Day", title=paste0(extract_tax(norm_prep, asv, "Phylum"), ", ", 
+                                                            extract_tax(norm_prep, asv, "Genus"))) +
+    theme_test()
+  return(graph)
+}
+```
+
+```{r}
+# Graph
+
+# Robust growth?
+graph_timeseries(norm_prep, "fed2377b60ef09790fc532bbbe2b4602")
+graph_timeseries(norm_prep, "fa9bfdf1098ec99a73f104f85e5495fb")
+graph_timeseries(norm_prep, "b395f80b4600c403b0f6e8164d0b0426")
+
+# Death
+graph_timeseries(norm_prep, "0d91c5a1f756f5e13a32d818129c3311")
+graph_timeseries(norm_prep, "13e479df5562e8e93d620ac363eb9644")
+
+# Low abundance issues?
+graph_timeseries(norm_prep, "0924a26c9d8a025ebf484bcaa701d964")
+graph_timeseries(norm_prep, "f3ee6597e842fb1961db2a37c2b306fa")
+
+# Sparse (common)
+graph_timeseries(norm_prep, "e3d71385212ccb24cfb1987fe9419e0f")
 ```
 
 
