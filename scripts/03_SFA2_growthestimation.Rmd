@@ -32,7 +32,7 @@ See 02_SFA2_preprocess.Rmd.
 ```{r}
 # Count data
 count_normalized <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
-  gather(Sample, norm_abund, -ASV) %>% 
+  gather(Sample, ARNIS_ratio, -ASV) %>% 
   mutate(Sample = as.double(gsub("sa", "", Sample)))
 
 # Taxonomy
@@ -45,7 +45,7 @@ meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata.tsv")
 # Merge
 norm_tax_meta <- inner_join(count_normalized, tax, by="ASV") %>% 
   inner_join(meta, by="Sample") %>% 
-  select(c(Sample, Type:Replicate, Domain:Species, ASV, norm_abund)) %>% 
+  select(c(Sample, Type:Replicate, Domain:Species, ASV, ARNIS_ratio)) %>% 
   mutate(Innoculant = as_factor(Innoculant),
          Replicate = as_factor(Replicate)) %>% 
   mutate(across(Domain:Species, ~as.character(.x), {.col}))
@@ -65,34 +65,36 @@ Remove samples that did not contain internal standard
 * These are now Inf because previous script attempted to divide by 0
 
 ```{r}
-norm_prep <- norm_prep[!is.infinite(norm_prep$norm_abund),]
+norm_prep <- norm_prep[!is.infinite(norm_prep$ARNIS_ratio),]
 ```
 
 Remove non-present taxa
 
 ```{r}
 norm_prep <- norm_prep %>% 
-  filter(norm_abund != 0)
+  filter(ARNIS_ratio != 0)
 ```
 
 Average across technical replicates
 
-* For better coverage of low abundance/spotty taxa
+* For better coverage of time series
 
 ```{r}
 norm_prep <- norm_prep %>% 
   group_by(Type, Innoculant, DOC_pheno, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
-  summarize(norm_avg = mean(norm_abund, na.rm = TRUE))
+  summarize(ARNIS_ratio_avg = mean(ARNIS_ratio, na.rm = TRUE))
 ```
 
-Remove taxa that didn't occur in at least three time points
+Remove taxa that didn't occur in at least four time points
+
+* Three time points only seem mostly like noise
 
 ```{r}
-# Identify ASVs with less than 3 time points
+# Identify ASVs with less than 4 time points
 norm_occurs <- norm_prep %>% 
   group_by(ASV, Type, Innoculant) %>% 
   summarize(occurs = n()) %>% 
-  filter(occurs > 2)
+  filter(occurs > 3)
 
 # Filter
 norm_prep <- inner_join(norm_prep, norm_occurs, by=c("ASV", "Innoculant", "Type")) %>% 
@@ -103,8 +105,16 @@ Natural log transform
 
 ```{r}
 norm_prep <- norm_prep %>% 
-  mutate(ln_abund = log(norm_avg))
+  mutate(ln_ARNIS = log(ARNIS_ratio_avg))
 ```
+
+Create unique label for each ASV and time series
+
+```{r}
+norm_prep <- norm_prep %>%
+  mutate(label = paste0(Type, Innoculant, "_", ASV))
+```
+
 
 # Visualize time series
 
@@ -115,16 +125,16 @@ All ASVS:
 # Opens in browser
 norm_prep %>% 
   filter(Type=="Growth") %>% 
-  ggplot(aes(x=Day, y=ln_abund, color=Innoculant)) +
+  ggplot(aes(x=Day, y=ln_ARNIS, color=Innoculant)) +
   facet_wrap(~DOC_pheno) +
   geom_point() +
   geom_line() +
   facet_trelliscope(~ASV, scales="free_y", path="rmarkdown_files", self_contained=TRUE, height = 400, width = 1600) +
-  labs(y="Normalized abundance (ln)", x="Day") +
+  labs(y="ln ARNIS ratio", x="Day") +
   theme_test()
 ```
 
-Examples:
+Specific examples:
 
 ```{r}
 # Function to extract taxonomic info for graphs
@@ -139,11 +149,11 @@ extract_tax <- function(df, asv, level) { # Data frame, "ASV", "Taxonomy level"
 graph_timeseries <- function(df, asv) {
   graph <- df %>%
     filter(ASV==asv) %>% 
-    ggplot(aes(x=Day, y=ln_abund, color=Innoculant)) +
+    ggplot(aes(x=Day, y=ln_ARNIS, color=Innoculant)) +
     facet_wrap(~DOC_pheno) +
     geom_point() +
     geom_line() +
-    labs(y="Normalized abundance (ln)", x="Day", title=paste0(extract_tax(norm_prep, asv, "Phylum"), ", ", 
+    labs(y="ln ARNIS ratio", x="Day", title=paste0(extract_tax(norm_prep, asv, "Phylum"), ", ", 
                                                             extract_tax(norm_prep, asv, "Genus"))) +
     theme_test()
   return(graph)
@@ -165,9 +175,125 @@ graph_timeseries(norm_prep, "13e479df5562e8e93d620ac363eb9644")
 # Low abundance issues?
 graph_timeseries(norm_prep, "0924a26c9d8a025ebf484bcaa701d964")
 graph_timeseries(norm_prep, "f3ee6597e842fb1961db2a37c2b306fa")
-
-# Sparse (common)
-graph_timeseries(norm_prep, "e3d71385212ccb24cfb1987fe9419e0f")
 ```
+
+# Estimate growth
+
+Create functions:
+
+```{r}
+# Function: Save estimate
+save_fit <- function(start, end, df, output) {
+  # Save estimate info
+  est <- NULL; coeff <- NULL; residuals <- NULL; pval <- NULL; length <- NULL; thisrow <- data.frame() # clear previous
+  est <- lm(abund ~ time, data=df[start:end,])
+  coeff <- est$coefficients[2]
+  residuals <- sum(abs(resid(est)))
+  pval <- summary(est)$coefficients[2,4]
+  length <- end - start + 1
+  thisrow <- data.frame(label, start, end, length, coeff, pval, residuals, row.names <- NULL)
+  output <- rbind(output, thisrow)
+  return(output)
+}
+
+# Function: Fit linear estimate to the data with sliding window
+## Requires a dataframe with columns containing a label, ln abundance values, time points
+## df = data frame containing time series with abundance values (ln transformed), long format
+## label = column with unique identifier for each time series
+## abund = column with abundance values at each time point
+## time = column with time point values
+growth_estimate <- function(df, label, abund, time) {
+  output <- data.frame()
+  for (label in as.character(unique(df$label))) {
+    
+    # Subset one time series using the label
+    df_sub <- data.frame()
+    df_sub <- df[df$label==label,] 
+    stop <- FALSE
+    
+    # Sliding window
+    for (start in 1:(nrow(df_sub) - 2)) {
+      stop <- FALSE
+      for (end in (start + 2):nrow(df_sub)) {
+        if (stop == TRUE) {break}
+     
+        # Fit linear model to the window
+        window_lm <- NULL; window_p <- NULL; window_coeff <- NULL
+        window_lm <- lm(abund ~ time, data = df_sub[start:end,])
+        window_p <- summary(window_lm)$coefficients[2,4]
+        window_coeff <- window_lm$coefficients[2]
+  
+        # If a suitable fit is found and more time points exist that were not included, try extending the window
+        if (window_p <= 0.05 & window_coeff > 0 & end < nrow(df_sub)) {
+          for (extend_end in ((end+1):nrow(df_sub))) {
+            if (stop == TRUE) {break}
+            
+            # Fit linear model to the extended window
+            prevwindow_lm <- NULL; prevwindow_p <- NULL; prevwindow_coeff <- NULL 
+            prevwindow_lm <- lm(abund ~ time, data = df_sub[start:(extend_end - 1),])
+            prevwindow_p <- summary(prevwindow_lm)$coefficients[2,4]
+            prevwindow_coeff <- prevwindow_lm$coefficients[2]
+            
+            # Fit linear model to previous, non-extended window
+            newwindow_lm <- NULL; newwindow_p <- NULL; newwindow_coeff <- NULL 
+            newwindow_lm <- lm(abund ~ time, data = df_sub[start:extend_end,])
+            newwindow_p <- summary(newwindow_lm)$coefficients[2,4]
+            newwindow_coeff <- newwindow_lm$coefficients[2]
+            
+            # If see improvement and can add more data, continue extending the window
+            if (newwindow_p <= prevwindow_p & newwindow_coeff > 0 & x < nrow(df_sub)) {
+              next
+            }
+            
+            # If no improvement, save the previous fit
+            else if (newwindow_p > prevwindow_p & prevwindow_coeff > 0 & x < nrow(df_sub)) {
+              end <- extend_end - 1
+              output <- savefit(start, end, df_sub, output)
+              stop <- TRUE
+            }
+            
+            # If see improvement or no harm but no more data points to fit, save the extended fit
+            else if (newwindow_p <= prevwindow_p & newwindow_coeff > 0 & extend_end == nrow(df_sub)) {
+              end <- extend_end
+              output <- savefit(start, end, df_sub, output)
+              stop <- TRUE
+            } 
+          }
+        }
+        
+        # If no more data available to add to model, save the fit
+        else if (window_p <= 0.05 & window_coeff > 0 & end == nrow(df_sub)) {
+          output <- savefit(start, end, datasub, estimates)
+          stop <- TRUE
+        }
+      }
+    }
+  }
+  
+  # Rename output columns
+  colnames(output) <- c("label", "start", "end", "length", "slope", "pvalue", "residuals")
+  return(output)
+}
+```
+
+Estimate growth characteristics:
+
+```{r, eval=FALSE}
+# SLOW
+growth_estimates <- growth_estimate(norm_prep, label, ln_abund, Day)
+
+saveRDS(growth_estimates, file = "../data_intermediate/SFA2_growth_estimates.rds")
+```
+
+```{r}
+growth_estimates <- readRDS(file = "../data_intermediate/SFA2_growth_estimates.rds")
+
+# Add metadata to estimates
+growth_estimates <- norm_prep %>% 
+  select(c(Type, Innoculant, DOC_pheno, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV, label)) %>% 
+  inner_join(growth_estimates, by="label")
+```
+
+
 
 
