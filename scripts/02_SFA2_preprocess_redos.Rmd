@@ -1,0 +1,496 @@
+---
+title: "SFA2 - prerocessing"
+author: "Cassandra Wattenburger"
+date: "9/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("ape")
+
+sessionInfo()
+```
+
+### Import data
+
+```{r}
+# Rep 1
+count_rep1 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.counts-final.tsv")
+tax_rep1 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.taxonomy-final.tsv")
+
+# Rep 2
+count_rep2 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.counts-final.tsv")
+tax_rep2 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxonomy-final.tsv")
+
+# Rep 3
+count_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
+tax_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
+
+# Redos
+count_redos <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/redos/final/SFA2_redos.counts-final.tsv")
+tax_redos <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/redos/final/SFA2_redos.taxonomy-final.tsv")
+
+# Tree
+tree <- read.tree(file="~/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+
+# Metadata
+meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+```
+
+Merge data into a single dataframe
+
+```{r}
+# problem with count
+count <- full_join(count_rep1, count_rep2, by="ASV") %>%
+  full_join(count_rep3, by="ASV") %>% 
+  full_join(count_redos, by="ASV")
+
+count_long <- count %>% 
+  pivot_longer(cols=-ASV, names_to = "SampleID", values_to = "count") %>% 
+  mutate(SampleID = as.double(SampleID))
+
+tax <- full_join(tax_rep1, tax_rep2) %>%
+  full_join(tax_rep3) %>% 
+  full_join(tax_redos)
+
+sfa2_raw <- full_join(meta, count_long) %>% 
+  full_join(tax)
+```
+
+### Remove non-prokaryotic ASVs
+
+Chloroplast, mitochondria, eukarya, etc.
+
+```{r}
+# Remove non-prokaryotic ASVs
+sfa2_taxfilt <- filter(sfa2_raw, Order != "Chloroplast" | 
+                         Family != "Mitochondria" | 
+                         Domain != c("Unassigned", "putative Unassigned", "putative Bacteria"))
+
+
+dim(sfa2_raw)
+dim(sfa2_taxfilt)
+```
+
+### Sparcity filter
+
+Keep only ASVs that occur in at least three samples.
+
+```{r}
+# Filter out ASVs that appear in less than three samples
+sparce_pass_asvs <- count %>%
+  mutate(across(-ASV, ~if_else(.x > 0, 1, 0), {.cols})) %>%
+  mutate(total = rowSums(.[-1])) %>%
+  filter(total > 2) %>%
+  .$ASV
+
+sfa2_sparcefilt <- filter(sfa2_taxfilt, ASV %in% sparce_pass_asvs)
+
+dim(sfa2_taxfilt)
+dim(sfa2_sparcefilt)
+```
+
+### Assess read depth
+
+```{r}
+sfa2_sparcefilt
+
+
+
+
+
+
+
+
+
+
+
+
+# Extract count and metadata from processed phyloseq object
+count_processed <- data.frame(otu_table(physeq3))
+meta_processed <- data.frame(sample_data(physeq3)) %>%
+  select(-Sample) %>%
+  rownames_to_column(var="Sample")
+
+# Calculate read depth per sample
+read_depth <- count_processed %>%
+  rownames_to_column(var="ASV") %>%
+  gather(Sample, count, -ASV) %>%
+  spread(ASV, count) %>%
+  mutate(total = rowSums(.[-1])) %>%
+  select(Sample, total) %>%
+  inner_join(meta_processed)
+  
+# Visualize
+read_depth %>%
+  mutate(Replicate = as_factor(Replicate)) %>%
+  filter(Type != "pcr_control") %>%
+  ggplot(aes(x=reorder(Sample, -total), y=total, fill=Replicate)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test()
+```
+
+### Identify samples to resequence
+
+Build dataframe for evaluation with spike-in, read depth, and ASV richness information.
+
+```{r}
+# Extract taxonomy table from phyloseq
+tax_processed <- data.frame(tax_table(physeq3))
+
+# Isolate Aquifex ASV
+aquifex <- tax_processed %>%
+  filter(Genus == "Aquifex") %>%
+  rownames_to_column(var="ASV") %>%
+  select(ASV) %>%
+  .$ASV
+
+aquifex
+```
+
+```{r}
+# Internal standard read count
+total_std <- count_processed %>%
+  rownames_to_column(var="ASV") %>% 
+  filter(ASV == "445e8681c3c1a735760e6c394f5f4d0a") %>% 
+  select(-ASV) %>%
+  gather(variable, value) %>% 
+  rename(Sample = variable, std_count = value) %>% 
+  full_join(read_depth, by="Sample")
+
+# ASV richness
+richness <- count_processed %>% 
+  mutate(across(everything(), ~ if_else(.x > 0, 1, 0), {.cols})) %>%
+  colSums() %>%
+  data.frame() %>% 
+  rownames_to_column(var="Sample")
+
+# Combine
+std_depth_rich <- inner_join(total_std, richness) %>% 
+  select(c(Sample, Type:PCR_plate, read_depth=total, std_count, richness=`.`)) %>% 
+  mutate(Replicate = as_factor(Replicate))
+```
+
+```{r}
+# Visualize
+std_depth_rich %>% 
+  ggplot(aes(x=Day, y=std_count, color=Replicate)) +
+  geom_point() +
+  labs(y="Aquifex ASV reads") + 
+  theme_test()
+
+std_depth_rich %>% 
+  ggplot(aes(x=Day, y=std_count, color=Replicate)) +
+  geom_point() +
+  geom_label(aes(label=Sample)) +
+  labs(y="Aquifex ASV reads") + 
+  theme_test()
+
+# log
+std_depth_rich %>% 
+  ggplot(aes(x=Day, y=log(std_count), color=Replicate)) +
+  geom_point() +
+  geom_label(aes(label=Sample)) +
+  labs(y="Aquifex ASV reads") + 
+  theme_test()
+```
+
+Sample 383 outlier, want to resequence.
+
+Samples with no Aquifex reads:
+
+```{r}
+# Filter samples with no internal standard reads
+redo_nostd <- std_depth_rich %>% 
+  filter(std_count == 0) %>%
+  .$Sample
+
+redo_nostd
+length(redo_nostd)
+```
+
+Samples with low internal standard:
+
+* Indicates not enough spike-in, variability on low end likely higher and less reliable normalization
+
+```{r}
+# Visualize
+std_depth_rich %>% 
+  ggplot(aes(x=read_depth, y=std_count, color=Replicate)) +
+  geom_point() +
+  #ylim(limits=c(0,500)) +
+  theme_test()
+
+# Proportion of internal standard
+std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>% 
+  ggplot(aes(y=std_prop, x=Day, color=Replicate)) +
+  geom_point() +
+  theme_test()
+
+# Zoom in
+std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>% 
+  ggplot(aes(y=std_prop, x=Day, color=Replicate)) +
+  geom_point() +
+  ylim(0, 0.005) +
+  theme_test()
+
+# Histogram of internal standard reads
+std_depth_rich %>% 
+  ggplot() +
+  geom_histogram(aes(x=std_count)) +
+  xlim(20,50) +
+  theme_test()
+```
+
+Samples with low spike-in for resequencing (< 35 reads):
+
+```{r}
+redo_lowstd <- std_depth_rich %>% 
+  mutate(std_prop = std_count/read_depth) %>%
+  filter(std_count < 30 & std_count > 0) %>% 
+  .$Sample
+
+redo_lowstd
+length(redo_lowstd)
+```
+
+Samples with low coverage may also benefit from resequencing.
+
+Read depth coverage:
+
+```{r}
+std_depth_rich %>%
+  mutate(Replicate = as_factor(Replicate)) %>% 
+  ggplot(aes(x=Sample, y=read_depth, color=Replicate)) +
+  geom_point() +
+  labs(y="Read depth") +
+  theme_test()
+```
+
+Sample richness:
+
+```{r}
+std_depth_rich %>%
+  ggplot(aes(x=Sample, y=richness)) +
+  geom_point() +
+  labs(y="Total ASVs") +
+  theme_test()
+```
+
+Read depth vs richness:
+
+```{r}
+std_depth_rich %>%
+  ggplot(aes(x=read_depth, y=richness, color=Replicate)) +
+  geom_point() +
+  labs(y="Total ASVs", x="Read depth") +
+  theme_test()
+```
+
+Difference in richness between samples above or below 5000 read depth:
+
+```{r}
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 5000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 5000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+""" 2500 read depth:
+
+```{r}
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 2500) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 2500) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+""" 2000 read depth:
+
+```{r}
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 2000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 2000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+""" 1500 read depth:
+
+```{r}
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 1500) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 1500) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+""" 1000 read depth:
+
+```{r}
+lowdepth_rich <- std_depth_rich %>%
+  filter(read_depth < 1000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+highdepth_rich <- std_depth_rich %>%
+  filter(read_depth > 1000) %>%
+  filter(Replicate != 1) # remove outlying replicate
+
+mean(lowdepth_rich$richness)
+mean(highdepth_rich$richness)
+```
+
+It looks like richness starts to suffer below 1500 reads.
+
+Low depth samples (< 1500 reads):
+
+```{r}
+redo_lowdepth <- std_depth_rich %>% 
+  filter(read_depth < 3000) %>% 
+  .$Sample
+
+redo_lowdepth
+length(redo_lowdepth)
+```
+
+Investigate ASV read counts
+
+```{r}
+# Count non-missing ASVs per sample
+present <- count_processed %>%
+  mutate(across(everything(), ~if_else(.x == 0, 0, 1))) %>% 
+  colSums() %>% 
+  data.frame() %>% 
+  rownames_to_column(var="Sample") %>% 
+  select(c(Sample, total_asvs = `.`))
+  
+# Count ASVs with greater than 30 counts
+greater30 <- count_processed %>% 
+  mutate(across(everything(), ~if_else(.x > 30, 1, 0))) %>% 
+  colSums() %>% 
+  data.frame() %>% 
+  rownames_to_column(var="Sample") %>% 
+  select(c(Sample, over_30count = `.`))
+
+# Calculate proportion of ASVs below 30 counts in each sample
+asv_reads <- full_join(present, greater30, by="Sample") %>% 
+  full_join(read_depth, by="Sample") %>% 
+  mutate(prop = over_30count/total_asvs)
+```
+
+Visualize:
+
+```{r}
+asv_reads %>% 
+  ggplot() +
+  geom_histogram(aes(x=prop)) +
+  labs(x="Proportion of ASVs with more than 30 counts") +
+  theme_test()
+
+asv_reads %>% 
+  ggplot() +
+  geom_point(aes(x=total, y=prop)) +
+  labs(x="Proportion of ASVs with more than 30 counts") +
+  theme_test()
+
+asv_reads %>% 
+  ggplot() +
+  geom_point(aes(y=over_30count, x=total)) +
+  labs(y="ASVs with over 30 reads", x="Read depth") +
+  theme_test()
+```
+
+Number of samples with < 10 or 20% of ASVs with over 30 reads:
+
+```{r}
+# 10%
+asv_reads %>% 
+  filter(prop < 0.1) %>% 
+  nrow()
+
+# 20%
+asv_reads %>% 
+  filter(prop < 0.2) %>% 
+  nrow()
+```
+
+Too many to include for redo, likely result of uneven community structure.
+
+Redo samples:
+
+```{r}
+redo_samples <- unique(c(redo_nostd, redo_lowstd, redo_lowdepth, "sa383"))
+
+redo_samples
+length(redo_samples)
+```
+
+### Normalize to the internal standard
+
+```{r}
+# Normalize
+count_normalized<- count_processed %>%
+  rownames_to_column(var="ASV") %>%
+  gather(Sample, value, -ASV) %>%
+  spread(ASV, value) %>%
+  mutate(across(-Sample, ~ .x/`445e8681c3c1a735760e6c394f5f4d0a`, {.col})) # Divide ASV counts by Aquifex ASV counts
+```
+
+Save intermediate data:
+
+```{r, eval=FALSE}
+# ASV counts
+# Reformat
+count_normalized2 <- count_normalized %>% 
+  gather(ASV, value, -Sample) %>% 
+  spread(Sample, value)
+  
+saveRDS(count_normalized2, file="../data_intermediate/SFA2_count_normalized.rds")
+
+# Taxonomy
+saveRDS(tax_processed, file="../data_intermediate/SFA2_tax_processed.rds")
+
+# Tree
+tree_processed <- phy_tree(physeq3)
+saveRDS(tree_processed, file="../data_intermediate/SFA2_tree_processed.rds")
+```
+
+
+
+
+

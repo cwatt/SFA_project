@@ -35,8 +35,12 @@ tax_rep2 <- read_tsv(file="../data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxon
 count_rep3 <- read_tsv(file="../data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
 tax_rep3 <- read_tsv(file="../data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
 
+# Redos
+count_redos <- read_tsv(file="../data_amplicon/SFA2_full/redos/final/SFA2_redos.counts-final.tsv")
+tax_redos <- read_tsv(file="../data_amplicon/SFA2_full/redos/final/SFA2_redos.taxonomy-final.tsv")
+
 # Metadata
-meta <- read_tsv(file = "../data_amplicon/SFA2_full/SFA2_metadata.tsv")
+meta <- read_tsv(file = "../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 ```
 
 ### Isolate Aquifex ASVs
@@ -44,6 +48,7 @@ meta <- read_tsv(file = "../data_amplicon/SFA2_full/SFA2_metadata.tsv")
 Create function that isolates Aquifex ASVs from count data:
 
 ```{r}
+# Define function to isolate Aquifex ASVs
 aquifex_count <- function(tax, count) { 
   asvs <- tax %>% 
     filter(Genus == "Aquifex") %>% 
@@ -56,16 +61,30 @@ aquifex_count <- function(tax, count) {
 Generate Aquifex count tables:
 
 ```{r}
+# Isolate Aquifex spike-in ASVs from each dataset
 aqui_count_rep1 <- aquifex_count(tax_rep1, count_rep1)
 aqui_count_rep2 <- aquifex_count(tax_rep2, count_rep2)
 aqui_count_rep3 <- aquifex_count(tax_rep3, count_rep3)
+aqui_count_redos <- aquifex_count(tax_redos, count_redos)
 
 # Merge and reformat
-aqui_count <- inner_join(aqui_count_rep1, aqui_count_rep2) %>%
-  inner_join(aqui_count_rep3) %>% # merge replicates into one df
-  pivot_longer(cols = -ASV, names_to = "Sample", values_to = "count") %>% # long format
-  mutate(Sample = as.numeric(Sample)) %>%
-  inner_join(meta, by="Sample") # add metadata
+meta_reps <- filter(meta, Library %in% c(1, 2, 3))
+aqui_count_reps <- inner_join(aqui_count_rep1, aqui_count_rep2) %>% # combine replicates
+  inner_join(aqui_count_rep3) %>%
+  pivot_longer(cols = -ASV, names_to = "SampleID", values_to = "count") %>% # long format
+  mutate(SampleID = as.numeric(SampleID)) %>%
+  inner_join(meta_reps, by="SampleID") # add metadata # filter attempt original only
+
+# Redos (can't add using inner_join because repeated sample names)
+# problem, counts the same for original and redo samples, replaced original with redo
+aqui_asvs <- unique(aqui_count_reps$ASV)
+meta_redos <- filter(meta, Library == 4)
+aqui_count <- filter(aqui_count_redos, ASV %in% aqui_asvs) %>% # remove Aquifex ASVs not found in other replicates
+  pivot_longer(cols = -ASV, names_to = "SampleID", values_to = "count") %>% # long format
+  mutate(SampleID = as.numeric(SampleID)) %>%
+  inner_join(meta_redos, by="SampleID") %>% # add metadata
+  bind_rows(aqui_count_reps) # add to other data
+
 ```
 
 ### Calculate proportion of Aquifex internal standard in each sample.
@@ -73,29 +92,35 @@ aqui_count <- inner_join(aqui_count_rep1, aqui_count_rep2) %>%
 Create function to calculate total reads per sample:
 
 ```{r}
-total_reads <- function(count) {
+# Function to calculate total reads per sample
+total_reads <- function(count, meta) {
   count %>% 
-    gather(Sample, value, -ASV) %>% # transpose
+    gather(SampleID, value, -ASV) %>% # transpose
+    mutate(SampleID = as.numeric(SampleID)) %>% 
     spread(ASV, value) %>%
     mutate(total = rowSums(.[-1])) %>% # calculate row sums
-    select(Sample, total)
+    select(SampleID, total) %>% 
+    inner_join(meta, by="SampleID")
 }
 ```
 
 Add sample read totals to Aquifex count data:
 
 ```{r}
-total_rep1 <- total_reads(count_rep1)
-total_rep2 <- total_reads(count_rep2)
-total_rep3 <- total_reads(count_rep3)
+# Calculate total reads per sample
+total_rep1 <- total_reads(count_rep1, meta_reps)
+total_rep2 <- total_reads(count_rep2, meta_reps)
+total_rep3 <- total_reads(count_rep3, meta_reps)
+total_redos <- total_reads(count_redos, meta_redos)
 
-# Merge
+# Merge datasets
 total_reads <- bind_rows(total_rep1, total_rep2) %>%
   bind_rows(total_rep3) %>%
-  mutate(Sample = as.numeric(Sample))
+  bind_rows(total_redos) %>% 
+  mutate(SampleID = as.numeric(SampleID))
 
-aqui_total_reads <- inner_join(aqui_count, total_reads, by="Sample") %>%
-  select(Sample, count, total, everything(), -c(ASV, revC_fwd, primer_num))
+aqui_total_reads <- inner_join(aqui_count, total_reads) %>%
+  select(SampleID, Attempt, count, total, everything(), -c(ASV, BarcodeSequence, Primer_num))
 ```
 
 Calculate proportion of Aquifex reads per sample:
@@ -127,7 +152,7 @@ Visualize:
 aqui_prop %>%
   filter(Type != "pcr_control") %>%
   mutate(Replicate = as.factor(Replicate)) %>%
-  ggplot(aes(x=Sample, y=prop, color=Replicate)) +
+  ggplot(aes(x=SampleID, y=prop, color=Replicate)) +
   geom_point() +
   labs(y="Proportion Aquifex ASV") +
   theme_test()
