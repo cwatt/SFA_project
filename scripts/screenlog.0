@@ -2316,3 +2316,190 @@ Usage: [34mqiime demux summarize[0m [OPTIONS]
 [32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza as NewickDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/[0m
 [32m[I 10:44:24.167 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
 [32m[I 10:44:24.958 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:b33cc1e8cba5427280ba99301ba8ce75
+[32m[I 10:32:38.069 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 11:05:55.267 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:3e741ccf9e3a41308c36e9fb658f0d46
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux.qza[0m
+[32m[I 11:20:14.054 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux-details.qza[0m
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.demux-details.qza[0m
+[32m[I 12:43:05.512 NotebookApp][m Kernel interrupted: 9ec8566d-dfd2-4702-9d04-8cf4f62684a1
+
+Aborted!
+[32m[I 12:44:48.210 NotebookApp][m Kernel interrupted: 9ec8566d-dfd2-4702-9d04-8cf4f62684a1
+
+Aborted!
+[32m[I 12:44:51.168 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:b43e1a0c5adf4702a704553f08ff2a75
+
+Aborted!
+Usage: [34mqiime demux summarize[0m [OPTIONS]
+
+  Summarize counts per sample for all samples, and generate interactive
+  positional quality plots based on `n` randomly selected sequences.
+
+[1mInputs[0m:
+  [34m[4m--i-data[0m ARTIFACT [32mSampleData[SequencesWithQuality |[0m
+    [32mPairedEndSequencesWithQuality | JoinedSequencesWithQuality][0m
+                       The demultiplexed sequences to be summarized.
+                                                                    [35m[required][0m
+[1mParameters[0m:
+  [34m--p-n[0m INTEGER        The number of sequences that should be selected at
+                       random for quality score plots. The quality plots will
+                       present the average positional qualities across all of
+                       the sequences selected. If input sequences are paired
+                       end, plots will be generated for both forward and
+                       reverse reads for the same `n` sequences.
+                                                              [35m[default: 10000][0m
+[1mOutputs[0m:
+  [34m[4m--o-visualization[0m VISUALIZATION
+                                                                    [35m[required][0m
+[1mMiscellaneous[0m:
+  [34m--output-dir[0m PATH    Output unspecified results to a directory
+  [34m--verbose[0m / [34m--quiet[0m  Display verbose output to stdout and/or stderr during
+                       execution of this action. Or silence output if
+                       execution is successful (silence is golden).
+  [34m--examples[0m           Show usage examples and exit.
+  [34m--citations[0m          Show citations and exit.
+  [34m--help[0m               Show this message and exit.
+
+[33m                    There was a problem with the command:                     [0m
+[31m[1m (1/1) Invalid value for '--i-data': '/home/cassi/SFAgrowthrate/data_amplicon/
+  SFA2_full/rep2/intermediate/SFA2_rep2.demux.qza' is not a valid filepath[0m
+Usage: [34mqiime demux summarize[0m [OPTIONS]
+
+  Summarize counts per sample for all samples, and generate interactive
+  positional quality plots based on `n` randomly selected sequences.
+
+[1mInputs[0m:
+  [34m[4m--i-data[0m ARTIFACT [32mSampleData[SequencesWithQuality |[0m
+    [32mPairedEndSequencesWithQuality | JoinedSequencesWithQuality][0m
+                       The demultiplexed sequences to be summarized.
+                                                                    [35m[required][0m
+[1mParameters[0m:
+  [34m--p-n[0m INTEGER        The number of sequences that should be selected at
+                       random for quality score plots. The quality plots will
+                       present the average positional qualities across all of
+                       the sequences selected. If input sequences are paired
+                       end, plots will be generated for both forward and
+                       reverse reads for the same `n` sequences.
+                                                              [35m[default: 10000][0m
+[1mOutputs[0m:
+  [34m[4m--o-visualization[0m VISUALIZATION
+                                                                    [35m[required][0m
+[1mMiscellaneous[0m:
+  [34m--output-dir[0m PATH    Output unspecified results to a directory
+  [34m--verbose[0m / [34m--quiet[0m  Display verbose output to stdout and/or stderr during
+                       execution of this action. Or silence output if
+                       execution is successful (silence is golden).
+  [34m--examples[0m           Show usage examples and exit.
+  [34m--citations[0m          Show citations and exit.
+  [34m--help[0m               Show this message and exit.
+
+[33m                    There was a problem with the command:                     [0m
+[31m[1m (1/1) Invalid value for '--i-data': '/home/cassi/SFAgrowthrate/data_amplicon/
+  SFA2_full/rep3/intermediate/SFA2_rep3.demux.qza' is not a valid filepath[0m
+Usage: [34mqiime demux summarize[0m [OPTIONS]
+
+  Summarize counts per sample for all samples, and generate interactive
+  positional quality plots based on `n` randomly selected sequences.
+
+[1mInputs[0m:
+  [34m[4m--i-data[0m ARTIFACT [32mSampleData[SequencesWithQuality |[0m
+    [32mPairedEndSequencesWithQuality | JoinedSequencesWithQuality][0m
+                       The demultiplexed sequences to be summarized.
+                                                                    [35m[required][0m
+[1mParameters[0m:
+  [34m--p-n[0m INTEGER        The number of sequences that should be selected at
+                       random for quality score plots. The quality plots will
+                       present the average positional qualities across all of
+                       the sequences selected. If input sequences are paired
+                       end, plots will be generated for both forward and
+                       reverse reads for the same `n` sequences.
+                                                              [35m[default: 10000][0m
+[1mOutputs[0m:
+  [34m[4m--o-visualization[0m VISUALIZATION
+                                                                    [35m[required][0m
+[1mMiscellaneous[0m:
+  [34m--output-dir[0m PATH    Output unspecified results to a directory
+  [34m--verbose[0m / [34m--quiet[0m  Display verbose output to stdout and/or stderr during
+                       execution of this action. Or silence output if
+                       execution is successful (silence is golden).
+  [34m--examples[0m           Show usage examples and exit.
+  [34m--citations[0m          Show citations and exit.
+  [34m--help[0m               Show this message and exit.
+
+[33m                    There was a problem with the command:                     [0m
+[31m[1m (1/1) Invalid value for '--i-data': '/home/cassi/SFAgrowthrate/data_amplicon/
+  SFA2_full/redos/intermediate/SFA2_redos.demux.qza' is not a valid filepath[0m
+[32m[I 12:44:53.790 NotebookApp][m Kernel restarted: 9ec8566d-dfd2-4702-9d04-8cf4f62684a1
+[32m[I 12:44:54.033 NotebookApp][m Restoring connection for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:b43e1a0c5adf4702a704553f08ff2a75
+[32m[I 12:44:54.033 NotebookApp][m Replaying 10 buffered messages
+[32m[I 12:46:14.399 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux.qza[0m
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux-details.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux-details.qza[0m
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.demux-details.qza[0m
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.demux-details.qza[0m
+[32mSaved SampleData[PairedEndSequencesWithQuality] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.demux.qza[0m
+[32mSaved ErrorCorrectionDetails to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.demux-details.qza[0m
+[32m[I 15:24:13.978 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 15:52:13.981 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.demux.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.demux.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.demux.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.demux.qzv[0m
+[32m[I 16:00:13.984 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 16:26:13.963 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved FeatureTable[Frequency] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.table.qza[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.rep-seqs.qza[0m
+[32mSaved SampleData[DADA2Stats] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.denoising-stats.qza[0m
+[32mSaved FeatureTable[Frequency] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.table.qza[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.rep-seqs.qza[0m
+[32mSaved SampleData[DADA2Stats] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.denoising-stats.qza[0m
+[32mSaved FeatureTable[Frequency] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.table.qza[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.rep-seqs.qza[0m
+[32mSaved SampleData[DADA2Stats] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.denoising-stats.qza[0m
+[32mSaved FeatureTable[Frequency] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.table.qza[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.rep-seqs.qza[0m
+[32mSaved SampleData[DADA2Stats] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.denoising-stats.qza[0m
+[32m[I 17:20:13.961 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.table.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.rep-seqs.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.table.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.rep-seqs.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.table.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.rep-seqs.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.table.qzv[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.rep-seqs.qzv[0m
+[32m[I 17:52:13.936 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved FeatureData[Taxonomy] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.taxonomy.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.taxonomy-summary.qzv[0m
+[32mSaved FeatureData[Taxonomy] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.taxonomy.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.taxonomy-summary.qzv[0m
+[32m[I 18:08:19.118 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 18:08:25.459 NotebookApp][m Starting buffering for 9ec8566d-dfd2-4702-9d04-8cf4f62684a1:b43e1a0c5adf4702a704553f08ff2a75
+[32mSaved FeatureData[Taxonomy] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.taxonomy.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.taxonomy-summary.qzv[0m
+[32mSaved FeatureData[Taxonomy] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.taxonomy.qza[0m
+[32mSaved Visualization to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.taxonomy-summary.qzv[0m
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/SFA2_rep1.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep1/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/SFA2_rep2.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep2/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/SFA2_rep3.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/rep3/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.table.qza as BIOMV210DirFmt to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.taxonomy.qza as TSVTaxonomyDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/SFA2_redos.rep-seqs.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/redos/intermediate/[0m
+[32mExported /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza as NewickDirectoryFormat to directory /home/cassi/SFAgrowthrate/data_amplicon/SFA2_full/tree/[0m

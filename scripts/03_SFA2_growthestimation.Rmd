@@ -27,25 +27,25 @@ sessionInfo()
 * Taxonomy table
 * Metadata
 
-See 02_SFA2_preprocess.Rmd.
+See 02.5_SFA2_preprocess_redos.Rmd.
 
 ```{r}
 # Count data
-count_normalized <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
-  gather(Sample, ARNIS_ratio, -ASV) %>% 
-  mutate(Sample = as.double(gsub("sa", "", Sample)))
+count_norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
+  gather(SampleID, ARNIS_ratio, -ASV) %>% 
+  mutate(SampleID = as.double(gsub("sa", "", SampleID)))
 
 # Taxonomy
 tax <- readRDS("../data_intermediate/SFA2_tax_processed.rds") %>% 
   rownames_to_column(var="ASV")
 
 # Metadata
-meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata.tsv")
+meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 
 # Merge
-norm_tax_meta <- inner_join(count_normalized, tax, by="ASV") %>% 
-  inner_join(meta, by="Sample") %>% 
-  select(c(Sample, Type:Replicate, Domain:Species, ASV, ARNIS_ratio)) %>% 
+norm <- inner_join(count_norm, tax, by="ASV") %>% 
+  inner_join(meta, by="SampleID") %>% 
+  select(c(SampleID, Sample, Type:Replicate, Domain:Species, ASV, ARNIS_ratio)) %>% 
   mutate(Innoculant = as_factor(Innoculant),
          Replicate = as_factor(Replicate)) %>% 
   mutate(across(Domain:Species, ~as.character(.x), {.col}))
@@ -56,7 +56,7 @@ norm_tax_meta <- inner_join(count_normalized, tax, by="ASV") %>%
 Remove Aquifex ASV: "445e8681c3c1a735760e6c394f5f4d0a"
 
 ```{r}
-norm_prep <- norm_tax_meta %>% 
+norm_prep <- norm %>% 
   filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a")
 ```
 
@@ -81,13 +81,11 @@ Average across technical replicates
 
 ```{r}
 norm_prep <- norm_prep %>% 
-  group_by(Type, Innoculant, DOC_pheno, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
+  group_by(Type, Innoculant, DOC, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
   summarize(ARNIS_ratio_avg = mean(ARNIS_ratio, na.rm = TRUE))
 ```
 
 Remove taxa that didn't occur in at least four time points
-
-* Three time points only seem mostly like noise
 
 ```{r}
 # Identify ASVs with less than 4 time points
@@ -126,7 +124,7 @@ All ASVS:
 norm_prep %>% 
   filter(Type=="Growth") %>% 
   ggplot(aes(x=Day, y=ln_ARNIS, color=Innoculant)) +
-  facet_wrap(~DOC_pheno) +
+  facet_wrap(~DOC) +
   geom_point() +
   geom_line() +
   facet_trelliscope(~ASV, scales="free_y", path="rmarkdown_files", self_contained=TRUE, height = 400, width = 1600) +
@@ -150,7 +148,7 @@ graph_timeseries <- function(df, asv) {
   graph <- df %>%
     filter(ASV==asv) %>% 
     ggplot(aes(x=Day, y=ln_ARNIS, color=Innoculant)) +
-    facet_wrap(~DOC_pheno) +
+    facet_wrap(~DOC) +
     geom_point() +
     geom_line() +
     labs(y="ln ARNIS ratio", x="Day", title=paste0(extract_tax(norm_prep, asv, "Phylum"), ", ", 
@@ -163,18 +161,30 @@ graph_timeseries <- function(df, asv) {
 ```{r}
 # Graph
 
-# Robust growth?
+# Robust growth
 graph_timeseries(norm_prep, "fed2377b60ef09790fc532bbbe2b4602")
-graph_timeseries(norm_prep, "fa9bfdf1098ec99a73f104f85e5495fb")
-graph_timeseries(norm_prep, "b395f80b4600c403b0f6e8164d0b0426")
+graph_timeseries(norm_prep, "0134683a521e4c34adf2d515cbbca84d")
+graph_timeseries(norm_prep, "1030f18ec1c231043abead5e7c3ac109")
+graph_timeseries(norm_prep, "4205b2d577048e1da9d9712f9476cd7b")
+
+# Less robust growth
+graph_timeseries(norm_prep, "29be7b1a76d1f575ef3ee8d7cc10f0b1")
+graph_timeseries(norm_prep, "30a0483ea3c97871b3c91f489fb13ece")
+graph_timeseries(norm_prep, "32102f31db06d8a0411da55c4102a9f9")
+graph_timeseries(norm_prep, "438ef58af72cb79f6a9220a0b79e976b")
+graph_timeseries(norm_prep, "4d0009900aead37d86f6c0a59ee97de3")
+graph_timeseries(norm_prep, "5906b37863a7a985418e910925a659ec")
+graph_timeseries(norm_prep, "5ce5182a13292aaa88c100640c03afca")
+graph_timeseries(norm_prep, "67e786df4bd7ffe42b17907db62caeee")
 
 # Death
-graph_timeseries(norm_prep, "0d91c5a1f756f5e13a32d818129c3311")
 graph_timeseries(norm_prep, "13e479df5562e8e93d620ac363eb9644")
+graph_timeseries(norm_prep, "2c574662d10f5b34e3b31cdbb9839ba2")
+graph_timeseries(norm_prep, "79fa5edf0f6123d3ea5c2c69b897fac1")
 
-# Low abundance issues?
-graph_timeseries(norm_prep, "0924a26c9d8a025ebf484bcaa701d964")
-graph_timeseries(norm_prep, "f3ee6597e842fb1961db2a37c2b306fa")
+# Low abundance issues/noise?
+graph_timeseries(norm_prep, "399eb38d8361026b8f897470becd3f13")
+graph_timeseries(norm_prep, "39a1ca18bf7123d31dbc41d7c4f03214")
 ```
 
 # Estimate growth
@@ -276,11 +286,12 @@ growth_estimate <- function(df, label, abund, time) {
 }
 ```
 
+
 Estimate growth characteristics:
 
 ```{r, eval=FALSE}
 # SLOW
-growth_estimates <- growth_estimate(norm_prep, label, ln_abund, Day)
+growth_estimates <- growth_estimate(norm_prep, "label", "ln_ARNIS", "Day") # fix
 
 saveRDS(growth_estimates, file = "../data_intermediate/SFA2_growth_estimates.rds")
 ```
