@@ -1,0 +1,157 @@
+---
+title: "SFA2 - alpha and beta diversity"
+author: "Cassandra Wattenburger"
+date: "11/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("phyloseq")
+
+sessionInfo()
+```
+
+# Import data
+
+Phyloseq object produced in 02_SFA2_preprocess_redos.Rmd. This data has been:
+* sparsity filtered
+* had mitochondria, chloroplasts, prokarya removed
+* Original samples that were resequenced replaced
+
+```{r}
+physeq <- readRDS("../data_intermediate/SFA2_physeq_counts.rds")
+physeq
+```
+
+# Prep data
+
+### Isolate final tp samples:
+
+These were used for DOC extractions and CO2 measurements.
+
+```{r}
+physeq2 <- subset_samples(physeq, Day==30 & Type=="Headspace")
+physeq2
+```
+
+### Assess read depth
+
+```{r}
+# Extract count and metadata from processed phyloseq object
+count_processed <- data.frame(otu_table(physeq2))
+meta_processed <- data.frame(sample_data(physeq2)) %>%
+  select(-SampleID) %>%
+  rownames_to_column(var="SampleID")
+
+# Calculate read depth per sample
+read_depth <- count_processed %>%
+  rownames_to_column(var="ASV") %>%
+  gather(SampleID, count, -ASV) %>%
+  spread(ASV, count) %>%
+  mutate(total_reads = rowSums(.[-1])) %>%
+  select(SampleID, total_reads) %>%
+  inner_join(meta_processed) %>% 
+  mutate(Attempt = as_factor(Attempt)) %>% 
+  as_tibble()
+
+# Min and max read depth
+max(read_depth$total_reads)
+min(read_depth$total_reads)
+
+# Visualize
+read_depth %>%
+  mutate(Replicate = as_factor(Replicate)) %>%
+  filter(Type != "pcr_control") %>%
+  ggplot(aes(x=Sample, y=total_reads, fill=Replicate)) +
+  geom_col() +
+  geom_hline(yintercept = 6000, linetype=2) +
+  labs(x="Sample", y="Reads") +
+  theme_test()
+```
+
+Lowest sequence depth is 6424, so I'll use that for rarefying.
+
+### Rarefy
+
+```{r}
+physeq3 <- rarefy_even_depth(physeq2, sample.size=6424, rngseed=42)
+physeq3
+```
+
+Remove non-samples:
+
+```{r}
+physeq4 <- subset_samples(physeq3, DOC %in% c("high", "low"))
+physeq4
+```
+
+# Alpha diversity
+
+### Richness
+
+```{r}
+# Extract data from phyloseq
+count_rarefied <- data.frame(otu_table(physeq4)) %>% 
+  rownames_to_column(var="ASV") %>% 
+  gather(SampleID, count, -ASV)
+tax_rarefied <- data.frame(tax_table(physeq4)) %>% 
+  rownames_to_column(var="ASV")
+meta_rarefied <- data.frame(sample_data(physeq4)) %>%
+  select(-SampleID) %>%
+  rownames_to_column(var="SampleID")
+
+# Combine
+tp30_counts <- inner_join(count_rarefied, tax_rarefied) %>% 
+  inner_join(meta_rarefied, by="SampleID") %>% 
+  select(c(SampleID, Sample, Type:Replicate, Domain:Species, ASV, count)) %>% 
+  mutate(Innoculant = as_factor(Innoculant),
+         Replicate = as_factor(Replicate)) %>% 
+  mutate(across(Domain:Species, ~as.character(.x), {.col}))
+```
+
+Calculate richness:
+
+```{r}
+tp30_richness <- tp30_counts %>% 
+  filter(count > 0) %>% 
+  filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a") %>%  # remove spike-in
+  group_by(Sample, Innoculant, DOC, Replicate) %>% 
+  summarize(richness = n()) %>% 
+  ungroup()
+```
+ 
+ Visualize:
+ 
+```{r}
+tp30_richness %>% 
+  ggplot(aes(x=DOC, y=richness)) +
+  geom_boxplot() +
+  theme_test()
+
+tp30_richness %>% 
+  ggplot(aes(x=DOC, y=richness, color=Innoculant)) +
+  geom_boxplot() +
+  theme_test()
+```
+
+# Beta diversity
+
+```{r}
+bray_dist <- distance(physeq4, method="bray")
+ord <- ordinate(physeq4, method="NMDS")
+plot_ordination(physeq4, ord, color="DOC") +
+  stat_ellipse(type="t")
+```
+
+
+

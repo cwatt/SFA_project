@@ -1,7 +1,7 @@
 ---
-title: "SFA2 - Growth estimations"
+title: "SFA2 - Death estimations"
 author: "Cassandra Wattenburger"
-date: "9/22/2021"
+date: "11/15/2021"
 output: html_document
 ---
 
@@ -23,189 +23,22 @@ sessionInfo()
 
 # Import data
 
-* Normalized count data
-* Taxonomy table
-* Metadata
-
-See 02.5_SFA2_preprocess_redos.Rmd.
+* Already prepped data from 03_SFA2_growthestimation.Rmd
+* metadata
 
 ```{r}
-# Count data
-count_norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
-  gather(SampleID, ARNIS_ratio, -ASV) %>% 
-  mutate(SampleID = as.double(gsub("sa", "", SampleID)))
-
-# Taxonomy
-tax <- readRDS("../data_intermediate/SFA2_tax_processed.rds") %>% 
-  rownames_to_column(var="ASV")
-
-# Metadata
+norm_prepped <- readRDS("../data_intermediate/SFA2_norm_prepped.rds")
 meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
-
-# Merge
-norm <- inner_join(count_norm, tax, by="ASV") %>% 
-  inner_join(meta, by="SampleID") %>% 
-  select(c(SampleID, Sample, Type:Replicate, Domain:Species, ASV, ARNIS_ratio)) %>% 
-  mutate(Innoculant = as_factor(Innoculant),
-         Replicate = as_factor(Replicate)) %>% 
-  mutate(across(Domain:Species, ~as.character(.x), {.col}))
 ```
 
-# Prepare data
+# Estimate death - from start of incubation
 
-Remove Aquifex ASV: "445e8681c3c1a735760e6c394f5f4d0a"
+I noticed many time series where taxa seemed to die off immediately during the incubation.
+
+Create saving function:
 
 ```{r}
-norm_prep <- norm %>% 
-  filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a")
-```
-
-Remove samples that did not contain internal standard
-
-* These are now Inf because previous script tried to divide by 0
-
-```{r}
-norm_prep <- norm_prep[!is.infinite(norm_prep$ARNIS_ratio),]
-```
-
-Remove non-present taxa
-
-```{r}
-norm_prep <- norm_prep %>% 
-  filter(ARNIS_ratio != 0)
-```
-
-Average across technical replicates
-
-* For better coverage of time series
-
-```{r}
-norm_prep <- norm_prep %>% 
-  group_by(Type, Innoculant, DOC, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
-  summarize(ARNIS_ratio_avg = mean(ARNIS_ratio, na.rm = TRUE)) %>% 
-  ungroup()
-```
-
-Remove taxa that didn't occur in at least four time points
-
-```{r}
-# Identify ASVs with less than 4 time points
-norm_occurs <- norm_prep %>% 
-  group_by(ASV, Type, Innoculant) %>% 
-  summarize(occurs = n()) %>% 
-  filter(occurs > 3) %>% 
-  ungroup()
-
-# Filter
-norm_prep <- inner_join(norm_prep, norm_occurs, by=c("ASV", "Innoculant", "Type")) %>% 
-  select(everything(), -occurs)
-```
-
-Natural log transform
-
-```{r}
-norm_prep <- norm_prep %>% 
-  mutate(ln_ARNIS = log(ARNIS_ratio_avg))
-```
-
-Create unique label for each ASV and time series
-
-```{r}
-norm_prep <- norm_prep %>%
-  mutate(label = paste0(Type, Innoculant, "_", ASV))
-```
-
-
-### Visualize time series
-
-All ASVS:
-
-```{r, eval=FALSE}
-# Slow
-# Opens in browser
-norm_prep %>% 
-  filter(Type=="Growth") %>% 
-  ggplot(aes(x=Day, y=ln_ARNIS, color=Innoculant)) +
-  facet_wrap(~DOC) +
-  geom_point() +
-  geom_line() +
-  facet_trelliscope(~ASV, scales="free_y", path="rmarkdown_files", self_contained=TRUE, height = 400, width = 1600) +
-  labs(y="ln ARNIS ratio", x="Day") +
-  theme_test()
-```
-
-Specific examples:
-
-```{r}
-# Function to extract taxonomic info for graphs
-extract_tax <- function(df, asv, level) { # Data frame, "ASV", "Taxonomy level"
-  temp <- df %>% 
-    filter(ASV == asv)
-  tax <- unique(temp[[level]])
-  return(tax)
-  }
-
-# Time series graphing function
-graph_timeseries <- function(df, asv) {
-  graph <- df %>%
-    filter(ASV==asv) %>% 
-    ggplot(aes(x=Day, y=ln_ARNIS, color=Innoculant)) +
-    facet_wrap(~DOC) +
-    geom_point() +
-    geom_line() +
-    labs(y="ln ARNIS ratio", x="Day", title=paste0(extract_tax(norm_prep, asv, "Phylum"), ", ", 
-                                                            extract_tax(norm_prep, asv, "Genus"))) +
-    theme_test()
-  return(graph)
-}
-```
-
-```{r}
-# Graphs
-# Robust growth
-graph_timeseries(norm_prep, "fed2377b60ef09790fc532bbbe2b4602")
-graph_timeseries(norm_prep, "0134683a521e4c34adf2d515cbbca84d")
-graph_timeseries(norm_prep, "1030f18ec1c231043abead5e7c3ac109")
-graph_timeseries(norm_prep, "4205b2d577048e1da9d9712f9476cd7b")
-
-# Less robust growth
-graph_timeseries(norm_prep, "29be7b1a76d1f575ef3ee8d7cc10f0b1")
-graph_timeseries(norm_prep, "30a0483ea3c97871b3c91f489fb13ece")
-graph_timeseries(norm_prep, "32102f31db06d8a0411da55c4102a9f9")
-graph_timeseries(norm_prep, "438ef58af72cb79f6a9220a0b79e976b")
-graph_timeseries(norm_prep, "4d0009900aead37d86f6c0a59ee97de3")
-graph_timeseries(norm_prep, "5906b37863a7a985418e910925a659ec")
-graph_timeseries(norm_prep, "5ce5182a13292aaa88c100640c03afca")
-graph_timeseries(norm_prep, "67e786df4bd7ffe42b17907db62caeee")
-
-# Death
-graph_timeseries(norm_prep, "13e479df5562e8e93d620ac363eb9644")
-graph_timeseries(norm_prep, "2c574662d10f5b34e3b31cdbb9839ba2")
-graph_timeseries(norm_prep, "79fa5edf0f6123d3ea5c2c69b897fac1")
-
-# Low abundance issues/noise?
-graph_timeseries(norm_prep, "399eb38d8361026b8f897470becd3f13")
-graph_timeseries(norm_prep, "39a1ca18bf7123d31dbc41d7c4f03214")
-```
-
-# Estimate growth
-
-Prepare data:
-
-```{r}
-# Rename columns to match function reqiurements (this is easier to code)
-norm_prepped <- norm_prep %>% 
-  select(-(Type:DOC), -c(Domain:ARNIS_ratio_avg), label, time=Day, abund=ln_ARNIS)
-```
-
-```{r}
-saveRDS(norm_prepped, file="../data_intermediate/SFA2_norm_prepped.rds")
-```
-
-Create growth parameter saving function:
-
-```{r}
-# Function: Saves chosen growth estimate from below algorhithm
+# Function: Saves chosen estimate from below algorhithm
 save_fit <- function(label, start, end, df_sub, output) {
   # Save estimate info
   est <- NULL; coeff <- NULL; residuals <- NULL; pval <- NULL; thisrow <- data.frame() # clear previous
@@ -220,11 +53,11 @@ save_fit <- function(label, start, end, df_sub, output) {
 
 ```
 
-Estimate:
+Estimate death:
+
+* Same as algorhithm from 03_SFA2_growthestimation.Rmd but looking for negative slopes instead.
 
 ```{r}
-# Estimate growth
-
 ## Requires a dataframe with columns containing a unique label for each data point, abundance values, time points
 ## df = data frame containing time series with abundance values (ln transformed), long format
 ## df must contain columns named:
@@ -232,7 +65,7 @@ Estimate:
 ### abund = column with abundance values at each time point
 ### time = column with time point values
 df <- norm_prepped
-growth_estimates <- data.frame()
+death_estimates <- data.frame()
 for (label in as.character(unique(df$label))) {
     
   # Subset one time series using the label
@@ -253,7 +86,7 @@ for (label in as.character(unique(df$label))) {
       window_coeff <- window_lm$coefficients[2]
   
       # If a suitable fit is found and more time points exist that were not included, try extending the window
-      if (window_p <= 0.05 & window_coeff > 0 & end < nrow(df_sub)) {
+      if (window_p <= 0.05 & window_coeff < 0 & end < nrow(df_sub)) {
         for (extend_end in ((end+1):nrow(df_sub))) {
           if (stop == TRUE) {break}
             
@@ -270,36 +103,36 @@ for (label in as.character(unique(df$label))) {
           newwindow_coeff <- newwindow_lm$coefficients[2]
             
           # If see improvement and can add more data, continue extending the window
-          if (newwindow_p <= prevwindow_p & newwindow_coeff > 0 & extend_end < nrow(df_sub)) {
+          if (newwindow_p <= prevwindow_p & newwindow_coeff < 0 & extend_end < nrow(df_sub)) {
             next
           }
             
           # If no improvement, save the previous fit
-          else if (newwindow_p > prevwindow_p & prevwindow_coeff > 0 & extend_end < nrow(df_sub)) {
+          else if (newwindow_p > prevwindow_p & prevwindow_coeff < 0 & extend_end < nrow(df_sub)) {
             end <- extend_end - 1
-            growth_estimates <- save_fit(label, start, end, df_sub, growth_estimates)
+            death_estimates <- save_fit(label, start, end, df_sub, death_estimates)
             stop <- TRUE
           }
             
           # If see improvement (or no harm) but no more data points to fit, save the extended fit
-          else if (newwindow_p <= prevwindow_p & newwindow_coeff > 0 & extend_end == nrow(df_sub)) {
+          else if (newwindow_p <= prevwindow_p & newwindow_coeff < 0 & extend_end == nrow(df_sub)) {
             end <- extend_end
-            growth_estimates <- save_fit(label, start, end, df_sub, growth_estimates)
+            death_estimates <- save_fit(label, start, end, df_sub, death_estimates)
             stop <- TRUE
           } 
         }
       }
         
       # If no more data available to add to model, save the fit
-      else if (window_p <= 0.05 & window_coeff > 0 & end == nrow(df_sub)) {
-        growth_estimates <- save_fit(label, start, end, df_sub, growth_estimates)
+      else if (window_p <= 0.05 & window_coeff < 0 & end == nrow(df_sub)) {
+        death_estimates <- save_fit(label, start, end, df_sub, death_estimates)
         stop <- TRUE
       }
     }
   }
 }
 
-dim(growth_estimates)
+dim(death_estimates)
 ```
 
 ### Remove "essentially perfect fits"
@@ -308,9 +141,9 @@ I can't find any guidance on how to determine whether or not a fit is "perfect" 
 
 ```{r}
 # Remove "perfect" fits as precaution
-growth_estimates <- filter(growth_estimates, residuals >= 0.0001)
+death_estimates <- filter(death_estimates, residuals >= 0.0001)
 
-dim(growth_estimates)
+dim(death_estimates)
 ```
 
 None were removed.
@@ -321,7 +154,7 @@ None were removed.
 
 ```{r}
 # Choose lowest p-value window
-lowest_pvals <- growth_estimates %>% 
+lowest_pvals <- death_estimates %>% 
   group_by(label) %>% 
   summarize(pval = min(pval)) %>% 
   ungroup()
@@ -329,10 +162,10 @@ lowest_pvals <- growth_estimates %>%
 dim(lowest_pvals)
 
 # Filter chosen estimates
-growth_estimates <- growth_estimates %>% 
+death_estimates <- death_estimates %>% 
   semi_join(lowest_pvals)
 
-dim(growth_estimates)
+dim(death_estimates)
 ```
 
 # False positive control
@@ -340,14 +173,14 @@ dim(growth_estimates)
 Histogram of quality filtered p-values from actual estimates:
 
 ```{r}
-hist(growth_estimates$pval, xlab="P-values", main="Histogram of quality filtered p-values")
+hist(death_estimates$pval, xlab="P-values", main="Histogram of quality filtered p-values")
 ```
 
 This p-value distribution is anti-conservative based on the trailing right tail (this is a good thing). However, it appears that there must be some proportion of false positives based on how high that right tail is compared to the initial spike at the beginning of the distribution. We must do some form of multiple comparison control.
 
 See: http://varianceexplained.org/statistics/interpreting-pvalue-histogram/
 
-I'm choosing to use a permutation approach where I use my growth estimating algorhithm on randomly generated data with characteristics of the real data. I'll use this false positive information to filter my real estimates. Traditional false positive control methods are far too conservative for my dataset.
+I'm choosing to use a permutation approach where I use my estimating algorhithmhmhm on randomly generated data with characteristics of the real data. I'll use this false positive information to filter my real estimates. Traditional false positive control methods are far too conservative for my dataset.
 
 ### Simulate random data
 
@@ -356,14 +189,6 @@ Completely random data designed to reflect actual data, if we detect "significan
 Information about real dataset to use for simulating random data:
 * number of time points
 * min and max of abundance
-
-```{r}
-# Add metadata to prepped data
-norm_prepped_meta <- norm %>%
-  mutate(label = paste0(Type, Innoculant, "_", ASV)) %>% 
-  inner_join(norm_prepped) %>% 
-  select(everything(), -ARNIS_ratio)
-```
 
 
 ```{r, results="show"}
@@ -394,7 +219,7 @@ Simulate random time series:
 set.seed(2021)
 
 # Set time points
-tps <- unique(norm$Day)
+tps <- unique(meta$Day)
 tps <- na.omit(tps)
 
 # how to make these right tailed?
@@ -449,44 +274,7 @@ sim_num_points <- sim_data %>%
 hist(sim_num_points$num_pts)
 ```
 
-I'm happy with this.
-
-View some simulated time series:
-
-```{r}
-# Choose randomly
-sim_data %>%
-  filter(simulation == sample(1:1000, 1)) %>% 
-  ggplot(aes(x=rand_day, y=rand_abund)) +
-    geom_point() +
-    geom_line() +
-    theme_test()
-
-sim_data %>%
-  filter(simulation == sample(1:1000, 1)) %>% 
-  ggplot(aes(x=rand_day, y=rand_abund)) +
-    geom_point() +
-    geom_line() +
-    theme_test()
-
-sim_data %>%
-  filter(simulation == sample(1:1000, 1)) %>% 
-  ggplot(aes(x=rand_day, y=rand_abund)) +
-    geom_point() +
-    geom_line() +
-    theme_test()
-
-sim_data %>%
-  filter(simulation == sample(1:1000, 1)) %>% 
-  ggplot(aes(x=rand_day, y=rand_abund)) +
-    geom_point() +
-    geom_line() +
-    theme_test()
-```
-
-### Estimate "growth"
-
-Same method. I really need to turn this into a function instead.
+### Estimate "death"
 
 ```{r}
 # Prep simulated data (rename columns)
@@ -516,7 +304,7 @@ for (label in as.character(unique(df$label))) {
       window_coeff <- window_lm$coefficients[2]
   
       # If a suitable fit is found and more time points exist that were not included, try extending the window
-      if (window_p <= 0.05 & window_coeff > 0 & end < nrow(df_sub)) {
+      if (window_p <= 0.05 & window_coeff < 0 & end < nrow(df_sub)) {
         for (extend_end in ((end+1):nrow(df_sub))) {
           if (stop == TRUE) {break}
             
@@ -533,19 +321,19 @@ for (label in as.character(unique(df$label))) {
           newwindow_coeff <- newwindow_lm$coefficients[2]
             
           # If see improvement and can add more data, continue extending the window
-          if (newwindow_p <= prevwindow_p & newwindow_coeff > 0 & extend_end < nrow(df_sub)) {
+          if (newwindow_p <= prevwindow_p & newwindow_coeff < 0 & extend_end < nrow(df_sub)) {
             next
           }
             
           # If no improvement, save the previous fit
-          else if (newwindow_p > prevwindow_p & prevwindow_coeff > 0 & extend_end < nrow(df_sub)) {
+          else if (newwindow_p > prevwindow_p & prevwindow_coeff < 0 & extend_end < nrow(df_sub)) {
             end <- extend_end - 1
             sim_estimates <- save_fit(label, start, end, df_sub, sim_estimates)
             stop <- TRUE
           }
             
           # If see improvement (or no harm) but no more data points to fit, save the extended fit
-          else if (newwindow_p <= prevwindow_p & newwindow_coeff > 0 & extend_end == nrow(df_sub)) {
+          else if (newwindow_p <= prevwindow_p & newwindow_coeff < 0 & extend_end == nrow(df_sub)) {
             end <- extend_end
             sim_estimates <- save_fit(label, start, end, df_sub, sim_estimates)
             stop <- TRUE
@@ -554,7 +342,7 @@ for (label in as.character(unique(df$label))) {
       }
         
       # If no more data available to add to model, save the fit
-      else if (window_p <= 0.05 & window_coeff > 0 & end == nrow(df_sub)) {
+      else if (window_p <= 0.05 & window_coeff < 0 & end == nrow(df_sub)) {
         sim_estimates <- save_fit(label, start, end, df_sub, sim_estimates)
         stop <- TRUE
       }
@@ -622,10 +410,10 @@ Find 10%, 5%, 2.5%, 1% false positive allowance p-value thresholds:
 * Just guessing and checking p-value untill expected number of false positives achieved.
 
 ```{r}
-nrow(sim_estimates[sim_estimates$pval <= 0.0174,]) # ~10%, 100/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.0072,]) # ~5%, 50/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.0037,]) # ~2.5%, 25/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.0010,]) # ~1%, 10/1000
+nrow(sim_estimates[sim_estimates$pval <= 0.024,]) # ~10%, 100/1000
+nrow(sim_estimates[sim_estimates$pval <= 0.009,]) # ~5%, 50/1000
+nrow(sim_estimates[sim_estimates$pval <= 0.0044,]) # ~2.5%, 25/1000
+nrow(sim_estimates[sim_estimates$pval <= 0.002,]) # ~1%, 10/1000
 ```
 
 False positive thresholds:
@@ -635,104 +423,31 @@ False positive thresholds:
 * 1%: P-value = 0.001 (10/1000)
 
 ```{r}
-false10_pval <- 0.0174
-false5_pval <- 0.0072
-false2.5_pval <- 0.0037
-false1_pval <- 0.0010
+false10_pval <- 0.024
+false5_pval <- 0.009
+false2.5_pval <- 0.0044
+false1_pval <- 0.002
 ```
+
 
 Filter p-values based on cut-offs determined (10%, 5%, 2.5%, 1%):
 
 ```{r, restuls="show"}
 # ~10% false positives
-growth_falsepos10 <- subset(growth_estimates, pval <= false10_pval)
-nrow(growth_falsepos10)
+death_falsepos10 <- subset(death_estimates, pval <= false10_pval)
+nrow(death_falsepos10)
 
 # ~5% false positives
-growth_falsepos5 <- subset(growth_estimates, pval <= false5_pval)
-nrow(growth_falsepos5)
+death_falsepos5 <- subset(death_estimates, pval <= false5_pval)
+nrow(death_falsepos5)
 
 # 2.5%
-growth_falsepos2.5 <- subset(growth_estimates, pval <= false2.5_pval)
-nrow(growth_falsepos2.5)
+death_falsepos2.5 <- subset(death_estimates, pval <= false2.5_pval)
+nrow(death_falsepos2.5)
 
 # 1%
-growth_falsepos1 <- subset(growth_estimates, pval <= false1_pval)
-nrow(growth_falsepos1)
+death_falsepos1 <- subset(death_estimates, pval <= false1_pval)
+nrow(death_falsepos1)
 ```
 
-I'll go with 10% false positive rate because it retains more estimates.
-
-# Calculate specific growth rate (k)
-
-Steps:
-
-* Use estimated slope from growth curves to simulate growth over a time interval
-* Use simulated abundances to solve for k
-
-Using estimates filtered at 10% false positives.
-
-Formula: k=(log10(b)-log10(B))*2.303/t
-
-Where k is specific growth rate, B is abundance at beginning, b is abundance at end, and t is the time interval.
-
-I found this guide helpful: http://miller-lab.net/MillerLab/protocols/general-bacteriology/calculating-growth-rate/
-
-```{r}
-# Generate abundances over time interval based on estimated slope
-growth_final <- data.frame()
-B <- 1 # Start with one bacteria
-for (l in growth_falsepos10$label) {
-  growth_label <- filter(growth_falsepos10, label==l)
-  slope <- growth_label$coeff
-  b <- (slope*3)+1 # abundance three days later
-  k <- (log10(b)-log10(B))*(2.303/3) # calculate k
-  thisrow <- cbind(growth_label, k)
-  growth_final <- rbind(growth_final, thisrow)
-}
-```
-
-Visualize time series:
-
-```{r}
-# Isolate ASVs with estimated growth
-final_labels <- growth_estimates$label
-
-norm_final <- norm_prepped_meta %>% 
-  filter(label %in% final_labels)
-```
-
-```{r, eval=FALSE}
-# View time series with estimates
-# Will open in new browser window
-# Slow
-norm_final %>%
-  filter(Type=="Growth") %>% 
-  ggplot(aes(x=time, y=abund, color=Innoculant)) +
-  facet_wrap(~DOC) +
-  geom_point() +
-  geom_line() +
-  facet_trelliscope(~ASV, scales="free_y", path="rmarkdown_files", self_contained=TRUE, height = 400, width = 1600) +
-  labs(x="Day", y="ln ARNIS ratio", x="Day") +
-  theme_test()
-```
-
-Save progress:
-
-```{r, eval=FALSE}
-# Normalized abundance data of estimated taxa
-norm_save <- norm_final %>% 
-  select(Label=label, everything(), ln_ARNIS=abund, -time)
-
-saveRDS(norm_save, file="../data_intermediate/SFA2_norm_abund_estimates.rds")
-
-# Growth estimates
-growth_save <- growth_final %>% 
-  left_join(norm_save) %>% 
-  select(-ln_ARNIS)
-  
-saveRDS(growth_save, file="../data_intermediate/SFA2_growth_estimates.rds")
-```
-
-
-
+Going with 10% again to reflect growth estimations.

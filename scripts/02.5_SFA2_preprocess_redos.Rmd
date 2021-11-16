@@ -257,6 +257,12 @@ physeq4 <- subset_samples(physeq3, SampleID %!in% rm_samIDs)
 physeq4
 ```
 
+Save for later use:
+
+```{r, eval=FALSE}
+saveRDS(physeq4, file="../data_intermediate/SFA2_physeq_counts.rds")
+```
+
 ### Normalize to the internal standard
 
 For each taxa in each sample, taxa_counts/std_counts. Not rarefying.
