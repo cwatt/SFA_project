@@ -1,9 +1,10 @@
 ---
-title: "WIP - SFA2 growth estimations exploration"
+title: "WIP_death_explore"
 author: "Cassandra Wattenburger"
-date: "11/16/2021"
+date: "11/18/2021"
 output: html_document
 ---
+
 
 ```{r}
 # Clear working directory, load in packages, generate package info
@@ -17,13 +18,13 @@ sessionInfo()
 
 # Import data
 
-Files produced in 03_SFA2_growthestimates.Rmd
-* growth estimates
-* normalized abundance data for time series with estimated growth
+Files produced in 03_SFA2_deathestimates.Rmd
+* death estimates
+* normalized abundance data for time series with estimated death
 
 ```{r}
-# Growth
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+# death
+death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
 
 # Taxonomic information
 tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
@@ -31,11 +32,11 @@ tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
 
 # Exploration
 
-### Numbers of growing bacteria
+### Numbers of dying bacteria
 
 ```{r}
-# Number of taxa growing
-num_grow <- growth %>% 
+# Number of taxa dying
+num_grow <- death %>% 
   group_by(DOC, Innoculant) %>% 
   summarize(num_grew = n()) %>% 
   ungroup()
@@ -45,7 +46,7 @@ num_grow
 num_grow %>% 
   ggplot(aes(x=DOC, y=num_grew)) +
   geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Number of growth estimated taxa") +
+  labs(x="DOC \"phenotype\"", y="Number of death estimated taxa") +
   theme_test() +
   theme()
 ```
@@ -53,11 +54,11 @@ num_grow %>%
 ### Phylogenetic membership:
 
 ```{r}
-# Merge growth estimates with taxonomy
-growth_tax <- inner_join(growth, tax) 
+# Merge death estimates with taxonomy
+death_tax <- inner_join(death, tax) 
 
 # Graph phylogenetic membership
-growth_tax %>% 
+death_tax %>% 
   group_by(Phylum, DOC, Innoculant) %>% 
   summarize(count = n()) %>% 
   ungroup() %>% 
@@ -69,9 +70,9 @@ growth_tax %>%
   theme(axis.text.x = )
 ```
 
-### Growth parameters:
+### Death parameters:
 
-* specific growth rate (k)
+* specific death rate (k)
 * start day
 * change in abundance
 * start abundance
@@ -79,24 +80,24 @@ growth_tax %>%
 
 ### Distributions of parameters
 
-Specific growth rates
+Specific death rates
 
 ```{r}
-# Distribution of growth rates
-growth %>%
-  ggplot(aes(x=k, color=DOC)) +
+# Distribution of death rates
+death %>%
+  ggplot(aes(x=slope, color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="Specific growth rate (k)", y="Kernel Density") +
+  labs(x="Specific death rate (slope)", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
         axis.text=element_text(size=12),
         axis.title=element_text(size=12))
 
-growth %>%
-  ggplot(aes(x=k, color=Innoculant)) +
+death %>%
+  ggplot(aes(x=slope, color=Innoculant)) +
   geom_density(alpha=0.5) +
-  labs(x="Specific growth rate (k)", y="Kernel Density") +
+  labs(x="Specific death rate (k)", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -107,21 +108,21 @@ growth %>%
 Change in relational abundance
 
 ```{r}
-# Distribution of change in abundance during growth
-growth %>%
+# Distribution of change in abundance during death
+death %>%
   ggplot(aes(x=log(change_abund), color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="ln Change in relational abundance during growth", y="Kernel Density") +
+  labs(x="ln Change in relational abundance during death", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
         axis.text=element_text(size=12),
         axis.title=element_text(size=12))
 
-growth %>%
+death %>%
   ggplot(aes(x=log(change_abund), color=Innoculant, linetype=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="ln Change in relational abundance during growth", y="Kernel Density") +
+  labs(x="ln Change in relational abundance during death", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -132,8 +133,8 @@ growth %>%
 Start relational abundance
 
 ```{r}
-# Distribution of change in abundance during growth
-growth %>%
+# Distribution of change in abundance during death
+death %>%
   ggplot(aes(x=log(start_abund), color=DOC)) +
   geom_density(alpha=0.5) +
   labs(x="ln Starting relational abundance", y="Kernel Density") +
@@ -143,7 +144,7 @@ growth %>%
         axis.text=element_text(size=12),
         axis.title=element_text(size=12))
 
-growth %>%
+death %>%
   ggplot(aes(x=log(start_abund), color=Innoculant)) +
   geom_density(alpha=0.5) +
   labs(x="ln Starting in relational abundance", y="Kernel Density") +
@@ -157,8 +158,8 @@ growth %>%
 End relational abundance
 
 ```{r}
-# Distribution of change in abundance during growth
-growth %>%
+# Distribution of change in abundance during death
+death %>%
   ggplot(aes(x=log(end_abund), color=DOC)) +
   geom_density(alpha=0.5) +
   labs(x="ln Ending relational abundance", y="Kernel Density") +
@@ -168,7 +169,7 @@ growth %>%
         axis.text=element_text(size=12),
         axis.title=element_text(size=12))
 
-growth %>%
+death %>%
   ggplot(aes(x=log(end_abund), color=Innoculant)) +
   geom_density(alpha=0.5) +
   labs(x="ln Ending relational abundance", y="Kernel Density") +
@@ -183,9 +184,9 @@ growth %>%
 
 ```{r}
 # Summarize parameters
-growth_summary <- growth %>% 
+death_summary <- death %>% 
   group_by(DOC, Innoculant) %>% 
-  summarize(mean_k = mean(k),
+  summarize(mean_slope = mean(slope),
             mean_start_day = mean(start_day),
             mean_end_day = mean(end_day),
             mean_end_abund = mean(end_abund),
@@ -196,38 +197,38 @@ growth_summary <- growth %>%
 ```
 
 ```{r}
-# Mean k
-growth_summary %>% 
-  ggplot(aes(x=DOC, y=mean_k)) +
+# Mean slope
+death_summary %>% 
+  ggplot(aes(x=DOC, y=mean_slope)) +
   geom_point() +
   theme_test()
 
 # Mean start day
-growth_summary %>% 
+death_summary %>% 
   ggplot(aes(x=DOC, y=mean_start_day)) +
   geom_point() +
   theme_test()
 
 # Mean change abundance
-growth_summary %>% 
+death_summary %>% 
   ggplot(aes(x=DOC, y=mean_change_abund)) +
   geom_point() +
   theme_test()
 
 # Sum of change abundance
-growth_summary %>%
+death_summary %>%
   ggplot(aes(x=DOC, y=total_change_abund)) +
   geom_point() +
   theme_test()
 
 # Mean end abund
-growth_summary %>% 
+death_summary %>% 
   ggplot(aes(x=DOC, y=mean_end_abund)) +
   geom_point() +
   theme_test()
 
 # Sum of end abundance
-growth_summary %>% 
+death_summary %>% 
   ggplot(aes(x=DOC, y=total_end_abund)) +
   geom_point() +
   theme_test()
@@ -244,7 +245,7 @@ doc <- readRDS("../data_DOC/SFA2/SFA2_doc.rds") %>%
   mutate(Sample = as.numeric(Sample))
 
 # Metadata
-meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_full_metadata.tsv") %>% 
+meta <- read_tsv(file = "../data_amplicon/SFA2_full/SFA2_full_metadata.tsv") %>% 
   select(Sample, Type, Innoculant, DOC, Replicate, Day)
 
 # Merge and average technical replicates
@@ -254,10 +255,10 @@ doc_meta <- inner_join(doc, meta) %>%
   ungroup() %>% 
   mutate(Innoculant = as.character(Innoculant))
 
-# Join with growth estimates
-growth_summary <- growth %>% 
+# Join with death estimates
+death_summary <- death %>% 
   group_by(DOC, Innoculant) %>% 
-  summarize(mean_k = mean(k),
+  summarize(mean_slope = mean(slope),
             mean_start_day = mean(start_day),
             mean_end_day = mean(end_day),
             total_start_abund = sum(start_abund),
@@ -265,85 +266,37 @@ growth_summary <- growth %>%
             total_change_abund = sum(change_abund)) %>% 
   ungroup()
 
-doc_growth <- inner_join(doc_meta, growth_summary)
+doc_death <- inner_join(doc_meta, death_summary)
 ```
 
 ```{r}
 # k
-doc_growth %>% 
-  ggplot(aes(x=doc_avg, y=mean_k, color=DOC)) +
+doc_death %>% 
+  ggplot(aes(x=doc_avg, y=mean_slope, color=DOC)) +
   geom_point() +
   theme_test()
 
 # start day
-doc_growth %>% 
+doc_death %>% 
   ggplot(aes(x=doc_avg, y=mean_start_day, color=DOC)) +
   geom_point() +
   theme_test()
 
 # start abundance
-doc_growth %>% 
+doc_death %>% 
   ggplot(aes(x=doc_avg, y=total_start_abund, color=DOC)) +
   geom_point() +
   theme_test()
 
 # end abundance
-doc_growth %>% 
+doc_death %>% 
   ggplot(aes(x=doc_avg, y=total_end_abund, color=DOC)) +
   geom_point() +
   theme_test()
 
 # change abundance
-doc_growth %>% 
+doc_death %>% 
   ggplot(aes(x=doc_avg, y=total_change_abund, color=DOC)) +
   geom_point() +
   theme_test()
 ```
-
-# Statistics
-
-# ARCHIVE
-
-ASV-level pretty 
-* sure this is a bad idea!!! incorporates pseudoreps
-* distributions are the way to go I think
-* need to think about how distributions handle replication
-* or maybe mixed linear effects model could handle this? make innoculant a random effect? inforunately ASV should and can't be made random effect
-
-```{r, eval=FALSE}
-# Growth rate
-growth %>% 
-  ggplot(aes(x=DOC, y=k)) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-
-# Start day
-growth %>% 
-  ggplot(aes(x=DOC, y=start_day)) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-
-# Change in abundance
-growth %>% 
-  ggplot(aes(x=DOC, y=log(change_abund))) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-
-# Start abundance
-growth %>% 
-  ggplot(aes(x=DOC, y=log(start_abund))) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-
-# End abundance
-growth %>% 
-  ggplot(aes(x=DOC, y=log(end_abund))) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-```
-

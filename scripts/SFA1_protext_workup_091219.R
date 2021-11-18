@@ -4,7 +4,7 @@
 
 rm(list=ls())
 
-setwd("/home/cassi/SFAphase1/protein_extractions")
+setwd("/home/cassi/SFAgrowthrate/data_protein")
 
 library("tidyverse")
 library("broom")

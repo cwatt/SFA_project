@@ -768,5 +768,14 @@ growth_tidy <- growth_final %>%
 saveRDS(growth_tidy, file="../data_intermediate/SFA2_growth_estimates.rds")
 ```
 
+# Plot growth estimates
+
+Examples
+
+```{r}
+
+```
+
+
 
 

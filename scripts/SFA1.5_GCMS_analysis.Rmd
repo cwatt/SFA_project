@@ -18,7 +18,6 @@ Method: See pages 70, 77, 78 of Cassi Wattenburger's lab notebook #2.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(results = "hide")
-knitr::opts_knit$set(root.dir = 'home/cassi/SFAgrowthrate/SFAphase1.5/GCMS/data/')
 ```
 
 ```{r, message=FALSE}
@@ -84,6 +83,7 @@ for (i in names(files)) {
 ```
 
 ## Standards
+
 I will be using the TIC area for all calculations.
 ```{r}
 # Standards
@@ -141,6 +141,7 @@ ggplot(stds.df, aes(x=ppm, y=area.conv)) +
 ```
 
 ### Remove outliers in standards
+
 Outliers will be identified as lying outside 2 standard deviations of the average for its respective standard.
 ```{r}
 # Identify outliers
@@ -157,7 +158,10 @@ for (i in unique(stds.df$std)) {
 stds.nona.df <- na.omit(stds.df)
 
 # Summary statistics
-stds.summary.df <- stds.nona.df %>% group_by(std) %>% summarise(mean = mean(area.conv), sd=sd(area))
+stds.summary.df <- stds.nona.df %>% 
+  group_by(std) %>% 
+  summarise(mean = mean(area.conv), sd=sd(area)) %>% 
+  ungroup()
 stds.summary.df <- mutate(stds.summary.df, cutoff=sd*2) # defining outliers outside 2 standard deviations of mean
 stds.summary.df <- mutate(stds.summary.df, cutoff_min=mean-cutoff)
 stds.summary.df <- mutate(stds.summary.df, cutoff_max=mean+cutoff)
@@ -166,7 +170,8 @@ stds.summary.df <- mutate(stds.summary.df, cutoff_max=mean+cutoff)
 stds.rm.df <- data.frame()
 
 for (i in stds.summary.df$std) {
-  x <- filter(stds.nona.df[stds.nona.df$std==i,], !(area.conv < stds.summary.df$cutoff_min[stds.summary.df$std==i] | area.conv > stds.summary.df$cutoff_max[stds.summary.df$std==i])) # remove outliers
+  x <- filter(stds.nona.df[stds.nona.df$std==i,], !(area.conv < stds.summary.df$cutoff_min[stds.summary.df$std==i] | 
+                                                      area.conv > stds.summary.df$cutoff_max[stds.summary.df$std==i])) # remove outliers
   stds.rm.df <- rbind(x, stds.rm.df)
 }
 
@@ -182,9 +187,11 @@ ggplot(stds.rm.df, aes(x=ppm, y=area.conv)) +
 ```
 
 ### Create calibration for samples based on standards
+
 Standards will be aggregated across days and used to calculate the regression. I'm taking this approach because there were issues with the standards in the first week of the sampling effort, rendering the standards from those days useless.
 
 First, check if standard data has significant trend across days (include outliers):
+
 ```{r}
 # First, check if standard data has signficant trend across days
 ## all data
@@ -200,9 +207,11 @@ day.rm.anova
 # No trend by day, good to combine data across time points
 
 ```
+
 Because there isn't a significant trend, I feel good about aggregating these data.
 
 Perform linear regression:
+
 ```{r}
 # Linear regression
 stds.conv <- lm(area.conv ~ ppm, data=stds.rm.df)
@@ -217,6 +226,7 @@ stds.conv.df <- as.data.frame(tidy(stds.conv))
 ```
 
 ### Ambient data
+
 Because these samples were taken by transferring 2 mL of headspace into a evacuated 2 mL gas vial, ambient CO2 must be subtracted from the samples.
 
 Removing outliers to account for carry-over contamination that will skew ambient average. Based on 2 standard deviations from average.
@@ -253,7 +263,6 @@ amb.rm.df <- filter(amb.df, !(amb.df$area < amb_min | amb.df$area > amb_max))
 amb.value <- mean(amb.rm.df$area)
 ```
 
-
 ```{r, results="show"}
 # All ambient data
 ggplot(amb.rm.df, aes(x=date, y=area)) +
@@ -273,6 +282,7 @@ ggplot(stds.rm.df, aes(x=ppm, y=area.conv)) +
 ```
 
 ## Headspace samples
+
 ```{r}
 # Extract sample data
 samples <- list()
@@ -335,6 +345,7 @@ samples.df$area <- as.numeric(samples.df$area)
 ```
 
 Convert headspace samples to ppm based on calibtration curve...
+
 ```{r}
 # Apply conversion to samples
 samples.df <- mutate(samples.df, ppm = (area - stds.conv.df[1,2])/stds.conv.df[2,2])
@@ -371,6 +382,7 @@ ggplot(samples.df, aes(x=sample, y=ppm.final, color=type)) +
 ```
 
 ### Calculate cumulative CO2
+
 ```{r}
 # Convert ppm to mol CO2
 # Ideal gas law: n=(P*V)/(R*temp)
@@ -388,7 +400,10 @@ mgCO2 <- molCO2*mwCO2*1000 # NOTE: This is the mg of CO2 present if the headspac
 samples.df <- mutate(samples.df, CO2mg=mgCO2*(ppm.final*10^-6)) # mg CO2 for each sample based on ppm measured at each time point
 
 # Sum all time points
-totalresp.df <- samples.df %>% group_by(sample, rep) %>% summarize(CO2.total = sum(CO2mg, na.rm=TRUE))
+totalresp.df <- samples.df %>% 
+  group_by(sample, rep) %>% 
+  summarize(CO2.total = sum(CO2mg, na.rm=TRUE)) %>% 
+  ungroup()
 
 # Reformating
 
@@ -397,7 +412,7 @@ totalresp.df$ucosm <- rownames(totalresp.df)
 totalresp.df$ucosm <- as.double(totalresp.df$ucosm)
 
 # Metadata
-meta <- read_csv("data_DOC/SFA1.5/SFA1.5_DOC_metadata.csv")
+meta <- read_csv("../data_DOC/SFA1.5/SFA1.5_DOC_metadata.csv")
   
 # Merge
 totalresp.meta <- inner_join(meta, totalresp.df) %>%
@@ -406,20 +421,36 @@ totalresp.meta <- inner_join(meta, totalresp.df) %>%
 # Summarize
 totalresp.summary <- totalresp.meta %>%
   group_by(Sample, DOC) %>%
-  summarize(CO2.mean = mean(CO2.total))
+  summarize(CO2.mean = mean(CO2.total)) %>% 
+  ungroup()
 
 ```
 
 ```{r}
 # Graph cumulative CO2
-totalresp.summary %>%
+resp_plot <- totalresp.summary %>%
+  filter(DOC!="negative") %>% 
   ggplot(aes(x=DOC, y=CO2.mean)) +
   geom_boxplot() +
   #geom_text(aes(label=Sample), hjust=0, vjust=0) +
-  labs(y="Cumulative CO2 (mg)", x="DOC phenotype") +
+  labs(y="Cumulative CO2 (mg)", x="DOC \"phenotype\"") +
   theme_test() +
-  theme(text=element_text(size=20))
-
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+resp_plot
 ```
 
+```{r, eval=FALSE}
+ggsave(resp_plot, file="../figures/SFA1.5_CO2.png", units="mm", width=100, height=100)
+```
+
+```{r}
+co2_lm <- lm(CO2.mean ~ DOC, data=totalresp.summary)
+hist(resid(co2_lm))
+plot(predict(co2_lm), resid(co2_lm))
+
+# Use test that can handle unequal variances = Welch's t-test
+t.test(CO2.mean ~ DOC, data = filter(totalresp.summary, DOC!="negative"), var.equal=FALSE)
+```
 

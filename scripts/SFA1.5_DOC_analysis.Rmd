@@ -68,12 +68,16 @@ doc.plot <- doc.mean %>%
   filter(DOC != "negative") %>%
   ggplot(aes(x=DOC, y=sample.mean)) +
   geom_boxplot() +
-  labs(x="DOC phenotype", y="Mean DOC conc. (ppm)") +
-  annotate("text", x=2.1, y=1350, label="P-value < 0.0001") +
+  labs(x="DOC \"phenotype\"", y="DOC conc. (ppm)") +
+  #annotate("text", x=2.1, y=1350, label="P-value < 0.0001") +
   theme_test() +
-  theme(text = element_text(size=15))
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
 doc.plot
+```
 
+```{r, eval=FALSE}
 ggsave(doc.plot, file="../figures/SFA1.5_DOC.png", units="mm", width=100, height=100)
 ```
 
@@ -84,10 +88,9 @@ Linear mixed effects model to allow innoculants to vary independently (same used
 ```{r}
 doc.lmer <- lmer(mean ~ DOC + (1|Sample), data=doc.meta)
 hist(residuals(doc.lmer))
-plot(residuals(doc.lmer), predict(doc.lmer))
+plot(predict(doc.lmer), residuals(doc.lmer))
 summary(doc.lmer)
 ```
-
 
 Check normality and equality of variances.
 
@@ -104,17 +107,21 @@ ggplot(doc.mean, aes(sample = sample.mean, color = DOC, fill = DOC)) +
 leveneTest(sample.mean ~ DOC, data=doc.mean)
 ```
 
-Data appears normal and has equal variances. Use simple linear regression
+Data appears normal and has equal variances.
 
 ```{r}
-# Simple linear model
+# Mixed linear model
+# Innoculant as random effect
+doc_lmer = lmer(mean ~ DOC + (1|Sample), data = filter(doc.meta, DOC != "negative"))
+hist(resid(doc_lmer))
+plot(predict(doc_lmer), resid(doc_lmer))
+summary(doc_lmer)
+
+
 doc.lm = lm(sample.mean ~ DOC, data=doc.mean[which(doc.meta$DOC=="high" | doc.meta$DOC=="low"),])
 hist(resid(doc.lm)) # check normality of residuals
 plot(predict(doc.lm), resid(doc.lm)) # check that variances or equal
-summary(doc.lm)
-
-doc.test = t.test(sample.mean ~ DOC, data=doc.mean[which(doc.meta$DOC=="high" | doc.meta$DOC=="low"),], var.equal=TRUE)
-doc.test$p.value
+anova(doc.lm)
 ```
 
 T-test result same as linear regression result.
@@ -124,7 +131,7 @@ T-test result same as linear regression result.
 
 ```{r, results="show"}
 # SFA 1 data
-load("../r.objects/SFA1_DOC.data.RData")
+load("../data_DOC/SFA1/SFA1_DOC.data.RData")
 
 # Summarize replicates
 data.melt=melt(DOC.data[,c(2,3,6)], id.vars=c("s.type","Soil.sample"))

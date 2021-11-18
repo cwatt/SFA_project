@@ -8,7 +8,6 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(results = "hide")
-knitr::opts_knit$set(root.dir = 'home/cassi/SFAgrowthrate/SFAphase1.5/stdcheck_062220/data')
 ```
 
 **Goal of this script:** Identify high and low DOC-producing communties from soil microcosms
@@ -19,6 +18,7 @@ rm(list=ls())
 library(tidyverse)
 require(broom)
 library(reshape2)
+library(plyr)
 library(car)
 ```
 
@@ -26,10 +26,10 @@ library(car)
 # Import data
 
 # DOC
-load("data_DOC/SFA1/SFA1_DOC.data.RData")
+load("../data_DOC/SFA1/SFA1_DOC.data.RData")
 
 # CO2
-load("data_CO2/SFA1/SFA1_CO2.data.RData")
+load("../data_CO2/SFA1/SFA1_CO2.data.RData")
 
 ```
 
@@ -101,14 +101,18 @@ summary(test.fit)
 
 ```{r}
 docco2.biplot=ggplot(both.avg, aes(x=DOC.avg, y=CO2.avg)) +
-  geom_point() +
-  geom_smooth(method=lm) +
+  geom_point(size=2) +
+  geom_smooth(method=lm, linetype=2) +
   labs(x="DOC (ppm)", y=bquote('Total respired CO'[2]~'(mg)')) +
-  theme_test()
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
 docco2.biplot
 ```
+
 ```{r, eval=FALSE, include=FALSE}
-ggsave("SFA1_DOCCO2.graph.pdf", plot=docco2.biplot, width=6, height=4, units="in", device="pdf")
+ggsave("../figures/SFA1_DOCvsCO2.graph.png", plot=docco2.biplot, width=250, height=150, units="mm")
 ```
 
 ### Standardization check

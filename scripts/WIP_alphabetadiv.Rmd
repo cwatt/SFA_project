@@ -131,18 +131,27 @@ tp30_richness <- tp30_counts %>%
   ungroup()
 ```
  
- Visualize:
+Visualize:
  
 ```{r}
-tp30_richness %>% 
+rich_trt_plot <- tp30_richness %>% 
   ggplot(aes(x=DOC, y=richness)) +
   geom_boxplot() +
-  theme_test()
+  labs(x="DOC \"phentoype\"", y="ASV richness") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+rich_trt_plot
 
 tp30_richness %>% 
   ggplot(aes(x=DOC, y=richness, color=Innoculant)) +
   geom_boxplot() +
   theme_test()
+```
+
+```{r, eval=FALSE}
+ggsave(rich_trt_plot, file="../figures/SFA2_tp30richness.png", units="mm", width=100, height=100)
 ```
 
 ### Statistics
@@ -191,6 +200,11 @@ plot_ordination(physeq4, ord, color="DOC") +
 
 ```{r}
 # Permanova
+
+# Weighted unifrac
 adonis(wunifrac_dist ~ DOC*Innoculant, data = meta_rarefied, permutations = 9999)
+
+# Unweighted unifrac
+adonis(unifrac_dist ~ DOC*Innoculant, data = meta_rarefied, permutations = 9999)
 ```
 

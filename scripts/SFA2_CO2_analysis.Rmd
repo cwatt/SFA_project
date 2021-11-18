@@ -34,7 +34,7 @@ This script is built to run on data that has been stored in a project directory 
 
 ```{r}
 # List of directories containing data files
-dir = list.dirs(path="data_CO2/SFA2/data", full.names=TRUE, recursive=FALSE)
+dir = list.dirs(path="../data_CO2/SFA2/data", full.names=TRUE, recursive=FALSE)
 
 # Create lists of .txt files from directories
 files = list()
@@ -52,15 +52,15 @@ for (i in names(files)) { # for each list of files (refers to a directory)
   for (x in files[[i]]) { # for each file in the selected list (directory)
     # Create sample names based on file names
     # Strips the rest of the path from the sample name at the end
-    name = str_remove(x, "data_CO2/SFA2/data/.+/") %>%
+    name = str_remove(x, "../data_CO2/SFA2/data/.+/") %>%
       str_remove(".txt")
     #name.list[[i]] = append(name.list[[i]], name)
     
     # Isolate time point info
-    date = str_remove(x, "data_CO2/SFA2/data/") %>%
+    date = str_remove(x, "../data_CO2/SFA2/data/") %>%
       str_remove("/.+.txt") %>%
       str_remove(".+_")
-    tp = str_remove(x, "data_CO2/SFA2/data/") %>%
+    tp = str_remove(x, "../data_CO2/SFA2/data/") %>%
       str_remove("/.+.txt") %>%
       str_remove("_.+")
     
@@ -84,7 +84,6 @@ area.df = area.df %>%
   mutate(Date = parse_date(Date, "%m-%d-%Y"))
 ```
 
-
 # Calculate total area
 
 TIC area often does not record (not sure why), so we will use 12C + 13C instead which is a close approximation.
@@ -95,7 +94,6 @@ area.df = area.df %>%
   pivot_wider(names_from = Measurement, values_from = Area) %>%
   mutate(C1213 = C12+C13)
 ```
-
 
 # Standards
 
@@ -162,7 +160,6 @@ for (x in unique(std.df$Date)) {
 std.cal
 ```
 
-
 Remove std 1 - I think it would be better to include another high ppm sample instead of lower ones.
 
 ```{r}
@@ -190,7 +187,6 @@ for (x in unique(std.df$Date)) {
 
 std.cal1
 ```
-
 
 Remove std 1 and 4
 
@@ -221,7 +217,6 @@ std.cal14
 
 Same result. Will add more high ppm standards and omit stds 1 and 4 for future runs.
 
-
 # Samples
 
 Isolate microcosm samples
@@ -237,7 +232,7 @@ Add metadata information about innoculants
 
 ```{r}
 # Import metadata
-meta = read_csv("SFA2_headspace_metadata.csv")
+meta = read_csv("../data_CO2/SFA2/SFA2_headspace_metadata.csv")
 
 # Merge with CO2 data
 sample.df = full_join(sample.df, meta, by="Sample")
@@ -264,7 +259,7 @@ sample.df %>%
   theme_test()
 ```
 
-Outlier ~Dec. 15, looking at lab notes it seems I may have accidentally sampled twice into the same vial for this sample. THis means this value is ~2x more than what it should be. I'll correct this by halving the area value to approximate the correct measurement.
+Outlier ~ Dec. 15, looking at lab notes it seems I may have accidentally sampled twice into the same vial for this sample. This means this value is ~2x more than what it should be. I'll correct this by halving the area value to approximate the correct measurement.
 
 ```{r}
 # Isolate outlier and correct
@@ -277,7 +272,6 @@ sample.df = sample.df %>%
   filter(!(Sample==363 & TP=="tp6")) %>%
   bind_rows(outlier)
 ```
-
 
 ### Calculate CO2
 
@@ -309,7 +303,6 @@ std.df %>%
   theme()
 ```
 
-
 Calculate mol CO2
 
 ```{r}
@@ -329,7 +322,8 @@ sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 
 # Cumulative mg CO2 and C
 sample.totals = sample.conv %>%
   group_by(Sample, Innoculant, DOC_predict) %>%
-  summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44))
+  summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>% 
+  ungroup()
 ```
 
 Visualize
@@ -341,17 +335,23 @@ sample.totals %>%
   labs(title="Cumulative CO2 respiration", y="CO2 mg", x="Innoculant") +
   theme_test()
 
-sample.totals %>%
+resp_plot <- sample.totals %>%
+  filter(DOC_predict %in% c("high", "low")) %>% 
   ggplot(aes(x=DOC_predict, y=totalCO2mg)) +
-  geom_point() +
-  labs(title="Cumulative CO2 respiration", y="CO2 mg", x="DOC predicted") +
-  theme_test()
+  geom_boxplot() +
+  labs(y="Cumulative CO2 (mg)", x="DOC \"phenotype\"") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+resp_plot
 ```
 
 ```{r, eval=FALSE}
+ggsave("../figures/SFA2_CO2.png", resp_plot, units="mm", width=100, height=100)
+
 saveRDS(sample.totals, file="data_CO2/SFA2/SFA2_CO2.rds")
 ```
-
 
 # CO2 respiration over time
 
@@ -371,12 +371,14 @@ sample.late = anti_join(sample.conv, sample.early)
 sample.total.early = sample.early %>%
   group_by(Sample, Innoculant, DOC_predict) %>%
   summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>%
-  add_column(Incubation_stage = "early")
+  add_column(Incubation_stage = "early") %>% 
+  ungroup()
 
 sample.total.late = sample.late %>%
   group_by(Sample, Innoculant, DOC_predict) %>%
   summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>%
-  add_column(Incubation_stage = "late")
+  add_column(Incubation_stage = "late") %>% 
+  ungroup()
 
 sample.total.split = bind_rows(sample.total.early, sample.total.late)
 ```
