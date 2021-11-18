@@ -48,7 +48,7 @@ tree <- read.tree(file="~/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.t
 meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 ```
 
-Combine replicate and redo data
+Combine replicate and redo data:
 
 ```{r}
 # Count data combine
@@ -265,40 +265,59 @@ saveRDS(physeq4, file="../data_intermediate/SFA2_physeq_counts.rds")
 
 ### Normalize to the internal standard
 
-For each taxa in each sample, taxa_counts/std_counts. Not rarefying.
+Correct samples with extra internal standard added.
 
 ```{r}
+# Create vector of samples that had additional spike-in added when resequenced
+extra_samids <- c(47, 94, 177, 224, 324, 330, 336, 337, 340, 348, 371, 387, 107, 
+                70, 99, 178, 200, 219, 229, 245, 257, 332, 333, 338, 368, 370, 
+                374, 375, 383, 384, 385)
+
 # Extract count from phyloseq object
 count_reseq <- data.frame(otu_table(physeq4))
 
-# Normalize
-count_normalized <- count_reseq %>%
-  rownames_to_column(var="ASV") %>%
-  gather(SampleID, value, -ASV) %>%
-  spread(ASV, value) %>%
-  mutate(across(-SampleID, ~ .x/`445e8681c3c1a735760e6c394f5f4d0a`, {.col})) # Divide ASV counts by Aquifex ASV counts
+# Divide internal std counts in half
+count_stdcorrected <- count_reseq %>% 
+  rownames_to_column(var="ASV") %>% 
+  pivot_longer(-ASV, names_to = "SampleID", values_to = "count") %>% 
+  mutate(count_correct = if_else(SampleID %in% extra_samids & ASV %in% aquifex, count/2, count)) %>% 
+  select(-count)
+
+# Combine std ASVs into one
+count_stdsummed <- count_stdcorrected %>% 
+  mutate(ASV = if_else(ASV %in% aquifex, "aquifex_asv", ASV)) %>%
+  group_by(SampleID, ASV) %>% 
+  summarize(count_sum = sum(count_correct)) %>% 
+  ungroup()
 ```
 
-Save intermediate data:
+Normalize to the internal standard:
+
+```{r}
+# Divide taxa counts by internal std counts in each sample
+count_normalized <- count_stdsummed %>% 
+  pivot_wider(SampleID, names_from = ASV, values_from = count_sum) %>%
+  mutate(across(-SampleID, ~ .x/aquifex_asv, {.col})) %>%
+  select(-aquifex_asv)
+```
+
+Save normalized data:
 
 ```{r, eval=FALSE}
-# ASV counts
-count_normalized2 <- count_normalized %>% 
-  gather(ASV, value, -SampleID) %>% 
-  spread(SampleID, value)
-  
-saveRDS(count_normalized2, file="../data_intermediate/SFA2_count_normalized.rds")
+# Normalized count data
+saveRDS(count_normalized, file="../data_intermediate/SFA2_count_normalized.rds")
 
-# Taxonomy
-tax_reseq <- data.frame(tax_table(physeq4))
-saveRDS(tax_reseq, file="../data_intermediate/SFA2_tax_processed.rds")
+# Remove aquifex ASVs from ohlyoseq object
+physeq5 <- subset_taxa(physeq4, Phylum!="Aquificota")
 
-# Tree
-tree_reseq <- phy_tree(physeq4)
-saveRDS(tree_reseq, file="../data_intermediate/SFA2_tree_processed.rds")
+# Export and save taxonomy
+tax_normalized <- data.frame(tax_table(physeq5))
+tax_normalized <- tax_normalized %>% 
+  rownames_to_column(var="ASV")
+saveRDS(tax_normalized, file="../data_intermediate/SFA2_tax_normalized.rds")
+
+# Export tree
+tree_normalized <- phy_tree(physeq5)
+saveRDS(tree_normalized, file="../data_intermediate/SFA2_tree_normalized.rds")
 ```
-
-
-
-
 

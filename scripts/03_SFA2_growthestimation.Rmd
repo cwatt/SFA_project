@@ -31,90 +31,104 @@ See 02.5_SFA2_preprocess_redos.Rmd.
 
 ```{r}
 # Count data
-count_norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
-  gather(SampleID, ARNIS_ratio, -ASV) %>% 
+norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
+  pivot_longer(-SampleID, names_to="ASV", values_to="norm_abund") %>% 
   mutate(SampleID = as.double(gsub("sa", "", SampleID)))
 
 # Taxonomy
-tax <- readRDS("../data_intermediate/SFA2_tax_processed.rds") %>% 
-  rownames_to_column(var="ASV")
+tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
 
 # Metadata
 meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 
 # Merge
-norm <- inner_join(count_norm, tax, by="ASV") %>% 
+norm_prep <- inner_join(norm, tax, by="ASV") %>% 
   inner_join(meta, by="SampleID") %>% 
-  select(c(SampleID, Sample, Type:Replicate, Domain:Species, ASV, ARNIS_ratio)) %>% 
+  select(c(SampleID, Sample, Type:Replicate, Domain:Species, ASV, norm_abund)) %>% 
   mutate(Innoculant = as_factor(Innoculant),
          Replicate = as_factor(Replicate)) %>% 
   mutate(across(Domain:Species, ~as.character(.x), {.col}))
+
+dim(norm_prep)
 ```
 
 # Prepare data
-
-Remove Aquifex ASV: "445e8681c3c1a735760e6c394f5f4d0a"
-
-```{r}
-norm_prep <- norm %>% 
-  filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a")
-```
 
 Remove samples that did not contain internal standard
 
 * These are now Inf because previous script tried to divide by 0
 
 ```{r}
-norm_prep <- norm_prep[!is.infinite(norm_prep$ARNIS_ratio),]
+norm_prep <- norm_prep[!is.infinite(norm_prep$norm_abund),]
+
+dim(norm_prep)
+```
+
+Remove samples that were not part of the growth rate measurement
+
+```{r}
+norm_prep <- filter(norm_prep, Type=="Growth")
+
+dim(norm_prep)
 ```
 
 Remove non-present taxa
 
 ```{r}
 norm_prep <- norm_prep %>% 
-  filter(ARNIS_ratio != 0)
+  filter(norm_abund != 0)
+
+dim(norm_prep)
 ```
 
 Average across technical replicates
 
 * For better coverage of time series
+* All samples are destructively sampled anyway and independent of one another, including replicates
 
 ```{r}
 norm_prep <- norm_prep %>% 
   group_by(Type, Innoculant, DOC, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
-  summarize(ARNIS_ratio_avg = mean(ARNIS_ratio, na.rm = TRUE)) %>% 
+  summarize(norm_abund_avg = mean(norm_abund, na.rm = TRUE)) %>% 
   ungroup()
+
+dim(norm_prep)
 ```
 
 Remove taxa that didn't occur in at least four time points
 
 ```{r}
-# Identify ASVs with less than 4 time points
-norm_occurs <- norm_prep %>% 
+# Identify ASVs that appeared less than 4 times in time series
+occurences <- norm_prep %>% 
   group_by(ASV, Type, Innoculant) %>% 
   summarize(occurs = n()) %>% 
   filter(occurs > 3) %>% 
   ungroup()
 
 # Filter
-norm_prep <- inner_join(norm_prep, norm_occurs, by=c("ASV", "Innoculant", "Type")) %>% 
+norm_prep <- inner_join(norm_prep, occurences, by=c("ASV", "Innoculant", "Type")) %>% 
   select(everything(), -occurs)
+
+dim(norm_prep)
 ```
 
-Natural log transform
+Natural log transform:
 
 ```{r}
 norm_prep <- norm_prep %>% 
-  mutate(ln_ARNIS = log(ARNIS_ratio_avg))
+  mutate(ln_norm_abund_avg = log(norm_abund_avg))
+
+dim(norm_prep)
 ```
 
-Create unique label for each ASV and time series
+Create unique label for each ASV and time series:
 
 ```{r}
 norm_prep <- norm_prep %>%
-  mutate(label = paste0(Type, Innoculant, "_", ASV))
-```
+  mutate(label = paste0(DOC, Innoculant, "_", ASV))
 
+dim(norm_prep)
+```
 
 ### Visualize time series
 
@@ -125,7 +139,7 @@ All ASVS:
 # Opens in browser
 norm_prep %>% 
   filter(Type=="Growth") %>% 
-  ggplot(aes(x=Day, y=ln_ARNIS, color=Innoculant)) +
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Innoculant)) +
   facet_wrap(~DOC) +
   geom_point() +
   geom_line() +
@@ -149,7 +163,7 @@ extract_tax <- function(df, asv, level) { # Data frame, "ASV", "Taxonomy level"
 graph_timeseries <- function(df, asv) {
   graph <- df %>%
     filter(ASV==asv) %>% 
-    ggplot(aes(x=Day, y=ln_ARNIS, color=Innoculant)) +
+    ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Innoculant)) +
     facet_wrap(~DOC) +
     geom_point() +
     geom_line() +
@@ -195,7 +209,8 @@ Prepare data:
 ```{r}
 # Rename columns to match function reqiurements (this is easier to code)
 norm_prepped <- norm_prep %>% 
-  select(-(Type:DOC), -c(Domain:ARNIS_ratio_avg), label, time=Day, abund=ln_ARNIS)
+  select(-Type, -c(Domain:Species), norm_abund_avg, time=Day, abund=ln_norm_abund_avg, label, Innoculant, DOC, ASV) %>% 
+  select(Innoculant, DOC, ASV, label, time, abund, norm_abund_avg)
 ```
 
 ```{r}
@@ -217,7 +232,6 @@ save_fit <- function(label, start, end, df_sub, output) {
   output <- bind_rows(output, thisrow)
   return(output)
 }
-
 ```
 
 Estimate:
@@ -313,8 +327,6 @@ growth_estimates <- filter(growth_estimates, residuals >= 0.0001)
 dim(growth_estimates)
 ```
 
-None were removed.
-
 ### Select best fit for each time series
 
 * Lowest p-value of the slope
@@ -357,17 +369,8 @@ Information about real dataset to use for simulating random data:
 * number of time points
 * min and max of abundance
 
-```{r}
-# Add metadata to prepped data
-norm_prepped_meta <- norm %>%
-  mutate(label = paste0(Type, Innoculant, "_", ASV)) %>% 
-  inner_join(norm_prepped) %>% 
-  select(everything(), -ARNIS_ratio)
-```
-
-
 ```{r, results="show"}
-# Minimum and maximum ARNIS ratios
+# Minimum and maximum relational abundances
 min_abund <- min(norm_prepped$abund)
 max_abund <- max(norm_prepped$abund)
 avg_abund <- mean(norm_prepped$abund)
@@ -381,11 +384,12 @@ num_tps <- norm_prepped %>%
   summarize(num_points = n()) %>% 
   ungroup()
 
-hist(num_tps$num_points)
 min_pts <- min(num_tps$num_points)
 max_pts <- max(num_tps$num_points)
 avg_pts <- mean(num_tps$num_points)
 sd_pts <- sd(num_tps$num_points)
+
+hist(num_tps$num_points)
 ```
 
 Simulate random time series:
@@ -394,12 +398,10 @@ Simulate random time series:
 set.seed(2021)
 
 # Set time points
-tps <- unique(norm$Day)
+tps <- unique(meta$Day)
 tps <- na.omit(tps)
 
-# how to make these right tailed?
-
-# normal dist
+# Generate using normal distributions
 sim_data <- data.frame()
 cont <-  TRUE
 counter <- 1
@@ -436,7 +438,6 @@ while (cont == TRUE) {
 colnames(sim_data)[1] <- "simulation"
 
 # Compare simulation to actual data
-
 # Abundances
 hist(sim_data$rand_abund)
 
@@ -449,7 +450,15 @@ sim_num_points <- sim_data %>%
 hist(sim_num_points$num_pts)
 ```
 
-I'm happy with this.
+Save simulated data:
+
+* for reproducibility
+
+```{r, eval=FALSE}
+saveRDS(sim_data, file="../data_intermediate/SFA2_simulated_data.rds")
+```
+
+I'm pretty happy with this. The randomly generated data seems to roughly share characteristics with the actual data.
 
 View some simulated time series:
 
@@ -484,9 +493,9 @@ sim_data %>%
     theme_test()
 ```
 
-### Estimate "growth"
+### Estimate "growth" on simulated data
 
-Same method. I really need to turn this into a function instead.
+Same method. I really need to turn this into a function.
 
 ```{r}
 # Prep simulated data (rename columns)
@@ -575,8 +584,6 @@ sim_estimates <- filter(sim_estimates, residuals >= 0.0001)
 dim(sim_estimates)
 ```
 
-None were removed.
-
 ### Select best fit for each time series
 
 * Lowest p-value of the slope
@@ -613,32 +620,37 @@ colnames(false_pos)=c("pvalue","false")
 
 ggplot(false_pos, aes(x=pvalue, y=false)) +
   geom_point() +
-  theme_test() +
-  labs(title="Relationship between p-value and number of false positives", x="P-value", y="False positives")
+  geom_smooth(method="lm", linetype=2) +
+  labs(title="Relationship between p-value and number of false positives", x="P-value", y="False positives") +
+  theme_test()
+  
 ```
 
-Find 10%, 5%, 2.5%, 1% false positive allowance p-value thresholds:
+Find 10%, 5%, 2.5%, 1% false positive allowance p-value thresholds
 
-* Just guessing and checking p-value untill expected number of false positives achieved.
+* Using linear model to predict
 
 ```{r}
-nrow(sim_estimates[sim_estimates$pval <= 0.0174,]) # ~10%, 100/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.0072,]) # ~5%, 50/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.0037,]) # ~2.5%, 25/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.0010,]) # ~1%, 10/1000
+falsepos_lm <- lm(false ~ pvalue, data=false_pos)
+falsepos_lm
 ```
 
-False positive thresholds:
-* 10%: P-value = 0.0174 (100/1000)
-* 5%: P-value = 0.0121 (50/1000)
-* 2.5%: P-value = 0.0072 (25/1000)
-* 1%: P-value = 0.001 (10/1000)
-
 ```{r}
-false10_pval <- 0.0174
-false5_pval <- 0.0072
-false2.5_pval <- 0.0037
-false1_pval <- 0.0010
+# Extract model coefficients
+slope <- as.numeric(falsepos_lm$coefficients[2])
+intercept <- as.numeric(falsepos_lm$coefficients[1])
+
+# 10% false positive allowance
+false10_pval <- (100 - intercept)/slope
+
+## 5% false positive allowance
+false5_pval <- (50 - intercept)/slope
+
+# 2.5% false positive allowance
+false2.5_pval <- (25 - intercept)/slope
+
+# 1% false positive allowance
+false1_pval <- (10 - intercept)/slope
 ```
 
 Filter p-values based on cut-offs determined (10%, 5%, 2.5%, 1%):
@@ -663,7 +675,9 @@ nrow(growth_falsepos1)
 
 I'll go with 10% false positive rate because it retains more estimates.
 
-# Calculate specific growth rate (k)
+# Calculate growth metrics
+
+### Calculate specific growth rate (k)
 
 Steps:
 
@@ -680,58 +694,78 @@ I found this guide helpful: http://miller-lab.net/MillerLab/protocols/general-ba
 
 ```{r}
 # Generate abundances over time interval based on estimated slope
-growth_final <- data.frame()
+growth_estimates <- data.frame()
 B <- 1 # Start with one bacteria
 for (l in growth_falsepos10$label) {
   growth_label <- filter(growth_falsepos10, label==l)
   slope <- growth_label$coeff
   b <- (slope*3)+1 # abundance three days later
   k <- (log10(b)-log10(B))*(2.303/3) # calculate k
-  thisrow <- cbind(growth_label, k)
-  growth_final <- rbind(growth_final, thisrow)
+  this_row <- cbind(growth_label, k)
+  growth_estimates <- rbind(growth_estimates, this_row)
 }
 ```
 
-Visualize time series:
+### Start and end day, change in relational abundance
 
 ```{r}
-# Isolate ASVs with estimated growth
-final_labels <- growth_estimates$label
+# Convert start and end to actual day
+growth_final <- data.frame()
+for (l in as.character(unique(growth_estimates$label))) {
+  # Isolate timeseries
+  norm_label <- norm_prepped %>% 
+    filter(label==l) %>% 
+    arrange(time)
+  growth_label <- filter(growth_estimates, label==l)
+  start <- growth_label$start
+  end <- growth_label$end
+  # Start and end day of growth
+  start_day <- norm_label[start,]$time
+  end_day <- norm_label[end,]$time
+  # Starting and ending relational abundance
+  start_abund <- norm_label[start,]$norm_abund_avg
+  end_abund <- norm_label[end,]$norm_abund_avg
+  change_abund <- end_abund - start_abund
+  # Save output
+  this_row <- bind_cols(label = as.character(growth_label$label), k = growth_label$k,
+                        start_day = start_day, end_day = end_day, 
+                        start_abund = start_abund, end_abund = end_abund, change_abund = change_abund)
+  growth_final <- bind_rows(growth_final, this_row)
+}
+```
 
-norm_final <- norm_prepped_meta %>% 
-  filter(label %in% final_labels)
+# Tidy up and save data
+
+Relational abundances:
+
+```{r}
+# Labels of estimated taxa
+est_labels <- as.character(growth_estimates$label)
+
+# Extract from relational abundance table and clean up
+norm_tidy <- norm_prepped %>% 
+  filter(label %in% est_labels) %>% 
+  select(label, everything(), norm_abund_avg, ln_norm_abund_avg=abund, Day=time) %>% 
+  select(label, Innoculant, DOC, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
 ```
 
 ```{r, eval=FALSE}
-# View time series with estimates
-# Will open in new browser window
-# Slow
-norm_final %>%
-  filter(Type=="Growth") %>% 
-  ggplot(aes(x=time, y=abund, color=Innoculant)) +
-  facet_wrap(~DOC) +
-  geom_point() +
-  geom_line() +
-  facet_trelliscope(~ASV, scales="free_y", path="rmarkdown_files", self_contained=TRUE, height = 400, width = 1600) +
-  labs(x="Day", y="ln ARNIS ratio", x="Day") +
-  theme_test()
+saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_growth_estimated.rds")
 ```
 
-Save progress:
+Growth estimates:
+
+```{r}
+# Add back metadata
+growth_tidy <- growth_final %>% 
+  mutate(DOC = if_else(grepl("high", label), "high", "low"),
+         Innoculant = gsub("[a-z]+([0-9]+)_.+", "\\1", label),
+         ASV = gsub("[a-z]+[0-9]+_(.+)", "\\1", label)) %>% 
+  select(label, DOC, Innoculant, ASV, k:change_abund)
+```
 
 ```{r, eval=FALSE}
-# Normalized abundance data of estimated taxa
-norm_save <- norm_final %>% 
-  select(Label=label, everything(), ln_ARNIS=abund, -time)
-
-saveRDS(norm_save, file="../data_intermediate/SFA2_norm_abund_estimates.rds")
-
-# Growth estimates
-growth_save <- growth_final %>% 
-  left_join(norm_save) %>% 
-  select(-ln_ARNIS)
-  
-saveRDS(growth_save, file="../data_intermediate/SFA2_growth_estimates.rds")
+saveRDS(growth_tidy, file="../data_intermediate/SFA2_growth_estimates.rds")
 ```
 
 

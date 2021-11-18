@@ -1,0 +1,366 @@
+---
+title: "Dunlop gr - growth rate distributions"
+author: "Cassandra Wattenburger"
+date: "2/13/2021"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+**Goal of this script:** Investigate the effects of soil habitat on in-situ growth rate distributions.
+
+# Import libraries
+
+```{r}
+library(tidyverse)
+library(cowplot)
+library(data.table)
+library(phyloseq)
+library(lmerTest)
+
+sessionInfo()
+
+rm(list=ls())
+```
+
+
+# Import growth data
+
+```{r}
+growth <- readRDS("../rdata.files/gr_gr.paprica.clean.rds")
+```
+
+
+**Average across replicates**
+
+```{r}
+# ASV averages
+growth.asv <- growth %>%
+  group_by(Soil, Amendment, ASV, Phylum, Class, Order, Family, Genus) %>%
+  summarize(start_day = mean(start_day),
+            end_day = mean(end_day),
+            start_abund = mean(start_abund),
+            end_abund = mean(end_abund),
+            k = mean(k),
+            g = mean(g),
+            n16S = mean(n16S),
+            genome_size = mean(genome_size))
+```
+
+**Visualize**
+
+Kernel density graphs
+
+See: https://www.statsmodels.org/dev/examples/notebooks/generated/kernel_density.html
+
+```{r}
+growth.asv %>% 
+  filter(Amendment=="N") %>%
+  ggplot(aes(x=log(k), color=Soil, fill=Soil)) +
+  geom_density(alpha=0.5) +
+  labs(title="Only water", x="log specific growth rate", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12)) +
+  scale_color_manual(labels = c("Cropped", "Successional"), values=c("#F8766D","#00BFC4")) +
+  scale_fill_manual(labels = c("Cropped", "Successional"), values=c("#F8766D","#00BFC4")) +
+  scale_y_continuous(limits=c(0,1)) +
+  scale_x_continuous(limits=c(-5,0))
+
+growth.asv %>% 
+  filter(Amendment=="Y") %>%
+  ggplot(aes(x=log(k), color=Soil, fill=Soil)) +
+  geom_density(alpha=0.5) +
+  labs(title="C-amended", x="log specific growth rate", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12)) +
+  scale_color_manual(labels = c("Cropped", "Successional"), values=c("#F8766D","#00BFC4")) +
+  scale_fill_manual(labels = c("Cropped", "Successional"), values=c("#F8766D","#00BFC4")) +
+  scale_y_continuous(limits=c(0,1)) +
+  scale_x_continuous(limits=c(-5,0))
+
+growth.asv %>% 
+  filter(Soil=="C3") %>%
+  ggplot(aes(x=log(k), color=Amendment, fill=Amendment)) +
+  geom_density(alpha=0.5) +
+  labs(title="Cropped", x="log specific growth rate", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12)) +
+  scale_color_manual(labels = c("C-added", "Water control"), values=c("#E78E43", "#423EC5")) +
+  scale_fill_manual(labels = c("C-added", "Water control"), values=c("#E78E43", "#423EC5")) +
+  scale_y_continuous(limits=c(0,1)) +
+  scale_x_continuous(limits=c(-5,0))
+
+growth.asv %>% 
+  filter(Soil=="S17") %>%
+  ggplot(aes(x=log(k), color=Amendment, fill=Amendment)) +
+  geom_density(alpha=0.5) +
+  labs(title="Successional", x="log specific growth rate", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12)) +
+  scale_color_manual(labels = c("C-added", "Water control"), values=c("#E78E43", "#423EC5")) +
+  scale_fill_manual(labels = c("C-added", "Water control"), values=c("#E78E43", "#423EC5")) +
+  scale_y_continuous(limits=c(0,1)) +
+  scale_x_continuous(limits=c(-5,0))
+```
+
+It appears that soil habitat and amendment affect community growth. Some result in more or less fast or slow growers. Bimodal distribution is interesting, may be indicative of disparate strategies during resource availability?
+
+
+# Growth rate distribution binning
+
+Hypothesis: growth rate distributions will differ by soil and by amendment.
+
+In order to conduct tests on the distirbution of the data, I need to bin it discretely. The bins will need to be equal width and have the same start and end points across treatments so that they are comparable, and the number of bins must be chosen to simplify the data without losing too much of the "shape" of the distribution (see smoothed histograms above for reference).
+
+
+**By treatment**
+
+Ranging from 5 to 10 bins.
+
+```{r}
+for (s in c("C3", "S17")) {
+  for (a in c("Y", "N")) {
+    for (i in 5:10) {
+      print(growth.asv %>%
+        filter(Soil==s, Amendment==a) %>%
+        ggplot(aes(x=log(k))) +
+        geom_histogram(bins=i, color="black", fill="gray") +
+        theme_test() +
+        labs(title=paste(s, a, i, "bins")))
+    }
+  }
+}
+```
+
+It looks like 5 bins is definitely too few. I'll choose 8 bins because they best capture the distribution shape/bimodal nature of water control.
+
+There need to be the same number and width of bins in each dataset.
+
+Caculate min, max, and range of specific growth rate values in whole dataset:
+
+```{r, , results="show"}
+print(paste("Min:", min(log(growth.asv$k))))
+print(paste("Max:", max(log(growth.asv$k))))
+print(paste("Range:", max(log(growth.asv$k)) - min(log(growth.asv$k))))
+```
+
+Calculate bin width based on range:
+
+```{r, results="show"}
+width <- (max(log(growth.asv$k))-min(log(growth.asv$k)))/8
+print(paste("Bin width:", width))
+
+kmin <- min(log(growth.asv$k))
+```
+
+Apply to data:
+
+```{r}
+# Bin data based on boundaries chosen and log k
+growth.bins <- growth %>%
+  mutate(bin = case_when(log(k) < kmin+width ~ 1,
+                         log(k) < kmin+width*2 ~ 2,
+                         log(k) < kmin+width*3 ~ 3,
+                         log(k) < kmin+width*4 ~ 4,
+                         log(k) < kmin+width*5 ~ 5,
+                         log(k) < kmin+width*6 ~ 6,
+                         log(k) < kmin+width*7 ~ 7,
+                         log(k) > kmin+width*7 ~ 8))
+
+# Calculate bin information (proportion, frequency)
+bin.data <- data.frame()
+for (s in as.character(unique(growth.bins$Soil))) { 
+  for (a in as.character(unique(growth.bins$Amendment))) {
+    for (r in as.character(unique(growth.bins$Replicate))) {
+      total = nrow(growth.bins[growth.bins$Soil==s & growth.bins$Amendment==a & growth.bins$Replicate==r,])
+      for (b in as.character(unique(growth.bins$bin))) {
+        bin = growth.bins[growth.bins$Soil==s & growth.bins$Amendment==a & growth.bins$Replicate==r & growth.bins$bin==b,]
+        binfreq = nrow(bin)
+        binratio = binfreq/total
+        thisrow = data.frame("Soil"=s, "Amendment"=a, "Replicate"=r, "Bin"=b, "bin_freq" = binfreq, "bin_ratio" = binratio)
+        bin.data = rbind(bin.data, thisrow)   
+      }
+    }
+  }
+}
+
+# Relevel bin factor
+bin.data$Bin = factor(bin.data$Bin, levels=c(1,2,3,4,5,6,7,8))
+```
+
+Plot bins:
+
+```{r, results="show"}
+ggplot(bin.data) +
+  geom_boxplot(aes(x=Bin, y=bin_ratio, color=Soil)) +
+  facet_wrap(~Amendment) +
+  theme_test() +
+  labs(x="Slow to fast", y="Proportion of total taxa")
+
+ggplot(bin.data) +
+  geom_boxplot(aes(x=Bin, y=bin_freq, color=Soil)) +
+  facet_wrap(~Amendment) +
+  theme_test() +
+  labs(x="Slow to fast", y="Frequency")
+
+ggplot(bin.data) +
+  geom_boxplot(aes(x=Bin, y=bin_ratio, color=Amendment)) +
+  facet_wrap(~Soil) +
+  scale_color_manual(values=c("#E78E43", "#423EC5")) +
+  theme_test() +
+  labs(x="Slow to fast", y="Proportion of total taxa")
+
+ggplot(bin.data) +
+  geom_boxplot(aes(x=Bin, y=bin_freq, color=Amendment)) +
+  facet_wrap(~Soil) +
+  scale_color_manual(values=c("#E78E43", "#423EC5")) +
+  theme_test() +
+  labs(x="Slow to fast", y="Frequency")
+```
+
+
+**Statistics**
+
+First, I want to know if the distribution of growth rates differs by habitat or amendment. I'll use a contingency table and Fisher's exact test.
+
+See: http://www.biostathandbook.com/fishers.html
+
+```{r}
+# Average replicates and round (Fisher's needs integers, not continuous numbers)
+bin.trt <- bin.data %>% 
+  group_by(Soil, Amendment, Bin) %>% 
+  summarize(bin_freq = mean(bin_freq)) %>% 
+  mutate(bin_freq_rnd = round(bin_freq))
+
+# Make contingency tables
+conting.y <- dcast(bin.trt[bin.trt$Amendment=="Y",], Soil~ Bin, value.var="bin_freq_rnd")
+conting.y <- conting.y[,-1] %>% as.matrix()
+
+conting.n <- dcast(bin.trt[bin.trt$Amendment=="N",], Soil ~ Bin, value.var="bin_freq_rnd")
+conting.n <- conting.n[,-1] %>% as.matrix()
+
+conting.C3 <- dcast(bin.trt[bin.trt$Soil=="C3",], Amendment ~ Bin, value.var="bin_freq_rnd")
+conting.C3 <- conting.C3[,-1] %>% as.matrix()
+
+conting.S17 <- dcast(bin.trt[bin.trt$Soil=="S17",], Amendment ~ Bin, value.var="bin_freq_rnd")
+conting.S17 <- conting.S17[,-1] %>% as.matrix()
+
+# Run Fisher's exact tests
+set.seed(1)
+fish.testy = fisher.test(conting.y, simulate.p.value = TRUE)
+fish.testn = fisher.test(conting.n, simulate.p.value = TRUE)
+fish.testC3 = fisher.test(conting.C3, simulate.p.value = TRUE)
+fish.testS17 = fisher.test(conting.S17, simulate.p.value = TRUE)
+
+# Multiple test correction
+fish.pvals = c(fish.testn$p.value, fish.testy$p.value, fish.testC3$p.value, fish.testS17$p.value)
+fish.padj = p.adjust(fish.pvals, method="BH", n=length(fish.pvals))
+print(paste("Unamended cropped vs Succ., adj. p-value:", fish.padj[1]))
+print(paste("Amended cropped vs Succ., adj. p-value:", fish.padj[2]))
+print(paste("Cropped amended vs unamended, adj. p-value:", fish.padj[3]))
+print(paste("Succ. amended vs unamended, adj. p-value:", fish.padj[4]))
+```
+
+Cropped vs. successional water control significant.
+Cropped water control vs. C-amended signficiant.
+
+# Figures
+
+```{r}
+plot <- growth.asv %>%
+  mutate(Soil = fct_recode(Soil, Cropped = "C3", Successional = "S17"),
+         Amendment = fct_relevel(Amendment, c("N", "Y")),
+         Amendment = fct_recode(Amendment, 'Resource amendment' = "Y", 'Water amendment' = "N")) %>%
+  ggplot() +
+  geom_density(aes(x=log(k), fill=Soil), alpha=0.5) +
+  scale_fill_manual(values = c("#676366", "#FFFFFF")) +
+  facet_wrap(~Amendment, scales="fixed") +
+  labs(y="Kernel density", x="ln(Specific growth rate)") +
+  theme_classic() +
+  theme(text = element_text(size=9),
+        strip.text.x = element_text(size = 10, hjust = 0),
+        legend.position = "right",
+        legend.justification = "top",
+        strip.background = element_blank())
+plot
+
+ggsave(plot, filename="../figures/fig_distributions.png", units="mm", width=140, height=60)
+```
+
+
+```{r}
+plot2 <- growth.asv %>%
+  mutate(treatment = case_when(Soil=="C3" & Amendment=="N" ~ "Cropped, water",
+                               Soil=="C3" & Amendment=="Y" ~ "Cropped, resources",
+                               Soil=="S17" & Amendment=="N" ~ "Successional, water",
+                               Soil=="S17" & Amendment=="Y" ~ "Successional, resources")) %>%
+  ggplot() +
+  geom_histogram(aes(x=log(k))) +
+  scale_fill_manual(values = c("#676366", "#FFFFFF")) +
+  facet_wrap(~treatment, scales="fixed") +
+  labs(x="ln(Specific growth rate)", y="Frequency") +
+  theme_test() +
+  theme(text = element_text(size=8),
+        strip.text.x = element_text(size = 8, hjust = 0),
+        legend.position = "right",
+        legend.justification = "top")
+plot2
+
+ggsave(plot2, filename="../figures/suppfig_hist.png", units="mm", width=140, height=60)
+```
+
+```{r}
+plot3 <- bin.data %>%
+  mutate(Soil = fct_recode(Soil, Cropped = "C3", Successional = "S17"),
+         Amendment = fct_relevel(Amendment, c("N", "Y")),
+         Amendment = fct_recode(Amendment, 'Resources' = "Y", 'Water' = "N")) %>%
+  ggplot() +
+  geom_boxplot(aes(x=Bin, y=bin_freq, fill=Amendment)) +
+  facet_wrap(~Soil) +
+  scale_fill_manual(values = c("#676366", "#FFFFFF")) +
+  theme_test() +
+  labs(x="Bins, slow to fast", y="ASV count")
+plot3
+
+ggsave(plot3, filename="../figures/suppfig_bins.png", units="mm", width=140, height=60)
+```
+
+
+```{r, eval=FALSE, echo=FALSE}
+S17n.plot <- growth.asv %>%
+  mutate(Soil = fct_recode(Soil, Cropped = "C3", Successional = "S17"),
+         Amendment = fct_relevel(Amendment, c("N", "Y")),
+         Amendment = fct_recode(Amendment, 'Resource amendment' = "Y", 'Water amendment' = "N")) %>%
+  filter(Soil=="Successional", Amendment=="Water amendment") +
+  ggplot() +
+  geom_histogram(aes(x=log(k))) +
+  scale_fill_manual(values = c("#676366", "#FFFFFF")) +
+  labs(x="Specific growth rate (units), ln") +
+  theme_classic() +
+  theme(text = element_text(size=8),
+        strip.text.x = element_text(size = 8, hjust = 0),
+        legend.position = "right",
+        legend.justification = "top",
+        strip.background = element_blank())
+
+
+
+```
+

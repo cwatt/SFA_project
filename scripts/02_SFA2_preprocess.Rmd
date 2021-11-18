@@ -41,7 +41,7 @@ tax_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SF
 tree <- read.tree(file="~/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
 
 # Metadata
-meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_metadata.tsv")
+meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 ```
 
 Combine replicate data

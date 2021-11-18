@@ -16,6 +16,7 @@ knitr::opts_chunk$set(message = FALSE)
 rm(list=ls())
 
 library("tidyverse")
+library("vegan")
 library("phyloseq")
 
 sessionInfo()
@@ -144,14 +145,52 @@ tp30_richness %>%
   theme_test()
 ```
 
+### Statistics
+
+```{r}
+# Build linear model
+tp30_richness_lm <- lm(richness ~ DOC + Innoculant, data=tp30_richness)
+
+# Check normality of residuals
+hist(resid(tp30_richness_lm))
+
+# Check heteroskedasticity
+plot(predict(tp30_richness_lm), resid(tp30_richness_lm))
+```
+
+```{r}
+# Results
+anova(tp30_richness_lm)
+```
+
+No significance.
+
 # Beta diversity
 
 ```{r}
+# Try Bray
 bray_dist <- distance(physeq4, method="bray")
-ord <- ordinate(physeq4, method="NMDS")
+ord_bray <- ordinate(physeq4, distance=bray_dist, method="NMDS")
+plot_ordination(physeq4, ord, color="DOC") +
+  stat_ellipse(type="t")
+
+# Try weighted Unifrac
+wunifrac_dist <- distance(physeq4, method="wunifrac")
+ord_wunifrac <- ordinate(physeq4, distance=wunifrac_dist, method="NMDS")
+plot_ordination(physeq4, ord, color="DOC") +
+  stat_ellipse(type="t")
+
+# Unweighted unifrac
+unifrac_dist <- distance(physeq4, method="unifrac")
+ord_unifrac <- ordinate(physeq4, distance=unifrac_dist, method="NMDS")
 plot_ordination(physeq4, ord, color="DOC") +
   stat_ellipse(type="t")
 ```
 
+### Statistics
 
+```{r}
+# Permanova
+adonis(wunifrac_dist ~ DOC*Innoculant, data = meta_rarefied, permutations = 9999)
+```
 

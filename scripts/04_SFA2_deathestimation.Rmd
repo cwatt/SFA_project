@@ -23,8 +23,8 @@ sessionInfo()
 
 # Import data
 
-* Already prepped data from 03_SFA2_growthestimation.Rmd
-* metadata
+* The already prepped data from 03_SFA2_deathestimation.Rmd
+* Metadata
 
 ```{r}
 norm_prepped <- readRDS("../data_intermediate/SFA2_norm_prepped.rds")
@@ -50,12 +50,11 @@ save_fit <- function(label, start, end, df_sub, output) {
   output <- bind_rows(output, thisrow)
   return(output)
 }
-
 ```
 
 Estimate death:
 
-* Same as algorhithm from 03_SFA2_growthestimation.Rmd but looking for negative slopes instead.
+* Same as algorhithm from 03_SFA2_deathestimation.Rmd but looking for negative slopes instead (indicate death)
 
 ```{r}
 ## Requires a dataframe with columns containing a unique label for each data point, abundance values, time points
@@ -146,8 +145,6 @@ death_estimates <- filter(death_estimates, residuals >= 0.0001)
 dim(death_estimates)
 ```
 
-None were removed.
-
 ### Select best fit for each time series
 
 * Lowest p-value of the slope
@@ -184,97 +181,15 @@ I'm choosing to use a permutation approach where I use my estimating algorhithmh
 
 ### Simulate random data
 
-Completely random data designed to reflect actual data, if we detect "significant" growth rate estimates from this, we must control for that, because the same thing can happen in our actual data.
+Completely random data designed to reflect actual data, if we detect "significant" death rate estimates from this, we must control for that, because the same thing can happen in our actual data.
 
-Information about real dataset to use for simulating random data:
-* number of time points
-* min and max of abundance
-
-
-```{r, results="show"}
-# Minimum and maximum ARNIS ratios
-min_abund <- min(norm_prepped$abund)
-max_abund <- max(norm_prepped$abund)
-avg_abund <- mean(norm_prepped$abund)
-sd_abund <- sd(norm_prepped$abund)
-
-hist(norm_prepped$abund)
-
-# Number of time points
-num_tps <- norm_prepped %>% 
-  group_by(label) %>% 
-  summarize(num_points = n()) %>% 
-  ungroup()
-
-hist(num_tps$num_points)
-min_pts <- min(num_tps$num_points)
-max_pts <- max(num_tps$num_points)
-avg_pts <- mean(num_tps$num_points)
-sd_pts <- sd(num_tps$num_points)
-```
-
-Simulate random time series:
+Import previously generated simulated time series, see 03_SFA2_deathestimation.Rmd
 
 ```{r}
-set.seed(2021)
-
-# Set time points
-tps <- unique(meta$Day)
-tps <- na.omit(tps)
-
-# how to make these right tailed?
-
-# normal dist
-sim_data <- data.frame()
-cont <-  TRUE
-counter <- 1
-while (cont == TRUE) {
-  # Stop loop once 1000 simulations have been created
-  if (counter == 1001) {
-    cont <-  FALSE
-  } 
-  else {
-    thisrow <- data.frame(); hold <- NULL; rand_abund = NULL; rand_pts = NULL; rand_days = NULL # reset values
-    # Generate number of time points
-    rand_pts <- ceiling(rnorm(1, mean=avg_pts, sd=sd_pts))
-    # Make sure number of tps doesn't fall outside min/max
-    if (rand_pts <= min_pts | rand_pts >= max_pts) {
-      next
-      }
-    else {
-      # Generate abundance for each point
-      rand_abund <- rnorm(rand_pts, mean=avg_abund, sd=sd_abund) 
-      # Make sure abundances don't fall outside min/max
-      if (min(rand_abund) <= min_abund | max(rand_abund) >= max_abund) {
-        next
-      }
-      else {
-        # Assign a day to each point
-        rand_day <- sort(sample(tps, size=rand_pts, replace=FALSE))
-        hold <- cbind(rep(counter, rand_pts), rand_day, rand_abund)
-        sim_data= rbind(sim_data, hold)
-        counter <- counter + 1
-      }
-    }
-  }
-}
-colnames(sim_data)[1] <- "simulation"
-
-# Compare simulation to actual data
-
-# Abundances
-hist(sim_data$rand_abund)
-
-# Number of data points
-sim_num_points <- sim_data %>% 
-  group_by(simulation) %>% 
-  summarize(num_pts = n()) %>% 
-  ungroup() %>% 
-  mutate(num_pts = as.numeric(num_pts))
-hist(sim_num_points$num_pts)
+sim_data <- readRDS("../data_intermediate/SFA2_simulated_data.rds")
 ```
 
-### Estimate "death"
+### Estimate "death" on simulated data
 
 ```{r}
 # Prep simulated data (rename columns)
@@ -363,8 +278,6 @@ sim_estimates <- filter(sim_estimates, residuals >= 0.0001)
 dim(sim_estimates)
 ```
 
-None were removed.
-
 ### Select best fit for each time series
 
 * Lowest p-value of the slope
@@ -405,30 +318,32 @@ ggplot(false_pos, aes(x=pvalue, y=false)) +
   labs(title="Relationship between p-value and number of false positives", x="P-value", y="False positives")
 ```
 
-Find 10%, 5%, 2.5%, 1% false positive allowance p-value thresholds:
+Find 10%, 5%, 2.5%, 1% false positive allowance p-value thresholds
 
-* Just guessing and checking p-value untill expected number of false positives achieved.
-
-```{r}
-nrow(sim_estimates[sim_estimates$pval <= 0.024,]) # ~10%, 100/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.009,]) # ~5%, 50/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.0044,]) # ~2.5%, 25/1000
-nrow(sim_estimates[sim_estimates$pval <= 0.002,]) # ~1%, 10/1000
-```
-
-False positive thresholds:
-* 10%: P-value = 0.0174 (100/1000)
-* 5%: P-value = 0.0121 (50/1000)
-* 2.5%: P-value = 0.0072 (25/1000)
-* 1%: P-value = 0.001 (10/1000)
+* Using linear model to predict
 
 ```{r}
-false10_pval <- 0.024
-false5_pval <- 0.009
-false2.5_pval <- 0.0044
-false1_pval <- 0.002
+falsepos_lm <- lm(false ~ pvalue, data=false_pos)
+falsepos_lm
 ```
 
+```{r}
+# Extract model coefficients
+slope <- as.numeric(falsepos_lm$coefficients[2])
+intercept <- as.numeric(falsepos_lm$coefficients[1])
+
+# 10% false positive allowance
+false10_pval <- (100 - intercept)/slope
+
+## 5% false positive allowance
+false5_pval <- (50 - intercept)/slope
+
+# 2.5% false positive allowance
+false2.5_pval <- (25 - intercept)/slope
+
+# 1% false positive allowance
+false1_pval <- (10 - intercept)/slope
+```
 
 Filter p-values based on cut-offs determined (10%, 5%, 2.5%, 1%):
 
@@ -450,4 +365,68 @@ death_falsepos1 <- subset(death_estimates, pval <= false1_pval)
 nrow(death_falsepos1)
 ```
 
-Going with 10% again to reflect growth estimations.
+Going with 10% again to match growth estimations.
+
+# Calculate death metrics
+
+### Start and end day, change in relational abundance
+
+```{r}
+# Convert start and end to actual day
+death_final <- data.frame()
+for (l in as.character(unique(death_estimates$label))) {
+  # Isolate timeseries
+  norm_label <- norm_prepped %>% 
+    filter(label==l) %>% 
+    arrange(time)
+  death_label <- filter(death_estimates, label==l)
+  start <- death_label$start
+  end <- death_label$end
+  # Start and end day of death
+  start_day <- norm_label[start,]$time
+  end_day <- norm_label[end,]$time
+  # Starting and ending relational abundance
+  start_abund <- norm_label[start,]$norm_abund_avg
+  end_abund <- norm_label[end,]$norm_abund_avg
+  change_abund <- end_abund - start_abund
+  # Save output
+  this_row <- bind_cols(label = as.character(death_label$label), slope = death_label$coeff,
+                        start_day = start_day, end_day = end_day, 
+                        start_abund = start_abund, end_abund = end_abund, change_abund = change_abund)
+  death_final <- bind_rows(death_final, this_row)
+}
+```
+
+# Tidy up and save data
+
+Relational abundances:
+
+```{r}
+# Labels of estimated taxa
+est_labels <- as.character(death_estimates$label)
+
+# Extract from relational abundance table and clean up
+norm_tidy <- norm_prepped %>% 
+  filter(label %in% est_labels) %>% 
+  select(label, everything(), ln_norm_abund_avg=abund, Day=time) %>% 
+  select(label, Innoculant, DOC, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
+```
+
+```{r, eval=FALSE}
+saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_death_estimated.rds")
+```
+
+Death estimates:
+
+```{r}
+# Add back metadata
+death_tidy <- death_final %>% 
+  mutate(DOC = if_else(grepl("high", label), "high", "low"),
+         Innoculant = gsub("[a-z]+([0-9]+)_.+", "\\1", label),
+         ASV = gsub("[a-z]+[0-9]+_(.+)", "\\1", label)) %>% 
+  select(label, DOC, Innoculant, ASV, slope:change_abund)
+```
+
+```{r, eval=FALSE}
+saveRDS(death_tidy, file="../data_intermediate/SFA2_death_estimates.rds")
+```

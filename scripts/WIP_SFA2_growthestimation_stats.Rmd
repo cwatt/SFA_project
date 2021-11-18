@@ -1,0 +1,323 @@
+---
+title: "WIP - SFA2 growth estimations exploration"
+author: "Cassandra Wattenburger"
+date: "11/16/2021"
+output: html_document
+---
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("trelliscopejs")
+
+sessionInfo()
+```
+
+# Import data
+
+Files produced in 03_SFA2_growthestimates.Rmd
+* growth estimates
+* normalized abundance data for time series with estimated growth
+
+```{r}
+# Growth
+growth_est <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+
+# Taxonomic information
+tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+```
+
+# Exploration
+
+Numbers of growing bacteria:
+
+```{r}
+# Number of taxa growing
+num_grow <- growth_est %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(num_grew = n()) %>% 
+  ungroup()
+
+num_grow
+
+num_grow %>% 
+  ggplot(aes(x=DOC, y=num_grew)) +
+  geom_jitter() +
+  theme_test()
+```
+
+Phylogenetic membership:
+
+```{r}
+# Merge growth estimates with taxonomy
+growth_est_tax <- inner_join(growth_est, tax) 
+
+# Graph phylogenetic membership
+growth_est_tax %>% 
+  group_by(Phylum, DOC, Innoculant) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  arrange(count) %>% 
+  ggplot(aes(x=count, y=reorder(Phylum, -count), color=DOC)) +
+  geom_boxplot() +
+  #facet_wrap(~DOC) +
+  theme_test() +
+  theme(axis.text.x = )
+```
+
+Parameters:
+
+* specific growth rate (k)
+* start day
+* change in abundance
+* start abundance
+* end abundance
+
+```{r}
+# Growth rate
+growth_est %>% 
+  ggplot(aes(x=DOC, y=k)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+# Start day
+growth_est %>% 
+  ggplot(aes(x=DOC, y=start_day)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+# Change in abundance
+growth_est %>% 
+  ggplot(aes(x=DOC, y=log(change_abund))) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+# Start abundance
+growth_est %>% 
+  ggplot(aes(x=DOC, y=log(start_abund))) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+# End abundance
+growth_est %>% 
+  ggplot(aes(x=DOC, y=log(end_abund))) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+```
+
+Distributions of parameters:
+
+Specific growth rates
+
+```{r}
+# Distribution of growth rates
+growth_est %>%
+  ggplot(aes(x=k, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="Specific growth rate (k)", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+growth_est %>%
+  ggplot(aes(x=k, color=Innoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="Specific growth rate (k)", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Change in relational abundance
+
+```{r}
+# Distribution of change in abundance during growth
+growth_est %>%
+  ggplot(aes(x=log(change_abund), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Change in relational abundance during growth", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+growth_est %>%
+  ggplot(aes(x=log(change_abund), color=Innoculant, linetype=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Change in relational abundance during growth", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Start relational abundance
+
+```{r}
+# Distribution of change in abundance during growth
+growth_est %>%
+  ggplot(aes(x=log(start_abund), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Starting relational abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+growth_est %>%
+  ggplot(aes(x=log(start_abund), color=Innoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Starting in relational abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+End relational abundance
+
+```{r}
+# Distribution of change in abundance during growth
+growth_est %>%
+  ggplot(aes(x=log(end_abund), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Ending relational abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+growth_est %>%
+  ggplot(aes(x=log(end_abund), color=Innoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Ending relational abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Summed abundances:
+
+* proxy for growing community biomass
+
+```{r}
+# Sum of change abundance (total community sorta)
+growth_est %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(total_change_abund = sum(change_abund)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=DOC, y=total_change_abund)) +
+  geom_point() +
+  theme_test()
+
+# Sum of start abundance (total community sorta)
+growth_est %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(total_start_abund = sum(start_abund)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=DOC, y=total_start_abund)) +
+  geom_point() +
+  theme_test()
+
+# Sum of end abundance (total community sorta)
+growth_est %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(total_end_abund = sum(end_abund)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=DOC, y=total_end_abund)) +
+  geom_point() +
+  theme_test()
+```
+
+# Relationship to DOC measurement
+
+Import DOC measurements
+
+```{r}
+# DOC measurements
+doc <- readRDS("../data_DOC/SFA2/SFA2_doc.rds") %>% 
+  select(everything(), Sample=sample_id) %>% 
+  mutate(Sample = as.numeric(Sample))
+
+# Metadata
+meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_full_metadata.tsv") %>% 
+  select(Sample, Type, Innoculant, DOC, Replicate, Day)
+
+# Merge and average technical replicates
+doc_meta <- inner_join(doc, meta) %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(doc_avg = mean(mean)) %>% 
+  ungroup() %>% 
+  mutate(Innoculant = as.character(Innoculant))
+
+# Join with growth estimates
+growth_summary <- growth_est %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(mean_k = mean(k),
+            mean_start_day = mean(start_day),
+            mean_end_day = mean(end_day),
+            total_start_abund = sum(start_abund),
+            total_end_abund = sum(end_abund),
+            total_change_abund = sum(change_abund)) %>% 
+  ungroup()
+
+doc_growth <- inner_join(doc_meta, growth_summary)
+```
+
+```{r}
+# k
+doc_growth %>% 
+  ggplot(aes(x=doc_avg, y=mean_k, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# start day
+doc_growth %>% 
+  ggplot(aes(x=doc_avg, y=mean_start_day, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# start abundance
+doc_growth %>% 
+  ggplot(aes(x=doc_avg, y=total_start_abund, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# end abundance
+doc_growth %>% 
+  ggplot(aes(x=doc_avg, y=total_end_abund, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# change abundance
+doc_growth %>% 
+  ggplot(aes(x=doc_avg, y=total_change_abund, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+
+```
+
+
+
+# Statistics
+
+
