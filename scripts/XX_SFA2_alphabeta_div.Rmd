@@ -41,7 +41,7 @@ physeq
 These were used for DOC extractions and CO2 measurements.
 
 ```{r}
-physeq2 <- subset_samples(physeq, Day==30 & Type=="Headspace")
+physeq2 <- subset_samples(physeq, Day==30)
 physeq2
 ```
 
@@ -96,6 +96,11 @@ physeq4 <- subset_samples(physeq3, DOC %in% c("high", "low"))
 physeq4
 ```
 
+```{r, eval=FALSE}
+saveRDS(physeq4, file="../data_intermediate/SFA2_physeq_counts_endtp_rarefied.rds")
+```
+
+
 # Alpha diversity
 
 ### Richness
@@ -137,7 +142,7 @@ Visualize:
 rich_trt_plot <- tp30_richness %>% 
   ggplot(aes(x=DOC, y=richness)) +
   geom_boxplot() +
-  labs(x="DOC \"phentoype\"", y="ASV richness") +
+  labs(x="DOC \"phentoype\"", y="ASV richness at final tp") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
@@ -151,7 +156,7 @@ tp30_richness %>%
 ```
 
 ```{r, eval=FALSE}
-ggsave(rich_trt_plot, file="../figures/SFA2_tp30richness.png", units="mm", width=100, height=100)
+ggsave(rich_trt_plot, file="../figures/SFA2_richness_tpend.png", units="mm", width=100, height=100)
 ```
 
 ### Statistics
@@ -177,23 +182,31 @@ No significance.
 # Beta diversity
 
 ```{r}
-# Try Bray
-bray_dist <- distance(physeq4, method="bray")
-ord_bray <- ordinate(physeq4, distance=bray_dist, method="NMDS")
-plot_ordination(physeq4, ord, color="DOC") +
-  stat_ellipse(type="t")
-
 # Try weighted Unifrac
 wunifrac_dist <- distance(physeq4, method="wunifrac")
 ord_wunifrac <- ordinate(physeq4, distance=wunifrac_dist, method="NMDS")
-plot_ordination(physeq4, ord, color="DOC") +
-  stat_ellipse(type="t")
+wunifrac_nmds_plot <- plot_ordination(physeq4, ord_unifrac, color="DOC") +
+  stat_ellipse(type="t") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+wunifrac_nmds_plot 
 
 # Unweighted unifrac
 unifrac_dist <- distance(physeq4, method="unifrac")
 ord_unifrac <- ordinate(physeq4, distance=unifrac_dist, method="NMDS")
-plot_ordination(physeq4, ord, color="DOC") +
-  stat_ellipse(type="t")
+unifrac_nmds_plot <- plot_ordination(physeq4, ord_unifrac, color="DOC") +
+  stat_ellipse(type="t") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+unifrac_nmds_plot
+```
+
+```{r, eval=FALSE}
+ggsave(wunifrac_nmds_plot, file="../figures/SFA2_wunifrac_nmds_tpend.png", units="mm", width=150, height=100)
 ```
 
 ### Statistics

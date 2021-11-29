@@ -728,6 +728,7 @@ for (l in as.character(unique(growth_estimates$label))) {
   change_abund <- end_abund - start_abund
   # Save output
   this_row <- bind_cols(label = as.character(growth_label$label), k = growth_label$k,
+                        start_pt = growth_label$start, end_pt = growth_label$end,
                         start_day = start_day, end_day = end_day, 
                         start_abund = start_abund, end_abund = end_abund, change_abund = change_abund)
   growth_final <- bind_rows(growth_final, this_row)
@@ -770,10 +771,31 @@ saveRDS(growth_tidy, file="../data_intermediate/SFA2_growth_estimates.rds")
 
 # Plot growth estimates
 
-Examples
-
 ```{r}
+# For messing with graphs
+growth_testing <- head(growth_tidy)
 
+for (l in as.character(growth_tidy$label)) {
+  # Subset time series
+  growth_label <- filter(growth_tidy, label==l)
+  norm_label <- filter(norm_tidy, label==l) %>% 
+    arrange(Day)
+  # Title information
+  asv <- growth_label$ASV
+  tax_info <- filter(tax, ASV == asv)
+  title <- paste0(tax_info$Phylum, ", ", tax_info$Genus)
+  # Graph with estimate
+  graph <- ggplot(norm_label, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(shape=1, size=2, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=norm_label[growth_label$start_pt:growth_label$end_pt,], linetype=2, color="black") +
+    labs(title=title, x="Day", y="ln Relational abundance") +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+  print(graph)
+}
 ```
 
 

@@ -43,6 +43,12 @@ num_grow <- death %>%
 
 num_grow
 
+# treatment
+num_grow %>% 
+  group_by(DOC) %>% 
+  summarize(mean_num = mean(num_grew), sd_num = sd(num_grew)) %>% 
+  ungroup()
+
 num_grow %>% 
   ggplot(aes(x=DOC, y=num_grew)) +
   geom_boxplot() +
@@ -51,34 +57,190 @@ num_grow %>%
   theme()
 ```
 
-### Phylogenetic membership:
+Growth and death:
+
+```{r}
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+
+growth_death <- death %>% 
+  inner_join(growth, by=c("DOC", "Innoculant", "ASV")) %>% 
+  select(DOC, Innoculant, ASV) 
+
+# Innoculant
+growth_death %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(number = n()) %>% 
+  ungroup()
+
+# Treatment
+growth_death %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(number = n()) %>% 
+  ungroup() %>% 
+  group_by(DOC) %>% 
+  summarize(mean_num = mean(number), sd_num = sd(number)) %>% 
+  ungroup()
+```
+
+# Phylogenetic membership:
 
 ```{r}
 # Merge death estimates with taxonomy
 death_tax <- inner_join(death, tax) 
 
 # Graph phylogenetic membership
-death_tax %>% 
+death_phylo_plot <- death_tax %>% 
   group_by(Phylum, DOC, Innoculant) %>% 
   summarize(count = n()) %>% 
   ungroup() %>% 
   arrange(count) %>% 
-  ggplot(aes(x=count, y=reorder(Phylum, -count), color=DOC)) +
+  ggplot(aes(x=count, y=reorder(Phylum, count), color=DOC)) +
   geom_boxplot() +
-  #facet_wrap(~DOC) +
+  labs(title="Death", y="", x="Number of ASVs") +
   theme_test() +
-  theme(axis.text.x = )
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14),
+        panel.grid.major.y = element_line(color = "gray",
+                                          size = 0.5,
+                                          linetype = 2))
+death_phylo_plot
 ```
 
-### Death parameters:
+```{r, eval=FALSE}
+ggsave("../figures/SFA2_death_phylo.png", death_phylo_plot, units="mm", width=200, height=100)
+```
 
-* specific death rate (k)
+
+# Death parameters:
+
+* specific growth rate (k)
 * start day
+* end day
 * change in abundance
 * start abundance
 * end abundance
 
-### Distributions of parameters
+# Community-level
+
+```{r}
+# Summarize parameters
+death_summary <- death %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(mean_slope = mean(slope),
+            mean_start_day = mean(start_day),
+            mean_end_day = mean(end_day),
+            mean_end_abund = mean(end_abund),
+            total_end_abund = sum(end_abund),
+            mean_change_abund = mean(change_abund),
+            total_change_abund = sum(change_abund)) %>% 
+  ungroup()
+```
+
+```{r}
+# Mean k
+slope_mean_plot <- death_summary %>% 
+  ggplot(aes(x=DOC, y=mean_slope)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="Mean slope of death") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+slope_mean_plot
+  
+# Mean start day
+lag_mean_plot <- death_summary %>% 
+  ggplot(aes(x=DOC, y=mean_start_day)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="Mean start of death (day)") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+lag_mean_plot
+
+# Mean change abundance
+change_abund_mean_plot <- death_summary %>% 
+  ggplot(aes(x=DOC, y=mean_change_abund)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="Mean change in relational abundance") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+change_abund_mean_plot
+
+# Total change abundance
+change_abund_total_plot <- death_summary %>% 
+  ggplot(aes(x=DOC, y=total_change_abund)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="Total change in relational abundance") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+change_abund_total_plot
+```
+
+```{r, eval=FALSE}
+ggsave("../figures/SFA2_death_slopemean.png", slope_mean_plot, units="mm", width=100, height=100)
+ggsave("../figures/SFA2_death_lagmean.png", lag_mean_plot, units="mm", width=100, height=100)
+ggsave("../figures/SFA2_death_changeabundmean.png", change_abund_mean_plot, units="mm", width=100, height=100)
+ggsave("../figures/SFA2_death_changeabundtotal.png", change_abund_total_plot, units="mm", width=100, height=100)
+```
+
+# Statistics
+
+Death rate:
+
+```{r}
+slope_lm <- lm(mean_slope ~ DOC, data=death_summary)
+hist(resid(slope_lm))
+plot(predict(slope_lm), resid(slope_lm))
+
+anova(slope_lm)
+```
+
+Start day:
+
+```{r}
+start_day_lm <- lm(mean_start_day ~ DOC, data=death_summary)
+hist(resid(start_day_lm))
+plot(predict(start_day_lm), resid(start_day_lm))
+
+anova(start_day_lm)
+```
+
+Mean change in abundance:
+
+```{r}
+mean_change_lm <- lm(mean_change_abund ~ DOC, data=death_summary)
+hist(resid(mean_change_lm))
+plot(predict(mean_change_lm), resid(mean_change_lm))
+
+anova(mean_change_lm)
+```
+
+Total change in abundance:
+
+```{r}
+total_change_lm <- lm(total_change_abund ~ DOC, data=death_summary)
+hist(resid(total_change_lm))
+plot(predict(total_change_lm), resid(total_change_lm))
+
+anova(total_change_lm)
+```
+
+
+
+
+
+
+
+
+
+# Distributions of parameters
 
 Specific death rates
 
@@ -178,60 +340,6 @@ death %>%
         title=element_text(size=12),
         axis.text=element_text(size=12),
         axis.title=element_text(size=12))
-```
-
-### Community-level
-
-```{r}
-# Summarize parameters
-death_summary <- death %>% 
-  group_by(DOC, Innoculant) %>% 
-  summarize(mean_slope = mean(slope),
-            mean_start_day = mean(start_day),
-            mean_end_day = mean(end_day),
-            mean_end_abund = mean(end_abund),
-            total_end_abund = sum(end_abund),
-            mean_change_abund = mean(change_abund),
-            total_change_abund = sum(change_abund)) %>% 
-  ungroup()
-```
-
-```{r}
-# Mean slope
-death_summary %>% 
-  ggplot(aes(x=DOC, y=mean_slope)) +
-  geom_point() +
-  theme_test()
-
-# Mean start day
-death_summary %>% 
-  ggplot(aes(x=DOC, y=mean_start_day)) +
-  geom_point() +
-  theme_test()
-
-# Mean change abundance
-death_summary %>% 
-  ggplot(aes(x=DOC, y=mean_change_abund)) +
-  geom_point() +
-  theme_test()
-
-# Sum of change abundance
-death_summary %>%
-  ggplot(aes(x=DOC, y=total_change_abund)) +
-  geom_point() +
-  theme_test()
-
-# Mean end abund
-death_summary %>% 
-  ggplot(aes(x=DOC, y=mean_end_abund)) +
-  geom_point() +
-  theme_test()
-
-# Sum of end abundance
-death_summary %>% 
-  ggplot(aes(x=DOC, y=total_end_abund)) +
-  geom_point() +
-  theme_test()
 ```
 
 # Relationship to DOC measurement

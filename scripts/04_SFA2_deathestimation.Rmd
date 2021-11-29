@@ -24,10 +24,17 @@ sessionInfo()
 # Import data
 
 * The already prepped data from 03_SFA2_deathestimation.Rmd
+* Taxonomy
 * Metadata
 
 ```{r}
+# Relational abundances, prepped
 norm_prepped <- readRDS("../data_intermediate/SFA2_norm_prepped.rds")
+
+# Taxonomy
+tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+
+# Metadata
 meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 ```
 
@@ -347,7 +354,7 @@ false1_pval <- (10 - intercept)/slope
 
 Filter p-values based on cut-offs determined (10%, 5%, 2.5%, 1%):
 
-```{r, restuls="show"}
+```{r}
 # ~10% false positives
 death_falsepos10 <- subset(death_estimates, pval <= false10_pval)
 nrow(death_falsepos10)
@@ -374,12 +381,12 @@ Going with 10% again to match growth estimations.
 ```{r}
 # Convert start and end to actual day
 death_final <- data.frame()
-for (l in as.character(unique(death_estimates$label))) {
+for (l in as.character(unique(death_falsepos10$label))) {
   # Isolate timeseries
   norm_label <- norm_prepped %>% 
     filter(label==l) %>% 
     arrange(time)
-  death_label <- filter(death_estimates, label==l)
+  death_label <- filter(death_falsepos10, label==l)
   start <- death_label$start
   end <- death_label$end
   # Start and end day of death
@@ -391,6 +398,7 @@ for (l in as.character(unique(death_estimates$label))) {
   change_abund <- end_abund - start_abund
   # Save output
   this_row <- bind_cols(label = as.character(death_label$label), slope = death_label$coeff,
+                        start_pt = death_label$start, end_pt = death_label$end,
                         start_day = start_day, end_day = end_day, 
                         start_abund = start_abund, end_abund = end_abund, change_abund = change_abund)
   death_final <- bind_rows(death_final, this_row)
@@ -430,3 +438,83 @@ death_tidy <- death_final %>%
 ```{r, eval=FALSE}
 saveRDS(death_tidy, file="../data_intermediate/SFA2_death_estimates.rds")
 ```
+
+# Plot death estimates
+
+```{r}
+# For messing with graphs
+death_testing <- head(death_tidy)
+
+for (l in as.character(death_tidy$label)) {
+  # Subset time series
+  death_label <- filter(death_tidy, label==l)
+  norm_label <- filter(norm_tidy, label==l) %>% 
+    arrange(Day)
+  # Title information
+  asv <- death_label$ASV
+  tax_info <- filter(tax, ASV == asv)
+  title <- paste0(tax_info$Phylum, ", ", tax_info$Genus)
+  # Graph with estimate
+  graph <- ggplot(norm_label, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(shape=1, size=2, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=norm_label[death_label$start_pt:death_label$end_pt,], linetype=2, color="black") +
+    labs(title=title, x="Day", y="ln Relational abundance") +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+  print(graph)
+}
+```
+
+# Plot growth and death
+
+```{r}
+# Import growth estimates and relational abundances
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds") %>% 
+  select(everything(), growth_k=k, growth_start_pt=start_pt, growth_end_pt=end_pt,
+         growth_start_day=start_day, growth_end_day=end_day,
+         growth_start_abund=start_abund, growth_end_abund=end_abund, growth_change_abund=change_abund)
+norm_growth <- readRDS("../data_intermediate/SFA2_norm_growth_estimated.rds")
+
+# Rename death columns
+death_rename <- death_tidy %>% 
+  select(everything(), death_slope=slope, death_start_pt=start_pt, death_end_pt=end_pt,
+         death_start_day=start_day, death_end_day=end_day,
+         death_start_abund=start_abund, death_end_abund=end_abund, death_change_abund=change_abund)
+
+# Combine growth and death
+both <- inner_join(growth, death_rename)
+norm_both<- filter(norm_growth, label %in% unique(as.character(norm_tidy$label)))
+
+# Plot
+
+# For messing with graphs
+both_testing <- head(both)
+
+for (l in as.character(both$label)) {
+  # Subset time series
+  both_label <- filter(both, label==l)
+  norm_label <- filter(norm_both, label==l) %>% 
+    arrange(Day)
+  # Title information
+  asv <- death_label$ASV
+  tax_info <- filter(tax, ASV == asv)
+  title <- paste0(tax_info$Phylum, ", ", tax_info$Genus)
+  # Graph with estimate
+  graph <- ggplot(norm_label, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(shape=1, size=2, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=norm_label[both_label$growth_start_pt:both_label$growth_end_pt,], linetype=2, color="#005427") +
+    geom_smooth(method="lm", data=norm_label[both_label$death_start_pt:both_label$death_end_pt,], linetype=2, color="#8C0500") +
+    labs(title=title, x="Day", y="ln Relational abundance") +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+  print(graph)
+}
+
+```
+
