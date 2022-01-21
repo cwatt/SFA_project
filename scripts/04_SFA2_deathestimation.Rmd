@@ -421,7 +421,7 @@ norm_tidy <- norm_prepped %>%
 ```
 
 ```{r, eval=FALSE}
-saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_death_estimated.rds")
+saveRDS(norm_tidy, file="../data_intermediate/SFA2_death_norm_estimated.rds")
 ```
 
 Death estimates:
@@ -437,6 +437,13 @@ death_tidy <- death_final %>%
 
 ```{r, eval=FALSE}
 saveRDS(death_tidy, file="../data_intermediate/SFA2_death_estimates.rds")
+```
+
+# Create list of ASVs for PAPRICA
+
+```{r, eval=FALSE}
+death_asvs <- select(death_tidy, ASV)
+write_tsv(death_asvs, file="../paprica_analysis/death_asvs.txt")
 ```
 
 # Plot death estimates

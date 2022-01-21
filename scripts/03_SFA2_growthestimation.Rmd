@@ -769,6 +769,13 @@ growth_tidy <- growth_final %>%
 saveRDS(growth_tidy, file="../data_intermediate/SFA2_growth_estimates.rds")
 ```
 
+# Create list of ASVs for PAPRICA
+
+```{r, eval=FALSE}
+growth_asvs <- select(growth_tidy, ASV)
+write_tsv(growth_asvs, file="../paprica_analysis/growth_asvs.txt")
+```
+
 # Plot growth estimates
 
 ```{r}

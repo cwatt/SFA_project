@@ -17,6 +17,7 @@ protocols
 figures
 rmarkdown_files
 template_scripts
+paprica_analysis
 
 # Data and other files
 *.csv

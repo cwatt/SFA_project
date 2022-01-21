@@ -1,0 +1,77 @@
+---
+title: "Untitled"
+author: "Cassandra Wattenburger"
+date: "1/20/2022"
+output: html_document
+---
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Import data
+
+Files produced in 02_SFA2_growthestimates.Rmd, 03_SFA2_deathestimates.Rmd.
+
+```{r}
+# growth
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+
+# death
+death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
+
+# Taxonomic information
+tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+```
+
+# Overlapping ASVs - growth
+
+```{r}
+asv_overlap <- growth %>% 
+  select(DOC, ASV) %>% 
+  unique() %>% 
+  group_by(ASV) %>% 
+  summarize(overlap = n()) %>% # 1 means not in both trts, two means in both trts
+  filter(overlap == 2) %>% 
+  select(ASV)
+
+dim(asv_overlap)
+```
+
+There are 25 shared ASVs between high and low DOC phenotype communities. Who are they?
+
+```{r}
+asv_overlap <- inner_join(asv_overlap, tax)
+
+asv_overlap %>% 
+  arrange(Phylum)
+
+asv_overlap %>% 
+  group_by(Phylum) %>% 
+  summarize(count = n()) %>% 
+  arrange(-count)
+```
+
+Overlapping taxa mainly consist of Actinobacteria, Firmicutes, and Proteobacteria.
+
+Change in normalized abundance was significantly different between treatments. Do overlapping taxa show same trend?
+
+```{r}
+growth %>% semi_join(asv_overlap, growth, by="ASV") %>% 
+  group_by(DOC, Innoculant) %>% 
+  summarize(mean_chgabund = mean(end_abund - start_abund)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=DOC, y=mean_chgabund)) + 
+  geom_point() + 
+  theme_test()
+```
+
+Yes, these seem to recreate the difference between treatments.
+
+
+
