@@ -30,9 +30,9 @@ growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
 tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
 ```
 
-# Exploration
+# Overview
 
-### Numbers of growing bacteria
+### Number of growing taxa
 
 ```{r}
 # Number of taxa growing
@@ -56,7 +56,7 @@ num_grow %>%
   theme_test()
 ```
 
-### Phylogenetic membership:
+### Phylogenetic membership
 
 ```{r}
 # Merge growth estimates with taxonomy
@@ -81,61 +81,69 @@ growth_phylo_plot <- growth_tax %>%
 growth_phylo_plot
 ```
 
-```{r, eval=FALSE}
-ggsave("../figures/SFA2_growth_phylo.png", growth_phylo_plot, units="mm", width=200, height=100)
-```
-
-### Growth parameters:
+# Growth parameters
 
 * specific growth rate (k)
 * start day
 * end day
-* change in abundance
+* length of growth
 * start abundance
 * end abundance
+* change in abundance
 
-### Sample-level
+Other:
+* 16S copy number
+* genome size
+
+# Sample-level analysis
+
+Mean of all ASVs in each replicate.
 
 ```{r}
 # Summarize parameters
-growth_summary <- growth %>% 
+growth_sample <- growth %>% 
   group_by(DOC, Innoculant) %>% 
-  summarize(mean_k = mean(k),
-            mean_start_day = mean(start_day),
-            mean_end_day = mean(end_day),
-            mean_end_abund = mean(end_abund),
-            total_end_abund = sum(end_abund),
-            mean_change_abund = mean(change_abund),
-            total_change_abund = sum(change_abund)) %>% 
+  summarize(k = mean(k),
+            start_day = mean(start_day),
+            end_day = mean(end_day),
+            length = mean(end_day - start_day),
+            start_abund = mean(start_abund/n16S), # adjust by copy number
+            end_abund = mean(end_abund/n16S), # adjust by copy number
+            total_end_abund = sum(end_abund/n16S), # adjust by copy number
+            mean_change_abund = mean(change_abund/n16S), # adjust by copy number
+            total_change_abund = sum(change_abund/n16S), # adjust by copy number
+            n16S = mean(n16S),
+            genome_size = mean(genome_size)) %>%  
   ungroup()
 ```
 
+### Plots
 
 ```{r}
 # Mean k
-k_mean_plot <- growth_summary %>% 
-  ggplot(aes(x=DOC, y=mean_k)) +
+k_plot <- growth_sample %>% 
+  ggplot(aes(x=DOC, y=k)) +
   geom_boxplot() +
   labs(x="DOC \"phenotype\"", y="Mean specific growth rate (k)") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
-k_mean_plot
+k_plot
   
 # Mean start day
-lag_mean_plot <- growth_summary %>% 
-  ggplot(aes(x=DOC, y=mean_start_day)) +
+lag_plot <- growth_sample %>% 
+  ggplot(aes(x=DOC, y=start_day)) +
   geom_boxplot() +
   labs(x="DOC \"phenotype\"", y="Mean lag (days)") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
-lag_mean_plot
+lag_plot
 
 # Mean change abundance
-change_abund_mean_plot <- growth_summary %>% 
+change_abund_mean_plot <- growth_sample %>% 
   ggplot(aes(x=DOC, y=mean_change_abund)) +
   geom_boxplot() +
   labs(x="DOC \"phenotype\"", y="Mean change in relational abundance") +
@@ -146,7 +154,7 @@ change_abund_mean_plot <- growth_summary %>%
 change_abund_mean_plot
 
 # Total change abundance
-change_abund_total_plot <- growth_summary %>% 
+change_abund_total_plot <- growth_sample %>% 
   ggplot(aes(x=DOC, y=total_change_abund)) +
   geom_boxplot() +
   labs(x="DOC \"phenotype\"", y="Total change in relational abundance") +
@@ -157,8 +165,7 @@ change_abund_total_plot <- growth_summary %>%
 change_abund_total_plot
 
 # Length of growth
-length_plot <- growth_summary %>% 
-  mutate(length = mean_end_day - mean_start_day) %>% 
+length_plot <- growth_sample %>%
   ggplot(aes(x=DOC, y=length)) +
   geom_boxplot() +
   labs(x="DOC \"phenotype\"", y="Length of growth (days)") +
@@ -167,141 +174,28 @@ length_plot <- growth_summary %>%
         axis.title = element_text(size=14),
         axis.text = element_text(size=14))
 length_plot
-```
 
-```{r, eval=FALSE}
-ggsave("../figures/SFA2_growth_kmean.png", k_mean_plot, units="mm", width=100, height=100)
-ggsave("../figures/SFA2_growth_lagmean.png", lag_mean_plot, units="mm", width=100, height=100)
-ggsave("../figures/SFA2_growth_changeabundmean.png", change_abund_mean_plot, units="mm", width=100, height=100)
-ggsave("../figures/SFA2_growth_changeabundtotal.png", change_abund_total_plot, units="mm", width=100, height=100)
-```
-
-### ASV-level
-
-```{r}
-growth_asv <- growth %>% 
-  group_by(DOC, ASV) %>% 
-  summarize(k = mean(k),
-            start_pt = mean(start_pt),
-            end_pt = mean(end_pt),
-            start_day = mean(start_day),
-            end_day = mean(end_day),
-            start_abund = mean(start_abund),
-            end_abund = mean(end_abund),
-            chg_abund = mean(end_abund - start_abund)) %>% 
-  ungroup() %>% 
-  inner_join(tax)
-```
-
-```{r}
-growth_asv %>% 
-  ggplot(aes(y = Phylum, x=chg_abund)) +
-  geom_point() +
-  theme_test()
-```
-
-
-
-### ASV-level distirbutions
-
-Specific growth rates
-
-```{r}
-# Distribution of growth rates
-growth %>%
-  ggplot(aes(x=k, color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="Specific growth rate (k)", y="Kernel Density") +
+# rrn copies
+rrn_plot <- growth_sample %>%
+  ggplot(aes(x=DOC, y=n16S)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="rrn copy number") +
   theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+rrn_plot
 
-growth %>%
-  ggplot(aes(x=k, color=Innoculant)) +
-  geom_density(alpha=0.5) +
-  labs(x="Specific growth rate (k)", y="Kernel Density") +
+# genome size
+genome_plot <- growth_sample %>%
+  ggplot(aes(x=DOC, y=genome_size)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="genome size") +
   theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-```
-
-Change in relational abundance
-
-```{r}
-# Distribution of change in abundance during growth
-growth %>%
-  ggplot(aes(x=log(change_abund), color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Change in relational abundance during growth", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-
-growth %>%
-  ggplot(aes(x=log(change_abund), color=Innoculant, linetype=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Change in relational abundance during growth", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-```
-
-Start relational abundance
-
-```{r}
-# Distribution of change in abundance during growth
-growth %>%
-  ggplot(aes(x=log(start_abund), color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Starting relational abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-
-growth %>%
-  ggplot(aes(x=log(start_abund), color=Innoculant)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Starting in relational abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-```
-
-End relational abundance
-
-```{r}
-# Distribution of change in abundance during growth
-growth %>%
-  ggplot(aes(x=log(end_abund), color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Ending relational abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-
-growth %>%
-  ggplot(aes(x=log(end_abund), color=Innoculant)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Ending relational abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+genome_plot
 ```
 
 ### Statistics
@@ -309,44 +203,87 @@ growth %>%
 Specific growth rate:
 
 ```{r}
-k_lm <- lm(mean_k ~ DOC, data=growth_summary)
+# ANOVA
+k_lm <- lm(k ~ DOC, data=growth_sample)
 hist(resid(k_lm))
 plot(predict(k_lm), resid(k_lm))
-
 anova(k_lm)
 ```
 
-Start day:
+Lag time:
 
 ```{r}
-start_day_lm <- lm(mean_start_day ~ DOC, data=growth_summary)
-hist(resid(start_day_lm))
-plot(predict(start_day_lm), resid(start_day_lm))
+# ANOVA
+lag_lm <- lm(start_day ~ DOC, data=growth_sample)
+hist(resid(lag_lm))
+plot(predict(lag_lm), resid(lag_lm))
+anova(lag_lm)
+```
 
-anova(start_day_lm)
+Length of growth:
+
+```{r}
+# ANOVA
+length_lm <- lm(length ~ DOC, data=growth_sample)
+hist(resid(length_lm)) # non-normal
+plot(predict(length_lm), resid(length_lm)) # heteroskedastic
+
+# Try log transform
+length_lm <- lm(log(length) ~ DOC, data=growth_sample)
+hist(resid(length_lm)) # non-normal
+plot(predict(length_lm), resid(length_lm)) # heteroskedastic
+
+# Use Welch's t-test
+length_welch <- t.test(length ~ DOC, data=growth_sample, var.equal=FALSE)
+length_welch
 ```
 
 Mean change in abundance:
 
 ```{r}
-mean_change_lm <- lm(log(mean_change_abund) ~ DOC, data=growth_summary)
-hist(resid(mean_change_lm))
-plot(predict(mean_change_lm), resid(mean_change_lm))
+# ANOVA
+change_lm <- lm(log(mean_change_abund) ~ DOC, data=growth_sample)
+hist(resid(change_lm))
+plot(predict(change_lm), resid(change_lm))
 
-anova(mean_change_lm)
+anova(change_lm)
 ```
 
 Total change in abundance:
 
 ```{r}
-total_change_lm <- lm(total_change_abund ~ DOC, data=growth_summary)
+# ANOVA
+total_change_lm <- lm(total_change_abund ~ DOC, data=growth_sample)
 hist(resid(total_change_lm))
 plot(predict(total_change_lm), resid(total_change_lm))
-
 anova(total_change_lm)
 ```
 
-# Relationship to DOC measurement
+rrn copies:
+
+```{r}
+# ANOVA
+rrn_lm <- lm(n16S ~ DOC, data=growth_sample)
+hist(resid(rrn_lm))
+plot(predict(rrn_lm), resid(rrn_lm)) # pretty heteroskedastic
+
+# Welch's t-test
+rrn_welch <- t.test(n16S ~ DOC, data=growth_sample, var.equal=FALSE)
+rrn_welch
+```
+
+Genome size:
+
+```{r}
+# ANOVA
+genome_lm <- lm(genome_size ~ DOC, data=growth_sample)
+hist(resid(genome_lm))
+plot(predict(genome_lm), resid(genome_lm))
+
+anova(genome_lm)
+```
+
+### Relationship to DOC concentration
 
 Import DOC measurements
 
@@ -368,45 +305,41 @@ doc_meta <- inner_join(doc, meta) %>%
   mutate(Innoculant = as.character(Innoculant))
 
 # Join with growth estimates
-growth_summary <- growth %>% 
-  group_by(DOC, Innoculant) %>% 
-  summarize(mean_k = mean(k),
-            mean_start_day = mean(start_day),
-            mean_end_day = mean(end_day),
-            total_start_abund = sum(start_abund),
-            total_end_abund = sum(end_abund),
-            total_change_abund = sum(change_abund)) %>% 
-  ungroup()
-
-doc_growth <- inner_join(doc_meta, growth_summary)
+doc_growth <- inner_join(doc_meta, growth_sample)
 ```
 
 ```{r}
 # k
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=mean_k, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=k, color=DOC)) +
   geom_point() +
   theme_test()
 
 # start day
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=mean_start_day, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=start_day, color=DOC)) +
   geom_point() +
   theme_test()
 
 # start abundance
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=total_start_abund, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=start_abund, color=DOC)) +
   geom_point() +
   theme_test()
 
 # end abundance
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=total_end_abund, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=end_abund, color=DOC)) +
   geom_point() +
   theme_test()
 
-# change abundance
+# mean change abundance
+doc_growth %>% 
+  ggplot(aes(x=mean_doc, y=mean_change_abund, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# total change abundance
 doc_growth %>% 
   ggplot(aes(x=mean_doc, y=total_change_abund, color=DOC)) +
   geom_point() +
@@ -415,48 +348,146 @@ doc_growth %>%
 
 Not seeing anything worth persuing further.
 
-# ARCHIVE
+# Genome size
 
-ASV-level pretty 
-* sure this is a bad idea!!! incorporates pseudoreps
-* distributions are the way to go I think
-* need to think about how distributions handle replication
-* or maybe mixed linear effects model could handle this? make innoculant a random effect? inforunately ASV should and can't be made random effect
+```{r}
+# ANOVA
+genome_lm <- lm(genome_size ~ DOC, data=growth_sample)
+hist(resid(genome_lm))
+plot(predict(genome_lm), resid(genome_lm))
+anova(genome_lm)
+```
 
-```{r, eval=FALSE}
-# Growth rate
-growth %>% 
-  ggplot(aes(x=DOC, y=k)) +
-  geom_boxplot() +
+# ASV-level analysis
+
+Mean of all replicates for each ASV.
+
+```{r}
+growth_asv <- growth %>% 
+  group_by(DOC, ASV) %>% 
+  summarize(k = mean(k),
+            start_pt = mean(start_pt),
+            end_pt = mean(end_pt),
+            start_day = mean(start_day),
+            end_day = mean(end_day),
+            length = mean(end_day - start_day),
+            start_abund = mean(start_abund/n16S), # adjust for copy number
+            end_abund = mean(end_abund/n16S), # adjust for copy number
+            change_abund = mean(change_abund/n16S), # adjust for copy number
+            n16S = mean(n16S),
+            genome_size = mean(genome_size)) %>% 
+  ungroup() %>% 
+  inner_join(tax)
+```
+
+### Change in abundance by phylum membership
+
+```{r}
+growth_asv %>% 
+  ggplot(aes(y = Phylum, x=log(change_abund), color=Phylum)) +
   geom_jitter() +
-  theme_test()
-
-# Start day
-growth %>% 
-  ggplot(aes(x=DOC, y=start_day)) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-
-# Change in abundance
-growth %>% 
-  ggplot(aes(x=DOC, y=log(change_abund))) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-
-# Start abundance
-growth %>% 
-  ggplot(aes(x=DOC, y=log(start_abund))) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-
-# End abundance
-growth %>% 
-  ggplot(aes(x=DOC, y=log(end_abund))) +
-  geom_boxplot() +
-  geom_jitter() +
+  facet_wrap(~DOC, nrow=2) +
   theme_test()
 ```
 
+### Distributions
+
+Specific growth rates:
+
+```{r}
+# Distribution of growth_asv rates
+growth_asv %>%
+  ggplot(aes(x=k, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="Specific growth_asv rate (k)", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Change in abundance:
+
+```{r}
+# Distribution of change in abundance during growth_asv
+growth_asv %>%
+  ggplot(aes(x=log(change_abund), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Change in relational abundance during growth_asv", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Start abundance:
+
+```{r}
+growth_asv %>%
+  ggplot(aes(x=log(start_abund), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Starting relational abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+End abundance:
+
+```{r}
+growth_asv %>%
+  ggplot(aes(x=log(end_abund), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Ending relational abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Length of growth:
+
+```{r}
+growth_asv %>%
+  ggplot(aes(x=length, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="length of growth_asv (days)", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+rrn copy number:
+
+```{r}
+growth_asv %>%
+  ggplot(aes(x=n16S, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="rrn copies", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Genome size:
+
+```{r}
+growth_asv %>%
+  ggplot(aes(x=genome_size, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="genome size", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```

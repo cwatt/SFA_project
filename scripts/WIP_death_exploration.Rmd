@@ -6,82 +6,57 @@ output: html_document
 ---
 
 ```{r}
-# Clear working directory, load in packages, generate package info
+# Clear worslopeing directory, load in pacslopeages, generate pacslopeage info
 rm(list=ls())
 
 library("tidyverse")
 library("trelliscopejs")
+library("lmerTest")
 
 sessionInfo()
 ```
 
 # Import data
 
-Files produced in 03_SFA2_deathestimates.Rmd
+Files produced in 04_SFA2_deathestimates.Rmd
 * death estimates
 * normalized abundance data for time series with estimated death
 
 ```{r}
-# death
+# Growth
 death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
 
 # Taxonomic information
 tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
 ```
 
-# Exploration
+# Overview
 
-### Numbers of dying bacteria
+### Number of dying taxa
 
 ```{r}
-# Number of taxa dying
-num_grow <- death %>% 
+# Number of taxa growing
+num_died <- death %>% 
   group_by(DOC, Innoculant) %>% 
-  summarize(num_grew = n()) %>% 
+  summarize(num_died = n()) %>% 
   ungroup()
 
-num_grow
+num_died
 
 # treatment
-num_grow %>% 
+num_died %>% 
   group_by(DOC) %>% 
-  summarize(mean_num = mean(num_grew), sd_num = sd(num_grew)) %>% 
+  summarize(mean_num = mean(num_died), sd_num = sd(num_died)) %>% 
   ungroup()
 
-num_grow %>% 
-  ggplot(aes(x=DOC, y=num_grew)) +
+num_died %>% 
+  ggplot(aes(x=DOC, y=num_died)) +
   geom_boxplot() +
   labs(x="DOC \"phenotype\"", y="Number of death estimated taxa") +
-  theme_test() +
-  theme()
+  theme_test()
 ```
 
-Growth and death:
-
-```{r}
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
-
-growth_death <- death %>% 
-  inner_join(growth, by=c("DOC", "Innoculant", "ASV")) %>% 
-  select(DOC, Innoculant, ASV) 
-
-# Innoculant
-growth_death %>% 
-  group_by(DOC, Innoculant) %>% 
-  summarize(number = n()) %>% 
-  ungroup()
-
-# Treatment
-growth_death %>% 
-  group_by(DOC, Innoculant) %>% 
-  summarize(number = n()) %>% 
-  ungroup() %>% 
-  group_by(DOC) %>% 
-  summarize(mean_num = mean(number), sd_num = sd(number)) %>% 
-  ungroup()
-```
-
-# Phylogenetic membership:
+### Phylogenetic membership
 
 ```{r}
 # Merge death estimates with taxonomy
@@ -95,7 +70,7 @@ death_phylo_plot <- death_tax %>%
   arrange(count) %>% 
   ggplot(aes(x=count, y=reorder(Phylum, count), color=DOC)) +
   geom_boxplot() +
-  labs(title="Death", y="", x="Number of ASVs") +
+  labs(title="Growth", y="", x="Number of ASVs") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
@@ -106,61 +81,69 @@ death_phylo_plot <- death_tax %>%
 death_phylo_plot
 ```
 
-```{r, eval=FALSE}
-ggsave("../figures/SFA2_death_phylo.png", death_phylo_plot, units="mm", width=200, height=100)
-```
+# Death parameters
 
-
-# Death parameters:
-
-* specific growth rate (k)
+* specific death rate (slope)
 * start day
 * end day
-* change in abundance
+* length of growth
 * start abundance
 * end abundance
+* change in abundance
 
-# Community-level
+Other:
+* 16S copy number
+* genome size
+
+# Sample-level analysis
+
+Mean of all ASVs in each replicate.
 
 ```{r}
 # Summarize parameters
-death_summary <- death %>% 
+death_sample <- death %>% 
   group_by(DOC, Innoculant) %>% 
-  summarize(mean_slope = mean(slope),
-            mean_start_day = mean(start_day),
-            mean_end_day = mean(end_day),
-            mean_end_abund = mean(end_abund),
-            total_end_abund = sum(end_abund),
-            mean_change_abund = mean(change_abund),
-            total_change_abund = sum(change_abund)) %>% 
+  summarize(slope = mean(slope),
+            start_day = mean(start_day),
+            end_day = mean(end_day),
+            length = mean(end_day - start_day),
+            start_abund = mean(start_abund/n16S), # adjust by copy number
+            end_abund = mean(end_abund/n16S), # adjust by copy number
+            total_end_abund = sum(end_abund/n16S), # adjust by copy number
+            mean_change_abund = mean(change_abund/n16S), # adjust by copy number
+            total_change_abund = sum(change_abund/n16S), # adjust by copy number
+            n16S = mean(n16S),
+            genome_size = mean(genome_size)) %>%  
   ungroup()
 ```
 
+### Plots
+
 ```{r}
-# Mean k
-slope_mean_plot <- death_summary %>% 
-  ggplot(aes(x=DOC, y=mean_slope)) +
+# Mean slope
+slope_plot <- death_sample %>% 
+  ggplot(aes(x=DOC, y=slope)) +
   geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Mean slope of death") +
+  labs(x="DOC \"phenotype\"", y="Mean specific death rate (slope)") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
-slope_mean_plot
+slope_plot
   
 # Mean start day
-lag_mean_plot <- death_summary %>% 
-  ggplot(aes(x=DOC, y=mean_start_day)) +
+lag_plot <- death_sample %>% 
+  ggplot(aes(x=DOC, y=start_day)) +
   geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Mean start of death (day)") +
+  labs(x="DOC \"phenotype\"", y="Mean lag (days)") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
-lag_mean_plot
+lag_plot
 
 # Mean change abundance
-change_abund_mean_plot <- death_summary %>% 
+change_abund_mean_plot <- death_sample %>% 
   ggplot(aes(x=DOC, y=mean_change_abund)) +
   geom_boxplot() +
   labs(x="DOC \"phenotype\"", y="Mean change in relational abundance") +
@@ -171,7 +154,7 @@ change_abund_mean_plot <- death_summary %>%
 change_abund_mean_plot
 
 # Total change abundance
-change_abund_total_plot <- death_summary %>% 
+change_abund_total_plot <- death_sample %>% 
   ggplot(aes(x=DOC, y=total_change_abund)) +
   geom_boxplot() +
   labs(x="DOC \"phenotype\"", y="Total change in relational abundance") +
@@ -180,168 +163,135 @@ change_abund_total_plot <- death_summary %>%
         axis.title = element_text(size=14),
         axis.text = element_text(size=14))
 change_abund_total_plot
+
+# Length of death
+length_plot <- death_sample %>%
+  ggplot(aes(x=DOC, y=length)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="Length of death (days)") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+length_plot
+
+# rrn copies
+rrn_plot <- death_sample %>%
+  ggplot(aes(x=DOC, y=n16S)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="rrn copy number") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+rrn_plot
+
+# genome size
+genome_plot <- death_sample %>%
+  ggplot(aes(x=DOC, y=genome_size)) +
+  geom_boxplot() +
+  labs(x="DOC \"phenotype\"", y="genome size") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+genome_plot
 ```
 
-```{r, eval=FALSE}
-ggsave("../figures/SFA2_death_slopemean.png", slope_mean_plot, units="mm", width=100, height=100)
-ggsave("../figures/SFA2_death_lagmean.png", lag_mean_plot, units="mm", width=100, height=100)
-ggsave("../figures/SFA2_death_changeabundmean.png", change_abund_mean_plot, units="mm", width=100, height=100)
-ggsave("../figures/SFA2_death_changeabundtotal.png", change_abund_total_plot, units="mm", width=100, height=100)
-```
+### Statistics
 
-# Statistics
-
-Death rate:
+Specific death rate:
 
 ```{r}
-slope_lm <- lm(mean_slope ~ DOC, data=death_summary)
+# ANOVA
+slope_lm <- lm(slope ~ DOC, data=death_sample)
 hist(resid(slope_lm))
-plot(predict(slope_lm), resid(slope_lm))
+plot(predict(slope_lm), resid(slope_lm)) # heteroskedastic
 
-anova(slope_lm)
+# Welch's t-test
+slope_welch <- t.test(slope ~ DOC, data=death_sample, var.equal=FALSE)
+slope_welch
 ```
 
-Start day:
+Lag time:
 
 ```{r}
-start_day_lm <- lm(mean_start_day ~ DOC, data=death_summary)
-hist(resid(start_day_lm))
-plot(predict(start_day_lm), resid(start_day_lm))
+# ANOVA
+lag_lm <- lm(start_day ~ DOC, data=death_sample)
+hist(resid(lag_lm))
+plot(predict(lag_lm), resid(lag_lm)) # heteroskedastic
 
-anova(start_day_lm)
+# Welch's t-test
+lag_welch <- t.test(start_day ~ DOC, data=death_sample, var.equal=FALSE)
+lag_welch
+```
+
+Length of death:
+
+```{r}
+# ANOVA
+length_lm <- lm(length ~ DOC, data=death_sample)
+hist(resid(length_lm)) # non-normal
+plot(predict(length_lm), resid(length_lm))
+
+# Try log transform
+length_lm <- lm(log(length) ~ DOC, data=death_sample)
+hist(resid(length_lm)) # non-normal
+plot(predict(length_lm), resid(length_lm))
+
+# Kruskal Wallis test
+
 ```
 
 Mean change in abundance:
 
 ```{r}
-mean_change_lm <- lm(mean_change_abund ~ DOC, data=death_summary)
-hist(resid(mean_change_lm))
-plot(predict(mean_change_lm), resid(mean_change_lm))
+# ANOVA
+change_lm <- lm(abs(mean_change_abund) ~ DOC, data=death_sample)
+hist(resid(change_lm))
+plot(predict(change_lm), resid(change_lm))
 
-anova(mean_change_lm)
+anova(change_lm)
 ```
 
 Total change in abundance:
 
 ```{r}
-total_change_lm <- lm(total_change_abund ~ DOC, data=death_summary)
+# ANOVA
+total_change_lm <- lm(log(abs(total_change_abund)) ~ DOC, data=death_sample)
 hist(resid(total_change_lm))
-plot(predict(total_change_lm), resid(total_change_lm))
+plot(predict(total_change_lm), resid(total_change_lm)) # heteroskedastic
 
-anova(total_change_lm)
+# Welch's t-test
+slope_welch <- t.test(log(abs(total_change_abund)) ~ DOC, data=death_sample, var.equal=FALSE)
+slope_welch
 ```
 
-
-
-
-
-
-
-
-
-# Distributions of parameters
-
-Specific death rates
+rrn copies:
 
 ```{r}
-# Distribution of death rates
-death %>%
-  ggplot(aes(x=slope, color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="Specific death rate (slope)", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
+# ANOVA
+rrn_lm <- lm(n16S ~ DOC, data=death_sample)
+hist(resid(rrn_lm))
+plot(predict(rrn_lm), resid(rrn_lm)) # heterskedastic
 
-death %>%
-  ggplot(aes(x=slope, color=Innoculant)) +
-  geom_density(alpha=0.5) +
-  labs(x="Specific death rate (k)", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
+# Welch's t-test
+rrn_welch <- t.test(n16S ~ DOC, data=death_sample, var.equal=FALSE)
+rrn_welch
 ```
 
-Change in relational abundance
+Genome size:
 
 ```{r}
-# Distribution of change in abundance during death
-death %>%
-  ggplot(aes(x=log(change_abund), color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Change in relational abundance during death", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
+# ANOVA
+genome_lm <- lm(genome_size ~ DOC, data=death_sample)
+hist(resid(genome_lm))
+plot(predict(genome_lm), resid(genome_lm))
 
-death %>%
-  ggplot(aes(x=log(change_abund), color=Innoculant, linetype=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Change in relational abundance during death", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
+anova(genome_lm)
 ```
 
-Start relational abundance
-
-```{r}
-# Distribution of change in abundance during death
-death %>%
-  ggplot(aes(x=log(start_abund), color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Starting relational abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-
-death %>%
-  ggplot(aes(x=log(start_abund), color=Innoculant)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Starting in relational abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-```
-
-End relational abundance
-
-```{r}
-# Distribution of change in abundance during death
-death %>%
-  ggplot(aes(x=log(end_abund), color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Ending relational abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-
-death %>%
-  ggplot(aes(x=log(end_abund), color=Innoculant)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln Ending relational abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-```
-
-# Relationship to DOC measurement
+### Relationship to DOC concentration
 
 Import DOC measurements
 
@@ -352,58 +302,188 @@ doc <- readRDS("../data_DOC/SFA2/SFA2_doc.rds") %>%
   mutate(Sample = as.numeric(Sample))
 
 # Metadata
-meta <- read_tsv(file = "../data_amplicon/SFA2_full/SFA2_full_metadata.tsv") %>% 
+meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_full_metadata.tsv") %>% 
   select(Sample, Type, Innoculant, DOC, Replicate, Day)
 
 # Merge and average technical replicates
 doc_meta <- inner_join(doc, meta) %>% 
   group_by(DOC, Innoculant) %>% 
-  summarize(doc_avg = mean(mean)) %>% 
+  summarize(mean_doc = mean(mean)) %>% 
   ungroup() %>% 
   mutate(Innoculant = as.character(Innoculant))
 
 # Join with death estimates
-death_summary <- death %>% 
-  group_by(DOC, Innoculant) %>% 
-  summarize(mean_slope = mean(slope),
-            mean_start_day = mean(start_day),
-            mean_end_day = mean(end_day),
-            total_start_abund = sum(start_abund),
-            total_end_abund = sum(end_abund),
-            total_change_abund = sum(change_abund)) %>% 
-  ungroup()
-
-doc_death <- inner_join(doc_meta, death_summary)
+doc_death <- inner_join(doc_meta, death_sample)
 ```
 
 ```{r}
-# k
+# slope
 doc_death %>% 
-  ggplot(aes(x=doc_avg, y=mean_slope, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=slope, color=DOC)) +
   geom_point() +
   theme_test()
 
 # start day
 doc_death %>% 
-  ggplot(aes(x=doc_avg, y=mean_start_day, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=start_day, color=DOC)) +
   geom_point() +
   theme_test()
 
 # start abundance
 doc_death %>% 
-  ggplot(aes(x=doc_avg, y=total_start_abund, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=start_abund, color=DOC)) +
   geom_point() +
   theme_test()
 
 # end abundance
 doc_death %>% 
-  ggplot(aes(x=doc_avg, y=total_end_abund, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=end_abund, color=DOC)) +
   geom_point() +
   theme_test()
 
-# change abundance
+# mean change abundance
 doc_death %>% 
-  ggplot(aes(x=doc_avg, y=total_change_abund, color=DOC)) +
+  ggplot(aes(x=mean_doc, y=mean_change_abund, color=DOC)) +
   geom_point() +
   theme_test()
+
+# total change abundance
+doc_death %>% 
+  ggplot(aes(x=mean_doc, y=total_change_abund, color=DOC)) +
+  geom_point() +
+  theme_test()
+```
+
+# ASV-level analysis
+
+Mean of all replicates for each ASV.
+
+```{r}
+death_asv <- death %>% 
+  group_by(DOC, ASV) %>% 
+  summarize(slope = mean(slope),
+            start_pt = mean(start_pt),
+            end_pt = mean(end_pt),
+            start_day = mean(start_day),
+            end_day = mean(end_day),
+            length = mean(end_day - start_day),
+            start_abund = mean(start_abund/n16S), # adjust for copy number
+            end_abund = mean(end_abund/n16S), # adjust for copy number
+            change_abund = mean(change_abund/n16S), # adjust for copy number
+            n16S = mean(n16S),
+            genome_size = mean(genome_size)) %>% 
+  ungroup() %>% 
+  inner_join(tax)
+```
+
+### Change in abundance by phylum membership
+
+```{r}
+death_asv %>% 
+  ggplot(aes(y = Phylum, x=log(abs(change_abund)), color=Phylum)) +
+  geom_jitter() +
+  facet_wrap(~DOC, nrow=2) +
+  theme_test()
+```
+
+### Distributions
+
+Specific death rates:
+
+```{r}
+# Distribution of death_asv rates
+death_asv %>%
+  ggplot(aes(x=slope, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="Specific death_asv rate (slope)", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Change in abundance:
+
+```{r}
+# Distribution of change in abundance during death_asv
+death_asv %>%
+  ggplot(aes(x=log(abs(change_abund)), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Change in relational abundance during death_asv", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Start abundance:
+
+```{r}
+death_asv %>%
+  ggplot(aes(x=log(start_abund), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Starting relational abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+End abundance:
+
+```{r}
+death_asv %>%
+  ggplot(aes(x=log(end_abund), color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln Ending relational abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Length of death:
+
+```{r}
+death_asv %>%
+  ggplot(aes(x=length, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="length of death_asv (days)", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+rrn copy number:
+
+```{r}
+death_asv %>%
+  ggplot(aes(x=n16S, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="rrn copies", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+Genome size:
+
+```{r}
+death_asv %>%
+  ggplot(aes(x=genome_size, color=DOC)) +
+  geom_density(alpha=0.5) +
+  labs(x="genome size", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
 ```

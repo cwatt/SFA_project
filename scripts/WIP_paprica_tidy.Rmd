@@ -1,0 +1,75 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Import data
+
+Files produced using paprica v0.6
+
+See scripts for xxx.
+
+```{r}
+# PAPRICA outputs
+# Bacteria
+pap_bac <- read_csv("../paprica_analysis/output_bacteria/est_rep-seqs.bacteria.edge_data.csv")
+place_bac <- read_csv("../paprica_analysis/output_bacteria/est_rep-seqs.bacteria.combined_16S.bacteria.tax.placements.csv")
+
+# Archaea
+pap_arc <- read_csv("../paprica_analysis/output_archaea/est_rep-seqs.archaea.edge_data.csv")
+place_arc <- read_csv("../paprica_analysis/output_archaea/est_rep-seqs.archaea.combined_16S.archaea.tax.placements.csv")
+
+# Growth and death estimates
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
+```
+
+# Tidy and combine
+
+```{r}
+# Bacteria
+place_bac <- place_bac %>% mutate(ASV = gsub("[0-9]+\\|(*)+", "\1", Pquery),
+         ASV = gsub("\001", "", ASV)) %>% 
+  select(ASV, global_edge_num)
+
+pap_bac <- pap_bac %>% select(global_edge_num='...1', n16S, genome_size)
+
+paprica_bac <- full_join(place_bac, pap_bac)
+
+# Archaea
+place_arc <- place_arc %>% mutate(ASV = gsub("[0-9]+\\|(*)+", "\1", Pquery),
+         ASV = gsub("\001", "", ASV)) %>% 
+  select(ASV, global_edge_num)
+
+pap_arc <- pap_arc %>% select(global_edge_num='...1', n16S, genome_size)
+
+paprica_arc <- full_join(place_arc, pap_arc)
+
+# Together
+pap_all <- bind_rows(paprica_bac, paprica_arc) %>% 
+  select(-global_edge_num)
+```
+
+# Add PAPRICA output to growth and death estimates
+
+```{r}
+growth_pap <- left_join(growth, pap_all, by="ASV")
+death_pap <- left_join(death, pap_all, by="ASV")
+```
+
+# Save
+
+```{r, eval=FALSE}
+saveRDS(growth_pap, "../data_intermediate/SFA2_growth_estimates.rds")
+saveRDS(death_pap, "../data_intermediate/SFA2_death_estimates.rds")
+```
+
