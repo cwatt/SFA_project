@@ -1,0 +1,191 @@
+---
+title: "WIP_SFA2_asv_dynamics.Rmd"
+author: "Cassandra Wattenburger"
+date: "1/27/2022"
+output: html_document
+---
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Import and reformat data
+
+* normalized abundances
+* growth and death estimates
+* taxonomy
+
+```{r}
+# Normalized abundances
+norm_growth <- readRDS("../data_intermediate/SFA2_norm_growth_estimated.rds")
+norm_death <- readRDS("../data_intermediate/SFA2_norm_death_estimated.rds")
+norm <- full_join(norm_growth, norm_death)
+
+# Taxonomic information
+tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+
+# Join
+norm_tax <- inner_join(norm, tax)
+
+# Growth
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+
+# Death
+death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
+
+# Growth and death ASVs
+growth_asvs <- growth %>% 
+  mutate(grew = "yes") %>% 
+  select(label, ASV, grew)
+
+death_asvs <- death %>% 
+  mutate(died = "yes") %>% 
+  select(label, ASV, died)
+
+growth_death_asvs <- full_join(growth_asvs, death_asvs) %>% 
+  mutate(grew = if_else(is.na(grew), "no", "yes"),
+         died = if_else(is.na(died), "no", "yes"))
+
+# Join
+norm_label <- inner_join(norm_tax, growth_death_asvs) %>% 
+  mutate(grew = as_factor(grew), died = as_factor(died),
+         grew = fct_relevel(grew, "no", "yes"),
+         died = fct_relevel(died, "no", "yes"))
+```
+
+# Plots
+
+### Growth and death
+
+All
+
+```{r}
+norm_tax %>%
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, fill=ASV)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  theme(legend.position = "none")
+```
+
+Highlight growth
+
+```{r}
+norm_label %>%
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=grew)) +
+  geom_line(aes(alpha=grew)) +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  guides(color = FALSE)
+```
+
+Highlight death
+
+```{r}
+norm_label %>%
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=died)) +
+  geom_line(aes(alpha=died)) +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  guides(color = FALSE)
+```
+
+Highlight both growth and death
+
+```{r}
+norm_label %>%
+  mutate(both = if_else(grew == "yes" & died == "yes", "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=both)) +
+  geom_line(aes(alpha=both)) +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  guides(color = FALSE)
+```
+
+### Phyla
+
+Actinobacteriota
+
+```{r}
+norm_label %>%
+  mutate(target = as_factor(if_else(Phylum=="Actinobacteriota", "yes", "no")),
+         target = fct_relevel(target, "no", "yes")) %>%
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
+  geom_line(aes(alpha=target)) +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  guides(color = FALSE)
+```
+
+Firmicutes
+
+```{r}
+norm_label %>%
+  mutate(target = if_else(Phylum=="Firmicutes", "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
+  geom_line(aes(alpha=target)) +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  guides(color = FALSE)
+```
+
+Proteobacteria
+
+```{r}
+norm_label %>%
+  mutate(target = if_else(Phylum=="Proteobacteria", "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
+  geom_line(aes(alpha=target)) +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  guides(color = FALSE)
+```
+
+### Outlier change in abundance
+
+In the low DOC treatment. I think these few ASVs are contributing to a trend of more biomass gain overall in low treatment.
+
+```{r}
+outliers <- readRDS("../data_intermediate/SFA2_growth_changeabundlow_outliers.rds")
+outlier_labels <- outliers$label
+
+norm_label %>% 
+  mutate(target = if_else(label %in% outlier_labels, "yes", "no")) %>% head()
+```
+
+All are Actinobacteriota.
+
+```{r}
+norm_label %>% 
+  mutate(target = if_else(label %in% outlier_labels, "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
+  geom_line(aes(alpha=target)) +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  guides(color = FALSE)
+
+norm_label %>% 
+  mutate(target = if_else(label %in% outlier_labels, "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=norm_abund_avg, color=ASV, alpha=target)) +
+  geom_line(aes(alpha=target)) +
+  geom_point() +
+  facet_wrap(DOC ~ Innoculant) +
+  theme_test() +
+  guides(color = FALSE)
+```
+
+Is the one high outlier in innoculant 2 also Actinobacteriota?
+

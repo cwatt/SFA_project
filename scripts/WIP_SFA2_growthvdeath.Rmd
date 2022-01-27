@@ -1,0 +1,98 @@
+---
+title: "WIP_SFA2_growthvdeath.Rmd"
+author: "Cassandra Wattenburger"
+date: "1/25/2022"
+output: html_document
+---
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Import and reformat data
+
+```{r}
+# growth
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+
+# death
+death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
+
+# Taxonomic information
+tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+```
+
+ASV-level parameters
+
+```{r}
+growth_asv <- growth %>% 
+  group_by(DOC, ASV) %>% 
+  summarize(k = mean(k),
+            gr_start_day = mean(start_day),
+            gr_end_day = mean(end_day),
+            gr_length = mean(end_day - start_day),
+            gr_start_abund = mean(start_abund/n16S), # adjust for copy number
+            gr_end_abund = mean(end_abund/n16S), # adjust for copy number
+            gr_change_abund = mean(change_abund/n16S)) %>% # adjust for copy number
+  ungroup()
+
+death_asv <- death %>% 
+  group_by(DOC, ASV) %>% 
+  summarize(death_rate = mean(slope),
+            de_start_day = mean(start_day),
+            de_end_day = mean(end_day),
+            de_length = mean(end_day - start_day),
+            de_start_abund = mean(start_abund/n16S), # adjust for copy number
+            de_end_abund = mean(end_abund/n16S), # adjust for copy number
+            de_change_abund = mean(change_abund/n16S),
+            n16S = mean(n16S),
+            genome_size = mean(genome_size)) %>% # adjust for copy number
+  ungroup() %>% 
+  inner_join(tax)
+```
+
+Combine growth and death estimates
+
+```{r}
+grde_asv <- inner_join(growth_asv, death_asv, by=c("DOC", "ASV"))
+dim(grde_asv)
+head(grde_asv)
+```
+
+# Plots
+
+Growth rate vs death rate
+
+```{r}
+grde_asv %>% 
+  ggplot(aes(x=log(k), y=log(abs(death_rate)))) +
+  geom_point() +
+  facet_wrap(~ DOC) +
+  theme_test()
+```
+
+Change in abundance
+
+```{r}
+grde_asv %>% 
+  ggplot(aes(x=log(gr_change_abund), y=log(abs(de_change_abund)))) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  facet_wrap(~ DOC) +
+  theme_test()
+```
+
+Length
+
+```{r}
+grde_asv %>% 
+  ggplot(aes(x=gr_length, y=de_length)) +
+  geom_point() +
+  facet_wrap(~ DOC) +
+  theme_test()
+```

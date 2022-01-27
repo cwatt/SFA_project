@@ -10,15 +10,14 @@ output: html_document
 rm(list=ls())
 
 library("tidyverse")
-library("trelliscopejs")
 library("lmerTest")
+library("emmeans")
 
 sessionInfo()
 ```
 
 # Import data
 
-Files produced in 03_SFA2_growthestimates.Rmd
 * growth estimates
 * normalized abundance data for time series with estimated growth
 
@@ -51,9 +50,22 @@ num_grow %>%
 
 num_grow %>% 
   ggplot(aes(x=DOC, y=num_grew)) +
-  geom_boxplot() +
+  geom_point() +
   labs(x="DOC \"phenotype\"", y="Number of growth estimated taxa") +
   theme_test()
+```
+
+Statistics
+
+```{r}
+# ANOVA
+num_lm <- lm(num_grew ~ DOC, data=num_grow)
+hist(resid(num_lm))
+plot(predict(num_lm), resid(num_lm)) # heteroskedastic
+
+# Welch's t-test
+num_welch <- t.test(num_grew ~ DOC, data=num_grow, var.equal=FALSE)
+num_welch
 ```
 
 ### Phylogenetic membership
@@ -123,8 +135,8 @@ growth_sample <- growth %>%
 # Mean k
 k_plot <- growth_sample %>% 
   ggplot(aes(x=DOC, y=k)) +
-  geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Mean specific growth rate (k)") +
+  geom_point() +
+  labs(x="DOC \"phenotype\"", y="specific growth rate (k)") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
@@ -134,8 +146,8 @@ k_plot
 # Mean start day
 lag_plot <- growth_sample %>% 
   ggplot(aes(x=DOC, y=start_day)) +
-  geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Mean lag (days)") +
+  geom_point() +
+  labs(x="DOC \"phenotype\"", y="lag (days)") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
@@ -145,8 +157,8 @@ lag_plot
 # Mean change abundance
 change_abund_mean_plot <- growth_sample %>% 
   ggplot(aes(x=DOC, y=mean_change_abund)) +
-  geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Mean change in relational abundance") +
+  geom_point() +
+  labs(x="DOC \"phenotype\"", y="Mean change in abundance") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=14),
@@ -156,8 +168,8 @@ change_abund_mean_plot
 # Total change abundance
 change_abund_total_plot <- growth_sample %>% 
   ggplot(aes(x=DOC, y=total_change_abund)) +
-  geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Total change in relational abundance") +
+  geom_point() +
+  labs(x="DOC \"phenotype\"", y="Total change in abundance") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=14),
@@ -167,7 +179,7 @@ change_abund_total_plot
 # Length of growth
 length_plot <- growth_sample %>%
   ggplot(aes(x=DOC, y=length)) +
-  geom_boxplot() +
+  geom_point() +
   labs(x="DOC \"phenotype\"", y="Length of growth (days)") +
   theme_test() +
   theme(title = element_text(size=18),
@@ -178,7 +190,7 @@ length_plot
 # rrn copies
 rrn_plot <- growth_sample %>%
   ggplot(aes(x=DOC, y=n16S)) +
-  geom_boxplot() +
+  geom_point() +
   labs(x="DOC \"phenotype\"", y="rrn copy number") +
   theme_test() +
   theme(title = element_text(size=18),
@@ -189,7 +201,7 @@ rrn_plot
 # genome size
 genome_plot <- growth_sample %>%
   ggplot(aes(x=DOC, y=genome_size)) +
-  geom_boxplot() +
+  geom_point() +
   labs(x="DOC \"phenotype\"", y="genome size") +
   theme_test() +
   theme(title = element_text(size=18),
@@ -348,7 +360,7 @@ doc_growth %>%
 
 Not seeing anything worth persuing further.
 
-# Genome size
+Genome size
 
 ```{r}
 # ANOVA
@@ -385,7 +397,7 @@ growth_asv <- growth %>%
 ```{r}
 growth_asv %>% 
   ggplot(aes(y = Phylum, x=log(change_abund), color=Phylum)) +
-  geom_jitter() +
+  geom_point() +
   facet_wrap(~DOC, nrow=2) +
   theme_test()
 ```
@@ -399,7 +411,7 @@ Specific growth rates:
 growth_asv %>%
   ggplot(aes(x=k, color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="Specific growth_asv rate (k)", y="Kernel Density") +
+  labs(x="specific growth rate", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -414,7 +426,7 @@ Change in abundance:
 growth_asv %>%
   ggplot(aes(x=log(change_abund), color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="ln Change in relational abundance during growth_asv", y="Kernel Density") +
+  labs(x="ln change in abundance", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -428,7 +440,7 @@ Start abundance:
 growth_asv %>%
   ggplot(aes(x=log(start_abund), color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="ln Starting relational abundance", y="Kernel Density") +
+  labs(x="ln starting abundance", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -442,7 +454,7 @@ End abundance:
 growth_asv %>%
   ggplot(aes(x=log(end_abund), color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="ln Ending relational abundance", y="Kernel Density") +
+  labs(x="ln ending abundance", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -456,7 +468,7 @@ Length of growth:
 growth_asv %>%
   ggplot(aes(x=length, color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="length of growth_asv (days)", y="Kernel Density") +
+  labs(x="length of growth (days)", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -484,10 +496,93 @@ Genome size:
 growth_asv %>%
   ggplot(aes(x=genome_size, color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="genome size", y="Kernel Density") +
+  labs(x="genome size (bp)", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
         axis.text=element_text(size=12),
         axis.title=element_text(size=12))
 ```
+
+# Mixed model approach
+
+Likely losing too much power by taking averages. I'm going to use all of the data available in a mixed-model approach.
+
+### Plots
+
+```{r}
+# Growth rate
+growth %>% ggplot(aes(x=DOC, y=k, color=Innoculant)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+# Lag time
+growth %>% ggplot(aes(x=DOC, y=start_day, color=Innoculant)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+# Change in abundance
+growth %>% ggplot(aes(x=DOC, y=change_abund, color=Innoculant)) +
+  #geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+growth %>% ggplot(aes(x=DOC, y=log(change_abund), color=Innoculant)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+```
+
+It appears that a few very high change in abundance taxa in the low DOC community were driving the trend seen in the sample-level data. These ASVs are worth looking into further.
+
+Isolate outlying ASVs:
+
+Let's say anything above the maximum change in abundance observed in the high DOC treatment.
+
+```{r, eval=FALSE}
+threshold <- growth %>% filter(DOC=="high") %>% group_by() %>% summarize(max = max(change_abund)) %>% as.numeric()
+outliers <- growth %>% 
+  filter(DOC=="low") 
+
+saveRDS(outliers, file="../data_intermediate/SFA2_growth_changeabundlow_outliers.rds")
+```
+
+### Statistics
+
+Treating innoculant as a random variable, like a blocking effect.
+
+Growth rate
+
+```{r}
+# Linear mixed effects
+k_lmer <- lmer(log(k) ~ DOC + (1|Innoculant), data=growth)
+hist(resid(k_lmer))
+plot(predict(k_lmer), resid(k_lmer))
+
+summary(k_lmer)
+```
+
+Lag time
+
+```{r}
+# Linear mixed effects
+lag_lmer <- lmer(start_day ~ DOC + (1|Innoculant), data=growth)
+hist(resid(lag_lmer))
+plot(predict(lag_lmer), resid(lag_lmer))
+
+summary(lag_lmer)
+```
+
+Change in abundance
+
+```{r}
+# Linear mixed effects
+chgabund_lmer <- lmer(log(change_abund) ~ DOC + (1|Innoculant), data=growth)
+hist(resid(chgabund_lmer))
+plot(predict(chgabund_lmer), resid(chgabund_lmer))
+
+summary(chgabund_lmer)
+```
+

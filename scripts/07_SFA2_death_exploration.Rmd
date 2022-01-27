@@ -6,12 +6,12 @@ output: html_document
 ---
 
 ```{r}
-# Clear worslopeing directory, load in pacslopeages, generate pacslopeage info
+# Clear working directory, load in packages, generate package info
 rm(list=ls())
 
 library("tidyverse")
-library("trelliscopejs")
 library("lmerTest")
+library("emmeans")
 
 sessionInfo()
 ```
@@ -51,7 +51,7 @@ num_died %>%
 
 num_died %>% 
   ggplot(aes(x=DOC, y=num_died)) +
-  geom_boxplot() +
+  geom_point() +
   labs(x="DOC \"phenotype\"", y="Number of death estimated taxa") +
   theme_test()
 ```
@@ -123,8 +123,8 @@ death_sample <- death %>%
 # Mean slope
 slope_plot <- death_sample %>% 
   ggplot(aes(x=DOC, y=slope)) +
-  geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Mean specific death rate (slope)") +
+  geom_point() +
+  labs(x="DOC \"phenotype\"", y="specific death rate (slope)") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
@@ -134,8 +134,8 @@ slope_plot
 # Mean start day
 lag_plot <- death_sample %>% 
   ggplot(aes(x=DOC, y=start_day)) +
-  geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Mean lag (days)") +
+  geom_point() +
+  labs(x="DOC \"phenotype\"", y="lag (days)") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
@@ -145,8 +145,8 @@ lag_plot
 # Mean change abundance
 change_abund_mean_plot <- death_sample %>% 
   ggplot(aes(x=DOC, y=mean_change_abund)) +
-  geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Mean change in relational abundance") +
+  geom_point() +
+  labs(x="DOC \"phenotype\"", y="Mean change in abundance") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=14),
@@ -156,8 +156,8 @@ change_abund_mean_plot
 # Total change abundance
 change_abund_total_plot <- death_sample %>% 
   ggplot(aes(x=DOC, y=total_change_abund)) +
-  geom_boxplot() +
-  labs(x="DOC \"phenotype\"", y="Total change in relational abundance") +
+  geom_point() +
+  labs(x="DOC \"phenotype\"", y="Total change in abundance") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=14),
@@ -167,7 +167,7 @@ change_abund_total_plot
 # Length of death
 length_plot <- death_sample %>%
   ggplot(aes(x=DOC, y=length)) +
-  geom_boxplot() +
+  geom_point() +
   labs(x="DOC \"phenotype\"", y="Length of death (days)") +
   theme_test() +
   theme(title = element_text(size=18),
@@ -178,7 +178,7 @@ length_plot
 # rrn copies
 rrn_plot <- death_sample %>%
   ggplot(aes(x=DOC, y=n16S)) +
-  geom_boxplot() +
+  geom_point() +
   labs(x="DOC \"phenotype\"", y="rrn copy number") +
   theme_test() +
   theme(title = element_text(size=18),
@@ -189,7 +189,7 @@ rrn_plot
 # genome size
 genome_plot <- death_sample %>%
   ggplot(aes(x=DOC, y=genome_size)) +
-  geom_boxplot() +
+  geom_point() +
   labs(x="DOC \"phenotype\"", y="genome size") +
   theme_test() +
   theme(title = element_text(size=18),
@@ -381,7 +381,7 @@ death_asv <- death %>%
 ```{r}
 death_asv %>% 
   ggplot(aes(y = Phylum, x=log(abs(change_abund)), color=Phylum)) +
-  geom_jitter() +
+  geom_point() +
   facet_wrap(~DOC, nrow=2) +
   theme_test()
 ```
@@ -395,7 +395,7 @@ Specific death rates:
 death_asv %>%
   ggplot(aes(x=slope, color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="Specific death_asv rate (slope)", y="Kernel Density") +
+  labs(x="Specific death rate", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -410,7 +410,7 @@ Change in abundance:
 death_asv %>%
   ggplot(aes(x=log(abs(change_abund)), color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="ln Change in relational abundance during death_asv", y="Kernel Density") +
+  labs(x="ln change in abundance during death", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -486,4 +486,69 @@ death_asv %>%
         title=element_text(size=12),
         axis.text=element_text(size=12),
         axis.title=element_text(size=12))
+```
+
+# Mixed model approach
+
+Likely losing too much power by taking averages. I'm going to use all of the data available in a mixed-model approach.
+
+### Plots
+
+```{r}
+death %>% ggplot(aes(x=DOC, y=slope, color=Innoculant)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+death %>% ggplot(aes(x=DOC, y=start_day, color=Innoculant)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+death %>% ggplot(aes(x=DOC, y=change_abund, color=Innoculant)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+death %>% ggplot(aes(x=DOC, y=log(abs(change_abund)), color=Innoculant)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+```
+
+### Statistics
+
+Treating innoculant as a random variable, like a blocking effect.
+
+death rate
+
+```{r}
+# Linear mixed effects
+slope_lmer <- lmer(log(abs(slope)) ~ DOC + (1|Innoculant), data=death)
+hist(resid(slope_lmer))
+plot(predict(slope_lmer), resid(slope_lmer))
+
+summary(slope_lmer)
+```
+
+Lag time
+
+```{r}
+# Linear mixed effects
+lag_lmer <- lmer(start_day ~ DOC + (1|Innoculant), data=death)
+hist(resid(lag_lmer))
+plot(predict(lag_lmer), resid(lag_lmer))
+
+summary(lag_lmer)
+```
+
+Change in abundance
+
+```{r}
+# Linear mixed effects
+chgabund_lmer <- lmer(log(abs(change_abund)) ~ DOC + (1|Innoculant), data=death)
+hist(resid(chgabund_lmer))
+plot(predict(chgabund_lmer), resid(chgabund_lmer))
+
+summary(chgabund_lmer)
 ```

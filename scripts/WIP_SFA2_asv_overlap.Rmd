@@ -16,8 +16,6 @@ sessionInfo()
 
 # Import data
 
-Files produced in 02_SFA2_growthestimates.Rmd, 03_SFA2_deathestimates.Rmd.
-
 ```{r}
 # growth
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
@@ -62,16 +60,30 @@ Overlapping taxa mainly consist of Actinobacteria, Firmicutes, and Proteobacteri
 Change in normalized abundance was significantly different between treatments. Do overlapping taxa show same trend?
 
 ```{r}
-growth %>% semi_join(asv_overlap, growth, by="ASV") %>% 
+growth_overlap <- inner_join(asv_overlap, growth, by="ASV") %>%
   group_by(DOC, Innoculant) %>% 
-  summarize(mean_chgabund = mean(end_abund - start_abund)) %>% 
-  ungroup() %>% 
-  ggplot(aes(x=DOC, y=mean_chgabund)) + 
+  summarize(change_abund = mean(end_abund/n16S - start_abund/n16S)) %>% 
+  ungroup()
+
+growth_overlap %>% 
+  ggplot(aes(x=DOC, y=change_abund)) + 
   geom_point() + 
   theme_test()
 ```
 
-Yes, these seem to recreate the difference between treatments.
+Statistics
+
+```{r}
+# ANOVA
+groverlap_lm <- lm(change_abund ~ DOC, data=growth_overlap)
+hist(resid(groverlap_lm))
+plot(predict(groverlap_lm), resid(groverlap_lm)) # heteroskedastic
+
+# Welch t-test
+groverlap_welch <- t.test(change_abund ~ DOC, data=growth_overlap, var.equal=FALSE)
+groverlap_welch
+```
+
 
 
 
