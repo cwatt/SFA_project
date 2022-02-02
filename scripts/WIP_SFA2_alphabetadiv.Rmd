@@ -34,23 +34,23 @@ physeq <- readRDS("../data_intermediate/SFA2_physeq_counts.rds")
 physeq
 ```
 
-# Prep data
+# Final time point
 
-### Isolate final tp samples:
+### Isolate final TP
 
 These were used for DOC extractions and CO2 measurements.
 
 ```{r}
-physeq2 <- subset_samples(physeq, Day==30)
-physeq2
+physeq_tp30 <- subset_samples(physeq, Day==30)
+physeq_tp30
 ```
 
 ### Assess read depth
 
 ```{r}
 # Extract count and metadata from processed phyloseq object
-count_processed <- data.frame(otu_table(physeq2))
-meta_processed <- data.frame(sample_data(physeq2)) %>%
+count_processed <- data.frame(otu_table(physeq_tp30))
+meta_processed <- data.frame(sample_data(physeq_tp30)) %>%
   select(-SampleID) %>%
   rownames_to_column(var="SampleID")
 
@@ -85,43 +85,35 @@ Lowest sequence depth is 6424, so I'll use that for rarefying.
 ### Rarefy
 
 ```{r}
-physeq3 <- rarefy_even_depth(physeq2, sample.size=6424, rngseed=42)
-physeq3
+physeq_tp30rar <- rarefy_even_depth(physeq_tp30, sample.size=6424, rngseed=42)
+physeq_tp30rar
 ```
 
 Remove non-samples:
 
 ```{r}
-physeq4 <- subset_samples(physeq3, DOC %in% c("high", "low"))
-physeq4
+physeq_tp30rar <- subset_samples(physeq_tp30rar, DOC %in% c("high", "low"))
+physeq_tp30rar
 ```
-
-```{r, eval=FALSE}
-saveRDS(physeq4, file="../data_intermediate/SFA2_physeq_counts_endtp_rarefied.rds")
-```
-
-
-# Alpha diversity
 
 ### Richness
 
 ```{r}
 # Extract data from phyloseq
-count_rarefied <- data.frame(otu_table(physeq4)) %>% 
+count_tp30rar <- data.frame(otu_table(physeq_tp30rar)) %>% 
   rownames_to_column(var="ASV") %>% 
   gather(SampleID, count, -ASV)
-tax_rarefied <- data.frame(tax_table(physeq4)) %>% 
+tax_tp30rar <- data.frame(tax_table(physeq_tp30rar)) %>% 
   rownames_to_column(var="ASV")
-meta_rarefied <- data.frame(sample_data(physeq4)) %>%
+meta_tp30rar <- data.frame(sample_data(physeq_tp30rar)) %>%
   select(-SampleID) %>%
   rownames_to_column(var="SampleID")
 
 # Combine
-tp30_counts <- inner_join(count_rarefied, tax_rarefied) %>% 
-  inner_join(meta_rarefied, by="SampleID") %>% 
-  select(c(SampleID, Sample, Type:Replicate, Domain:Species, ASV, count)) %>% 
-  mutate(Innoculant = as_factor(Innoculant),
-         Replicate = as_factor(Replicate)) %>% 
+tp30_counts <- inner_join(count_tp30rar, tax_tp30rar) %>% 
+  inner_join(meta_tp30rar, by="SampleID") %>% 
+  select(c(SampleID, Sample, Type:DOC, Day, Domain:Species, ASV, count)) %>% 
+  mutate(Innoculant = as_factor(Innoculant)) %>% 
   mutate(across(Domain:Species, ~as.character(.x), {.col}))
 ```
 
@@ -131,7 +123,7 @@ Calculate richness:
 tp30_richness <- tp30_counts %>% 
   filter(count > 0) %>% 
   filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a") %>%  # remove spike-in
-  group_by(Sample, Innoculant, DOC, Replicate) %>% 
+  group_by(Sample, Innoculant, DOC) %>% 
   summarize(richness = n()) %>% 
   ungroup()
 ```
@@ -139,7 +131,7 @@ tp30_richness <- tp30_counts %>%
 Visualize:
  
 ```{r}
-rich_trt_plot <- tp30_richness %>% 
+tp30_richness %>% 
   ggplot(aes(x=DOC, y=richness)) +
   geom_boxplot() +
   labs(x="DOC \"phentoype\"", y="ASV richness at final tp") +
@@ -147,7 +139,6 @@ rich_trt_plot <- tp30_richness %>%
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
-rich_trt_plot
 
 tp30_richness %>% 
   ggplot(aes(x=DOC, y=richness, color=Innoculant)) +
@@ -159,7 +150,7 @@ tp30_richness %>%
 ggsave(rich_trt_plot, file="../figures/SFA2_richness_tpend.png", units="mm", width=100, height=100)
 ```
 
-### Statistics
+#### Statistics
 
 ```{r}
 # Build linear model
@@ -177,15 +168,65 @@ plot(predict(tp30_richness_lm), resid(tp30_richness_lm))
 anova(tp30_richness_lm)
 ```
 
-No significance.
+### Evenness
 
-# Beta diversity
+Calculate evenness (J):
+
+J = H/log(S)
+
+Where H is Shannon-Weaver index and S is richness.
+
+```{r}
+# Reformat counts to be compatible with vegan
+tp30_count_wide <- tp30_counts %>% 
+  select(ASV, Sample, count) %>% 
+  pivot_wider(names_from="ASV", values_from="count") %>% 
+  column_to_rownames(var="Sample")
+
+# Calculate
+tp30_shannon <- diversity(tp30_count_wide, "shannon")
+tp30_rich <- specnumber(tp30_count_wide)
+tp30_even <- tp30_shannon/log(tp30_rich)
+
+tp30_even
+
+# Add evennness values to data
+even <- data.frame(tp30_even) %>% 
+  rownames_to_column(var="Sample") %>% 
+  rename(evenness=tp30_even) %>% 
+  mutate(Sample = as.numeric(Sample))
+
+tp30_alphadiv <- tp30_richness %>% 
+  inner_join(even)
+```
+
+Plot
+
+```{r}
+tp30_alphadiv %>% 
+  ggplot(aes(x=DOC, y=evenness)) +
+  geom_boxplot() +
+  labs(x="DOC \"phentoype\"", y="Evenness final tp") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+
+tp30_alphadiv %>% 
+  ggplot(aes(x=DOC, y=evenness, color=Innoculant)) +
+  geom_boxplot() +
+  theme_test()
+```
+
+Higher value (closer to 1) means more even.
+
+### Beta diversity
 
 ```{r}
 # Try weighted Unifrac
-wunifrac_dist <- distance(physeq4, method="wunifrac")
-ord_wunifrac <- ordinate(physeq4, distance=wunifrac_dist, method="NMDS")
-wunifrac_nmds_plot <- plot_ordination(physeq4, ord_unifrac, color="DOC") +
+wunifrac_dist <- distance(physeq_tp30rar, method="wunifrac")
+ord_wunifrac <- ordinate(physeq_tp30rar, distance=wunifrac_dist, method="NMDS")
+wunifrac_nmds_plot <- plot_ordination(physeq_tp30rar, ord_unifrac, color="DOC") +
   stat_ellipse(type="t") +
   theme_test() +
   theme(title = element_text(size=18),
@@ -194,9 +235,9 @@ wunifrac_nmds_plot <- plot_ordination(physeq4, ord_unifrac, color="DOC") +
 wunifrac_nmds_plot 
 
 # Unweighted unifrac
-unifrac_dist <- distance(physeq4, method="unifrac")
-ord_unifrac <- ordinate(physeq4, distance=unifrac_dist, method="NMDS")
-unifrac_nmds_plot <- plot_ordination(physeq4, ord_unifrac, color="DOC") +
+unifrac_dist <- distance(physeq_tp30rar, method="unifrac")
+ord_unifrac <- ordinate(physeq_tp30rar, distance=unifrac_dist, method="NMDS")
+unifrac_nmds_plot <- plot_ordination(physeq_tp30rar, ord_unifrac, color="DOC") +
   stat_ellipse(type="t") +
   theme_test() +
   theme(title = element_text(size=18),
@@ -209,15 +250,269 @@ unifrac_nmds_plot
 ggsave(wunifrac_nmds_plot, file="../figures/SFA2_wunifrac_nmds_tpend.png", units="mm", width=150, height=100)
 ```
 
-### Statistics
+#### Statistics
 
 ```{r}
 # Permanova
 
 # Weighted unifrac
-adonis(wunifrac_dist ~ DOC*Innoculant, data = meta_rarefied, permutations = 9999)
+adonis(wunifrac_dist ~ DOC*Innoculant, data = meta_tp30rar, permutations = 9999)
 
 # Unweighted unifrac
-adonis(unifrac_dist ~ DOC*Innoculant, data = meta_rarefied, permutations = 9999)
+adonis(unifrac_dist ~ DOC*Innoculant, data = meta_tp30rar, permutations = 9999)
 ```
 
+# All time points
+
+### Assess read depth
+
+```{r}
+# Extract count and metadata from processed phyloseq object
+count_all <- data.frame(otu_table(physeq))
+meta_all <- data.frame(sample_data(physeq)) %>%
+  select(-SampleID) %>%
+  rownames_to_column(var="SampleID")
+
+# Calculate read depth per sample
+read_depth <- count_all %>%
+  rownames_to_column(var="ASV") %>%
+  gather(SampleID, count, -ASV) %>%
+  spread(ASV, count) %>%
+  mutate(total_reads = rowSums(.[-1])) %>%
+  select(SampleID, total_reads) %>%
+  inner_join(meta_all) %>% 
+  mutate(Attempt = as_factor(Attempt)) %>% 
+  as_tibble()
+
+# Min and max read depth
+max(read_depth$total_reads)
+min(read_depth$total_reads)
+
+# Visualize
+read_depth %>%
+  mutate(Replicate = as_factor(Replicate)) %>%
+  filter(Type != "PCR control") %>%
+  ggplot(aes(x=Sample, y=total_reads, fill=Replicate)) +
+  geom_col() +
+  geom_hline(yintercept = 6000, linetype=2) +
+  labs(x="Sample", y="Reads") +
+  theme_test()
+
+max(read_depth$total_reads)
+min(read_depth$total_reads)
+
+# Number of samples below 6000 counts
+dim(filter(read_depth, Type != "PCR control" & total_reads < 6000))
+filter(read_depth, Type != "PCR control" & total_reads < 6000) %>% arrange(total_reads)
+```
+
+I'll rarefy to 2391 and lose 2 samples.
+
+### Rarefy
+
+```{r}
+physeq_allrar <- rarefy_even_depth(physeq, sample.size=2391, rngseed=42)
+physeq_allrar
+
+physeq_allrar <- subset_samples(physeq_allrar, DOC %in% c("high", "low"))
+```
+
+### Richness
+
+```{r}
+# Extract data from phyloseq
+count_allrar <- data.frame(otu_table(physeq_allrar)) %>% 
+  rownames_to_column(var="ASV") %>% 
+  gather(SampleID, count, -ASV)
+
+tax_allrar <- data.frame(tax_table(physeq_allrar)) %>% 
+  rownames_to_column(var="ASV")
+
+meta_allrar <- data.frame(sample_data(physeq_allrar)) %>% 
+  select(-SampleID) %>% 
+  rownames_to_column(var="SampleID")
+
+# Combine
+all_count <- inner_join(count_allrar, tax_allrar) %>% 
+  inner_join(meta_allrar, by="SampleID") %>% 
+  select(c(SampleID, Sample, Type:DOC, Day, Domain:Species, ASV, count)) %>% 
+  mutate(Innoculant = as_factor(Innoculant)) %>% 
+  mutate(across(Domain:Species, ~as.character(.x), {.col}))
+```
+
+Calculate richness:
+
+```{r}
+all_richness <- all_count %>% 
+  filter(count > 0) %>% 
+  filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a") %>%  # remove spike-in
+  group_by(Sample, Innoculant, DOC, Day) %>% 
+  summarize(richness = n()) %>% 
+  ungroup()
+```
+ 
+Visualize:
+ 
+```{r}
+all_richness %>% 
+  ggplot(aes(x=DOC, y=richness)) +
+  geom_boxplot() +
+  labs(x="DOC \"phentoype\"", y="ASV richness") +
+  facet_wrap(~Day) +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+
+all_richness %>% 
+  ggplot(aes(x=DOC, y=richness, color=Innoculant)) +
+  geom_boxplot() +
+  labs(x="DOC \"phentoype\"", y="ASV richness") +
+  facet_wrap(~Day) +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+```
+
+Higher diversity to start that rapidly deflates.
+
+### Evenness
+
+Calculate evenness (J):
+
+J = H/log(S)
+
+Where H is Shannon-Weaver index and S is richness.
+
+```{r}
+# Reformat counts to be compatible with vegan
+all_count_wide <- all_count %>% 
+  select(ASV, Sample, count) %>% 
+  pivot_wider(names_from="ASV", values_from="count") %>% 
+  column_to_rownames(var="Sample")
+
+# Calculate
+all_shannon <- diversity(all_count_wide, "shannon")
+all_rich <- specnumber(all_count_wide)
+all_even <- all_shannon/log(all_rich)
+
+# Add evennness values to data
+all_even <- data.frame(all_even) %>% 
+  rownames_to_column(var="Sample") %>% 
+  rename(evenness=all_even) %>% 
+  mutate(Sample = as.numeric(Sample))
+
+all_alphadiv <- all_richness %>% 
+  inner_join(all_even)
+```
+
+Plot
+
+```{r}
+all_alphadiv %>% 
+  ggplot(aes(x=DOC, y=evenness)) +
+  geom_boxplot() +
+  facet_wrap(~Day) +
+  labs(x="DOC \"phentoype\"", y="Evenness final tp") +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+
+all_alphadiv %>% 
+  ggplot(aes(x=DOC, y=evenness, color=Innoculant)) +
+  geom_boxplot() +
+  facet_wrap(~Day) +
+  theme_test()
+```
+
+### Beta diversity
+
+```{r}
+# Try weighted Unifrac
+wunifrac_dist <- distance(physeq_allrar, method="wunifrac")
+ord_wunifrac <- ordinate(physeq_allrar, distance=wunifrac_dist, method="NMDS")
+
+wunifrac_nmds_plot <- plot_ordination(physeq_allrar, ord_unifrac, color="DOC") +
+  stat_ellipse(type="t") +
+  facet_wrap(~Day) +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+wunifrac_nmds_plot 
+
+# Unweighted unifrac
+unifrac_dist <- distance(physeq_allrar, method="unifrac")
+ord_unifrac <- ordinate(physeq_allrar, distance=unifrac_dist, method="NMDS")
+
+unifrac_nmds_plot <- plot_ordination(physeq_allrar, ord_unifrac, color="DOC") +
+  stat_ellipse(type="t") +
+  facet_wrap(~Day) +
+  theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14))
+unifrac_nmds_plot
+```
+
+# Growing community comparisons
+
+Is there a presence/absence difference in the growing communities?
+
+Import data:
+
+```{r}
+# Growth
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+```
+
+```{r}
+# ASVs that grew in each innoculant
+innoc <- unique(growth$Innoculant)
+growth_asvs <- data.frame()
+for (i in innoc) {
+  datasub <- filter(growth, Innoculant==i)
+  asvs <- unique(datasub$ASV)
+  save <- data.frame(Innoculant=i, ASV=asvs)
+  growth_asvs <- bind_rows(growth_asvs, save)
+}
+
+# Isolate
+all_growing <- all_count %>% semi_join(growth_asvs)
+```
+
+Create new phyloseq object:
+
+```{r}
+# Counts
+count_grow <- select(all_growing, ASV, count, SampleID) %>%
+  pivot_wider(names_from = ASV, values_from=count) %>% 
+  column_to_rownames(var ="SampleID") %>% 
+  mutate_all(~if_else(is.na(.x), 0, .x), {.col})
+
+count_grow <- otu_table(phy_count, taxa_are_rows = TRUE) 
+
+phy_count <- as.matrix(count_grow) %>% t()
+
+# Taxonomy
+phy_tax <- all_count %>% 
+  select(ASV, Domain:Species) %>% 
+  unique() %>% 
+  column_to_rownames(var="ASV") %>% 
+  as.matrix()
+
+tax_grow <- tax_table(phy_tax)
+
+# Metadata 
+phy_meta <- all_count %>% 
+  select(SampleID:Day)
+  
+meta_grow <- sample_data(phy_meta)
+
+# Combine
+physeq_grow <- phyloseq(count_grow, tax_grow, meta_grow)
+```
+
+TBC

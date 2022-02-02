@@ -525,7 +525,7 @@ growth %>% ggplot(aes(x=DOC, y=start_day, color=Innoculant)) +
 
 # Change in abundance
 growth %>% ggplot(aes(x=DOC, y=change_abund, color=Innoculant)) +
-  #geom_boxplot() +
+  geom_boxplot() +
   geom_jitter() +
   theme_test()
 
@@ -542,9 +542,13 @@ Isolate outlying ASVs:
 Let's say anything above the maximum change in abundance observed in the high DOC treatment.
 
 ```{r, eval=FALSE}
+# Isolate outliers
 threshold <- growth %>% filter(DOC=="high") %>% group_by() %>% summarize(max = max(change_abund)) %>% as.numeric()
 outliers <- growth %>% 
-  filter(DOC=="low") 
+  filter(DOC=="low" & change_abund > threshold) 
+
+# Who are they?
+tax %>% filter(ASV %in% outliers$ASV)
 
 saveRDS(outliers, file="../data_intermediate/SFA2_growth_changeabundlow_outliers.rds")
 ```

@@ -505,7 +505,7 @@ death %>% ggplot(aes(x=DOC, y=start_day, color=Innoculant)) +
   geom_jitter() +
   theme_test()
 
-death %>% ggplot(aes(x=DOC, y=change_abund, color=Innoculant)) +
+death %>% ggplot(aes(x=DOC, y=abs(change_abund), color=Innoculant)) +
   geom_boxplot() +
   geom_jitter() +
   theme_test()
