@@ -162,37 +162,27 @@ outliers <- readRDS("../data_intermediate/SFA2_growth_changeabundlow_outliers.rd
 outlier_labels <- outliers$label
 
 norm_label %>% 
-  mutate(target = if_else(label %in% outlier_labels, "yes", "no")) %>% head()
+  mutate(target = if_else(label %in% outlier_labels, "yes", "no")) %>% 
+  filter(target=="yes") %>% 
+  select(ASV, Domain:Species) %>% 
+  unique()
 ```
-
-All are Actinobacteriota.
 
 ```{r}
 norm_label %>% 
   mutate(target = if_else(label %in% outlier_labels, "yes", "no")) %>% 
-  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
+  ggplot(aes(x=Day, y=norm_abund_avg, color=Phylum, alpha=target)) +
   geom_line(aes(alpha=target)) +
   geom_point() +
   facet_wrap(DOC ~ Innoculant) +
-  theme_test() +
-  guides(color = FALSE)
+  theme_test()
 
 norm_label %>% 
   mutate(target = if_else(label %in% outlier_labels, "yes", "no")) %>% 
-  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Phylum, alpha=target)) +
   geom_line(aes(alpha=target)) +
   geom_point() +
   facet_wrap(DOC ~ Innoculant) +
-  theme_test() +
-  guides(color = FALSE)
+  theme_test()
 ```
-
-Is the one high outlier in innoculant 2 also Actinobacteriota?
-
-```{r}
-# Isolate
-norm_label %>% filter(Innoculant==2 & norm_abund_avg > 400) %>% head()
-```
-
-Yes, it is! The growth estimate must not have captured that spike in abundance.
 

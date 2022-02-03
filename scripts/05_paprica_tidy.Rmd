@@ -31,11 +31,18 @@ place_arc <- read_csv("../paprica_analysis/output_archaea/est_rep-seqs.archaea.c
 # Growth and death estimates
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
 death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
+
+# Taxonomy
+tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
 ```
 
 # Tidy and combine
 
 ```{r}
+# What's going on here:
+# The global_edge_num col in the "...placements.csv" file matches to part of the string in the Pquery col in the "...edge_data.csv" file
+# Using these to merge files
+
 # Bacteria
 place_bac <- place_bac %>% mutate(ASV = gsub("[0-9]+\\|(*)+", "\1", Pquery),
          ASV = gsub("\001", "", ASV)) %>% 
@@ -56,8 +63,34 @@ paprica_arc <- full_join(place_arc, pap_arc)
 
 # Together
 pap_all <- bind_rows(paprica_bac, paprica_arc) %>% 
-  select(-global_edge_num)
+  select(-global_edge_num) %>% 
+  inner_join(tax)
 ```
+
+Note: In the bacterial data, two Acidobacteriota ASVs are missing in the "...edge_data.csv" file. I'm not sure why, probably an obscure glitch in PAPRICA's pipeline. I'm going to average the n16S and genome_size across all other Acidobacteria for this estimate. Very little variability in these estimates among the other ASVs anyway.
+
+```{r}
+# Missing data
+pap_all %>% 
+  filter(Phylum == "Acidobacteriota")
+
+# Average across Acidobacteriota
+acido_replace <- pap_all %>% 
+  group_by(Phylum) %>% 
+  summarize(n16s = mean(n16S, na.rm=TRUE),
+            genome_size = mean(genome_size, na.rm=TRUE)) %>% 
+  filter(Phylum=="Acidobacteriota")
+acido_replace
+
+acido_n16S <- acido_replace$n16s
+acido_genome <- acido_replace$genome_size
+
+# Add back to data
+pap_all <- pap_all %>% 
+  mutate(n16S = if_else(Phylum=="Acidobacteriota" & is.na(n16S), acido_n16S, n16S),
+         genome_size = if_else(Phylum=="Acidobacteriota" & is.na(genome_size), acido_genome, genome_size))
+```
+
 
 # Add PAPRICA output to growth and death estimates
 

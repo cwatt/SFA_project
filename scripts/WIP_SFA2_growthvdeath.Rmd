@@ -5,6 +5,12 @@ date: "1/25/2022"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
 ```{r}
 # Clear working directory, load in packages, generate package info
 rm(list=ls())
@@ -72,6 +78,7 @@ Growth rate vs death rate
 grde_asv %>% 
   ggplot(aes(x=log(k), y=log(abs(death_rate)))) +
   geom_point() +
+  geom_smooth(method="lm", linetype=2) +
   facet_wrap(~ DOC) +
   theme_test()
 ```
@@ -96,3 +103,28 @@ grde_asv %>%
   facet_wrap(~ DOC) +
   theme_test()
 ```
+
+# Statistics
+
+Change in abundance
+
+```{r}
+# Overall
+chgabund_lm <- lm(log(gr_change_abund) ~ log(abs(de_change_abund)), data=grde_asv)
+hist(resid(chgabund_lm))
+plot(predict(chgabund_lm), resid(chgabund_lm))
+summary(chgabund_lm)
+
+# High DOC
+chgabund_hi_lm <- lm(log(gr_change_abund) ~ log(abs(de_change_abund)), data=grde_asv[grde_asv$DOC=="high",])
+hist(resid(chgabund_hi_lm))
+plot(predict(chgabund_hi_lm), resid(chgabund_hi_lm))
+summary(chgabund_hi_lm)
+
+# Low DOC
+chgabund_lo_lm <- lm(log(gr_change_abund) ~ log(abs(de_change_abund)), data=grde_asv[grde_asv$DOC=="low",])
+hist(resid(chgabund_lo_lm))
+plot(predict(chgabund_lo_lm), resid(chgabund_lo_lm))
+summary(chgabund_lo_lm)
+```
+

@@ -61,9 +61,10 @@ doc.plot <- doc.meta %>%
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
 doc.plot
+```
 
+```{r, eval=FALSE}
 ggsave(doc.plot, file="../figures/SFA2_doc.png", units="mm", width=100, height=100)
-
 ```
 
 # Statistics
@@ -78,7 +79,7 @@ Linear mixed effects model to allow innoculant to be random effect.
 headspace.doc = filter(doc.meta, Group=="Headspace" & Type=="Sample")
 head.doc.lmer = lmer(doc ~ DOC_pheno + (1|Innoculant), data = headspace.doc) # linear mixed effects model, allow innoculant to vary independently
 hist(residuals(head.doc.lmer))
-plot(residuals(head.doc.lmer), predict(head.doc.lmer))
+plot(predict(head.doc.lmer), residuals(head.doc.lmer))
 summary(head.doc.lmer)
 ```
 
@@ -93,7 +94,6 @@ hist(residuals(grow.doc.lmer))
 plot(residuals(grow.doc.lmer), predict(grow.doc.lmer))
 summary(head.doc.lmer)
 ```
-
 
 # DOC vs CO2
 

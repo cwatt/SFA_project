@@ -319,38 +319,58 @@ doc_death <- inner_join(doc_meta, death_sample)
 ```{r}
 # slope
 doc_death %>% 
-  ggplot(aes(x=mean_doc, y=slope, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=slope)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # start day
 doc_death %>% 
-  ggplot(aes(x=mean_doc, y=start_day, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=start_day)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # start abundance
 doc_death %>% 
-  ggplot(aes(x=mean_doc, y=start_abund, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=start_abund)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # end abundance
 doc_death %>% 
-  ggplot(aes(x=mean_doc, y=end_abund, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=end_abund)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # mean change abundance
 doc_death %>% 
-  ggplot(aes(x=mean_doc, y=mean_change_abund, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=mean_change_abund)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # total change abundance
 doc_death %>% 
-  ggplot(aes(x=mean_doc, y=total_change_abund, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=total_change_abund)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+
+# genome size
+doc_death %>% 
+  ggplot(aes(x=mean_doc, y=genome_size)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+
+# rrn
+doc_death %>% 
+  ggplot(aes(x=mean_doc, y=n16S)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 ```
 

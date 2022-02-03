@@ -19,8 +19,7 @@ library(tidyverse)
 sessionInfo()
 ```
 
-Import data
------------
+# Import data
 
 ```{r}
 # Create list of files in directory
@@ -40,16 +39,15 @@ for (i in files) {
 }
 
 # Add metadata
-meta <- read_csv("../metadata/SFA2_metadata.csv")
-dna.meta <- full_join(dna, meta) %>%
+meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+dna_meta <- full_join(dna, meta) %>%
   arrange(Sample)
 ```
 
-Visualize DNA concentrations
-----------------------------
+# Visualize DNA concentrations
 
 ```{r}
-dna.meta %>%
+dna_meta %>%
   mutate(Innoculant = as_factor(Innoculant)) %>%
   ggplot(aes(x=Day, y=AdjConc)) +
   geom_point(aes(color=Innoculant)) +
@@ -58,8 +56,8 @@ dna.meta %>%
   theme_test() 
 
 # Graph each innoculant separately with sample labels
-for (x in as.character(unique(dna.meta$Innoculant))) {
-    p <- dna.meta %>%
+for (x in as.character(unique(dna_meta$Innoculant))) {
+    p <- dna_meta %>%
     filter(Innoculant == x) %>%
     ggplot(aes(x=Day, y=AdjConc)) +
     geom_point(alpha=0.5) +
@@ -69,12 +67,11 @@ for (x in as.character(unique(dna.meta$Innoculant))) {
     print(p)
 }
 
-hist(dna.meta$AdjConc, breaks=15)
+hist(dna_meta$AdjConc, breaks=15)
 
 ```
 
-Incoprorate redo DNA extractions
---------------------------------
+# Incoprorate redos
 
 ```{r}
 # Import DNA conc. data
@@ -94,17 +91,17 @@ redo.meta <- inner_join(dna.redo, meta) %>%
   arrange(Sample)
 
 # First pass DNA extractions
-dna.meta <- add_column(dna.meta, Status = rep("original", nrow(dna.meta)))
+dna_meta <- add_column(dna_meta, Status = rep("original", nrow(dna_meta)))
 
 # Add redos
-dna.meta <- bind_rows(dna.meta, redo.meta)
+dna_meta <- bind_rows(dna_meta, redo.meta)
 ```
 
 
 ```{r}
 redos <- c(163, 164, 165, 166, 218, 219, 220, 235, 236, 237, 252, 253, 269, 271, 275, 276, 277, 280, 281, 282, 287, 288, 310, 312, 325, 341)
 
-dna.meta %>%
+dna_meta %>%
   filter(Sample %in% redos) %>%
   mutate(Sample = as.factor(Sample)) %>%
   ggplot(aes(x=Sample, y=AdjConc)) +
@@ -112,7 +109,7 @@ dna.meta %>%
   labs() +
   theme_test()
 
-dna.meta %>%
+dna_meta %>%
   filter(Sample %in% redos) %>%
   mutate(Sample = as.factor(Sample)) %>%
   ggplot(aes(y=AdjConc)) +
@@ -123,13 +120,12 @@ dna.meta %>%
 
 Redo DNA extraction seems to have improved yield overall.
 
-Visualize DNA concentrations with redos subbed in
--------------------------------------------------
+# Visualize DNA concentrations with redos subbed in
 
 ```{r}
 # Graph each innoculant over time
-for (x in as.character(unique(dna.meta$Innoculant))) {
-    p <- dna.meta %>%
+for (x in as.character(unique(dna_meta$Innoculant))) {
+    p <- dna_meta %>%
     filter(!(Status == "original" & Sample %in% redos)) %>%
     filter(Innoculant == x) %>%
     ggplot(aes(x=Day, y=AdjConc)) +
@@ -142,22 +138,38 @@ for (x in as.character(unique(dna.meta$Innoculant))) {
   
 ```
 
-Identify a threshold for spike-in levels
-----------------------------------------
+Compare DNA over time of high and low treatments:
+
+```{r}
+dna_meta %>% 
+  filter(DOC %in% c("high", "low")) %>% 
+  ggplot(aes(x=Day, y=AdjConc)) +
+  geom_jitter(aes(color=DOC)) +
+  theme_test()
+
+dna_meta %>% 
+  filter(DOC %in% c("high", "low")) %>% 
+  ggplot(aes(x=DOC, y=AdjConc)) +
+  geom_boxplot(aes(color=DOC)) +
+  facet_wrap(~Day, scales = "free") +
+  theme_test()
+```
+
+# Identify a threshold for spike-in levels
 
 Average DNA concentrations by inncoulants and day.
 
 ```{r}
 # Replace redos
-dna.meta.sub <- filter(dna.meta, !(Status == "original" & Sample %in% redos))
+dna_meta_sub <- filter(dna_meta, !(Status == "original" & Sample %in% redos))
 
 # Average
-dna.avg <- dna.meta.sub %>%  
+dna_avg <- dna_meta_sub %>%  
   group_by(Innoculant, Day, DOC_pheno) %>%
   summarize(dna_avg = mean(AdjConc), dna_sd = sd(AdjConc))
   
 # Visualize
-dna.avg %>%
+dna_avg %>%
   mutate(Innoculant = as.factor(Innoculant)) %>% 
   filter(!Day == 30) %>%
   ggplot(aes(x=Day, y=dna_avg)) +
@@ -168,7 +180,7 @@ dna.avg %>%
   theme_test()
 
 # log transform
-dna.avg %>%
+dna_avg %>%
   mutate(Innoculant = as.factor(Innoculant)) %>% 
   filter(!Day == 30) %>%
   ggplot(aes(x=Day, y=log(dna_avg))) +
@@ -180,7 +192,7 @@ dna.avg %>%
   theme_test()
 
 # separate by DOC phenotype
-dna.avg %>%
+dna_avg %>%
   mutate(Innoculant = as.factor(Innoculant)) %>% 
   filter(!Day == 30) %>%
   ggplot(aes(x=Day, y=dna_avg)) +
@@ -191,7 +203,7 @@ dna.avg %>%
   labs(title="Separared by DOC phenotype", y="Mean DNA conc. (ng/uL)") +
   theme_test()
 
-dna.avg %>%
+dna_avg %>%
   mutate(Innoculant = as.factor(Innoculant)) %>% 
   filter(!Day == 30) %>%
   ggplot(aes(x=Day, y=log(dna_avg))) +
@@ -206,20 +218,20 @@ Range of values above and below threshold of 1, averaged.
 
 All data:
 ```{r}
-min(dna.avg$dna_avg)
-max(dna.avg$dna_avg)
+min(dna_avg$dna_avg)
+max(dna_avg$dna_avg)
 ```
 
 Below 1 ng/uL:
 ```{r}
 # min
-dna.avg %>%
+dna_avg %>%
   filter(dna_avg < 1) %>%
   group_by() %>%
   summarize(min(dna_avg))
 
 # max
-dna.avg %>%
+dna_avg %>%
   filter(dna_avg < 1) %>%
   group_by() %>%
   summarize(max(dna_avg))
@@ -228,13 +240,13 @@ dna.avg %>%
 Above 1 ng/uL:
 ```{r}
 # min
-dna.avg %>%
+dna_avg %>%
   filter(dna_avg > 1) %>%
   group_by() %>%
   summarize(min(dna_avg))
 
 # max
-dna.avg %>%
+dna_avg %>%
   filter(dna_avg > 1) %>%
   group_by() %>%
   summarize(max(dna_avg))
@@ -244,20 +256,20 @@ Range of values above and below threshold of 1, raw.
 
 All data:
 ```{r}
-min(dna.meta.sub$AdjConc)
-max(dna.meta.sub$AdjConc)
+min(dna_meta_sub$AdjConc)
+max(dna_meta_sub$AdjConc)
 ```
 
 Below 1 ng/uL:
 ```{r}
 # min
-dna.meta.sub %>%
+dna_meta_sub %>%
   filter(AdjConc < 1) %>%
   group_by() %>%
   summarize(min(AdjConc))
 
 # max
-dna.meta.sub %>%
+dna_meta_sub %>%
   filter(AdjConc < 1) %>%
   group_by() %>%
   summarize(max(AdjConc))
@@ -266,13 +278,13 @@ dna.meta.sub %>%
 Above 1 ng/uL:
 ```{r}
 # min
-dna.meta.sub %>%
+dna_meta_sub %>%
   filter(AdjConc > 1) %>%
   group_by() %>%
   summarize(min(AdjConc))
 
 # max
-dna.meta.sub %>%
+dna_meta_sub %>%
   filter(AdjConc > 1) %>%
   group_by() %>%
   summarize(max(AdjConc))
@@ -287,42 +299,42 @@ Separate using the averaged dna concentrations so that replicates are kept withi
 
 ```{r}
 # label groups based on averaged dna concentration
-dna.avg.groups <- mutate(dna.avg, spike_group = if_else(dna_avg < 1, "low", "high"))
+dna_avg_groups <- mutate(dna_avg, spike_group = if_else(dna_avg < 1, "low", "high"))
 
 # visualize
-dna.avg.groups %>%
+dna_avg_groups %>%
   ggplot(aes(x=spike_group, y=dna_avg)) +
   geom_boxplot() +
   theme_test()
 
 # Apply labels to unaveraged dataset
-dna.meta.group <- dna.meta.sub %>%
-  full_join(dna.avg.groups) %>%
+dna_meta_group <- dna_meta_sub %>%
+  full_join(dna_avg_groups) %>%
   select(-dna_avg)
 
 # visualize
-dna.meta.group %>%
+dna_meta_group %>%
   ggplot(aes(x=spike_group, y=AdjConc)) +
   geom_boxplot() +
   theme_test()
 ```
 
 ```{r}
-dna.meta.group %>%
+dna_meta_group %>%
   group_by(spike_group) %>%
   filter(Day > 0) %>%
   summarize(dna_avg = mean(AdjConc), dna_median = median(AdjConc), dna_min = min(AdjConc), dna_max = max(AdjConc))
 ```
 
 ```{r}
-dna.meta.group %>%
+dna_meta_group %>%
   ggplot(aes(x=Day, y=AdjConc)) +
   geom_point(aes(color=spike_group)) +
   facet_wrap(~Innoculant) +
   theme_test()
 
-for (x in as.character(unique(dna.meta.group$Innoculant))) {
-    p <- dna.meta.group %>%
+for (x in as.character(unique(dna_meta_group$Innoculant))) {
+    p <- dna_meta_group %>%
     filter(!(Status == "original" & Sample %in% redos)) %>%
     filter(Innoculant == x) %>%
     ggplot(aes(x=Day, y=AdjConc, color=spike_group)) +
@@ -335,19 +347,19 @@ for (x in as.character(unique(dna.meta.group$Innoculant))) {
 }
 
 # label borderline samples
-dna.meta.group <- mutate(dna.meta.group, borders = case_when(spike_group=="low" & AdjConc <= 1 ~ "low",
+dna_meta_group <- mutate(dna_meta_group, borders = case_when(spike_group=="low" & AdjConc <= 1 ~ "low",
                                                                   spike_group=="high" & AdjConc >= 1 ~ "high",
                                                                   spike_group=="low" & AdjConc >= 1 ~ "both",
                                                                   spike_group=="high" & AdjConc <= 1 ~ "both"))
 
 # Number of samples in each spike group
-dna.meta.group %>%
+dna_meta_group %>%
   group_by(borders) %>%
   summarize(count(.))
 ```
 
 ```{r, eval=FALSE}
-write_csv(dna.meta.group, "../data_picogreen/SFA2_dnaspikes.csv")
+write_csv(dna_meta_group, "../data_picogreen/SFA2_dnaspikes.csv")
 ```
 
 
@@ -360,7 +372,7 @@ This is to prevent bias during PCR due to unequal template addition. Unfortunate
 
 ```{r}
 # Calculate dilutions for each sample
-dna.meta.sub <- dna.meta.sub %>%
+dna_meta_sub <- dna_meta_sub %>%
   mutate(conc_goal = if_else(AdjConc <= 1, AdjConc, 1),
          template_uL = round((conc_goal*20)/AdjConc, 0), # C1V1=C2V2, rounded to nearest whole uL
          mgH2O_uL = 20-template_uL) %>%
@@ -368,7 +380,7 @@ dna.meta.sub <- dna.meta.sub %>%
 ```
 
 ```{r, eval=FALSE}
-dna.meta.sub %>%
+dna_meta_sub %>%
   select(Sample, template_uL, mgH2O_uL) %>%
   write_csv(., file="../data_intermediate/SFA2_dnadilutions.csv")
 ```
@@ -380,7 +392,7 @@ New spike-in calculations
 ```{r}
 # Find high DNA outliers
 # My previous library had a problem with having way too much DNA, so want to remove anything that will raise DNA average too much
-dna.meta.sub %>%
+dna_meta_sub %>%
   ggplot(aes(x=Sample, y=AdjConc)) +
   geom_point() +
   geom_text(aes(label=Sample), vjust="outward") +
@@ -389,13 +401,13 @@ dna.meta.sub %>%
 outliers <- c(338, 290, 327, 363, 272, 303)
 
 # Sample DNA mean excluding day 0 (mostly plant DNA) and high outliers
-sample_dna_mean <- dna.meta.sub %>% 
+sample_dna_mean <- dna_meta_sub %>% 
   filter(Day != 0, !(Sample %in% outliers)) %>%
   group_by() %>%
   summarize(mean = mean(AdjConc, na.rm=TRUE))
 
 # Day 0 mean
-day0_dna_mean <- dna.meta.sub %>%
+day0_dna_mean <- dna_meta_sub %>%
   filter(Day==0) %>%
   group_by() %>%
   summarize(mean = mean(AdjConc, na.rm=TRUE))
@@ -429,31 +441,5 @@ water_vol/3
 ```
 
 
-
-
-
-
-
-
-
-
-```{r, eval=FALSE, include=FALSE, echo=FALSE}
-# Figure for SFA progress report
-dna.plot <- dna.avg %>%
-  mutate(Innoculant = as.factor(Innoculant),
-         DOC_pheno = fct_recode(DOC_pheno, 'DOC phenotype: high'="high", 'DOC phenotype: low'="low")) %>%
-  filter(Day < 30) %>%
-  ggplot(aes(x=Day, y=dna_avg)) +
-  geom_point(aes(color=Innoculant)) +
-  geom_errorbar(aes(ymin=dna_avg-dna_sd, ymax=dna_avg+dna_sd), color="gray") +
-  geom_line(aes(color=Innoculant)) +
-  facet_wrap(~DOC_pheno) +
-  labs(y="Mean DNA conc. (ng/uL)") +
-  theme_test() +
-  theme(text = element_text(size=15))
-dna.plot
-
-ggsave(dna.plot, file="../figures/SFA2_dnaconc.png", units="mm", width=200, height=100)
-```
 
 

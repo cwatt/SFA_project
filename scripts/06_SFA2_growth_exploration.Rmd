@@ -5,6 +5,12 @@ date: "11/16/2021"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
 ```{r}
 # Clear working directory, load in packages, generate package info
 rm(list=ls())
@@ -310,7 +316,7 @@ meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_full_metadata.tsv") 
   select(Sample, Type, Innoculant, DOC, Replicate, Day)
 
 # Merge and average technical replicates
-doc_meta <- inner_join(doc, meta) %>% 
+doc_meta <- left_join(doc, meta) %>% 
   group_by(DOC, Innoculant) %>% 
   summarize(mean_doc = mean(mean)) %>% 
   ungroup() %>% 
@@ -323,51 +329,60 @@ doc_growth <- inner_join(doc_meta, growth_sample)
 ```{r}
 # k
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=k, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=k)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # start day
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=start_day, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=start_day)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # start abundance
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=start_abund, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=start_abund)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # end abundance
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=end_abund, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=end_abund)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # mean change abundance
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=mean_change_abund, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=mean_change_abund)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
 
 # total change abundance
 doc_growth %>% 
-  ggplot(aes(x=mean_doc, y=total_change_abund, color=DOC)) +
-  geom_point() +
+  ggplot(aes(x=mean_doc, y=total_change_abund)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
   theme_test()
-```
 
-Not seeing anything worth persuing further.
+# genome size
+doc_growth %>% 
+  ggplot(aes(x=mean_doc, y=genome_size)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
 
-Genome size
+# rrn
+doc_growth %>% 
+  ggplot(aes(x=mean_doc, y=n16S)) +
+  geom_point(aes(color=DOC)) +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
 
-```{r}
-# ANOVA
-genome_lm <- lm(genome_size ~ DOC, data=growth_sample)
-hist(resid(genome_lm))
-plot(predict(genome_lm), resid(genome_lm))
-anova(genome_lm)
 ```
 
 # ASV-level analysis
@@ -537,6 +552,8 @@ growth %>% ggplot(aes(x=DOC, y=log(change_abund), color=Innoculant)) +
 
 It appears that a few very high change in abundance taxa in the low DOC community were driving the trend seen in the sample-level data. These ASVs are worth looking into further.
 
+### Outliers
+
 Isolate outlying ASVs:
 
 Let's say anything above the maximum change in abundance observed in the high DOC treatment.
@@ -549,8 +566,37 @@ outliers <- growth %>%
 
 # Who are they?
 tax %>% filter(ASV %in% outliers$ASV)
+```
 
+```{r, eval=FALSE}
 saveRDS(outliers, file="../data_intermediate/SFA2_growth_changeabundlow_outliers.rds")
+```
+
+Do these ASVs exist in the high DOC samples?
+
+```{r}
+out_asvs <- unique(outliers$ASV)
+growth %>% filter(DOC=="high" & ASV %in% out_asvs)
+```
+
+Yes, how do their change in abundances compare between treatments?
+
+```{r}
+growth %>% 
+  filter(ASV %in% out_asvs) %>% 
+  ggplot(aes(x=DOC, y=log(change_abund))) +
+  geom_jitter() +
+  geom_boxplot() +
+  theme_test()
+```
+
+Statistics
+
+```{r}
+out_chabund_lm <- lm(log(change_abund) ~ DOC, filter(growth, ASV %in% out_asvs))
+hist(resid(out_chabund_lm))  
+plot(predict(out_chabund_lm), resid(out_chabund_lm))
+summary(out_chabund_lm)
 ```
 
 ### Statistics
