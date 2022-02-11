@@ -5,6 +5,12 @@ date: "11/18/2021"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
 ```{r}
 # Clear working directory, load in packages, generate package info
 rm(list=ls())

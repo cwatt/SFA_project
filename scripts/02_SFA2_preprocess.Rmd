@@ -26,22 +26,22 @@ sessionInfo()
 
 ```{r}
 # Rep 1
-count_rep1 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.counts-final.tsv")
-tax_rep1 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.taxonomy-final.tsv")
+count_rep1 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.counts-final.tsv")
+tax_rep1 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.taxonomy-final.tsv")
 
 # Rep 2
-count_rep2 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.counts-final.tsv")
-tax_rep2 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxonomy-final.tsv")
+count_rep2 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.counts-final.tsv")
+tax_rep2 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxonomy-final.tsv")
 
 # Rep 3
-count_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
-tax_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
+count_rep3 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
+tax_rep3 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
 
 # Tree
-tree <- read.tree(file="~/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+tree <- read.tree(file="~/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
 
 # Metadata
-meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 ```
 
 Combine replicate data

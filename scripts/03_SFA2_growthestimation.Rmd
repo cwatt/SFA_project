@@ -148,59 +148,7 @@ norm_prep %>%
   theme_test()
 ```
 
-Specific examples:
-
-```{r}
-# Function to extract taxonomic info for graphs
-extract_tax <- function(df, asv, level) { # Data frame, "ASV", "Taxonomy level"
-  temp <- df %>% 
-    filter(ASV == asv)
-  tax <- unique(temp[[level]])
-  return(tax)
-  }
-
-# Time series graphing function
-graph_timeseries <- function(df, asv) {
-  graph <- df %>%
-    filter(ASV==asv) %>% 
-    ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Innoculant)) +
-    facet_wrap(~DOC) +
-    geom_point() +
-    geom_line() +
-    labs(y="ln ARNIS ratio", x="Day", title=paste0(extract_tax(norm_prep, asv, "Phylum"), ", ", 
-                                                            extract_tax(norm_prep, asv, "Genus"))) +
-    theme_test()
-  return(graph)
-}
-```
-
-```{r}
-# Graphs
-# Robust growth
-graph_timeseries(norm_prep, "fed2377b60ef09790fc532bbbe2b4602")
-graph_timeseries(norm_prep, "0134683a521e4c34adf2d515cbbca84d")
-graph_timeseries(norm_prep, "1030f18ec1c231043abead5e7c3ac109")
-graph_timeseries(norm_prep, "4205b2d577048e1da9d9712f9476cd7b")
-
-# Less robust growth
-graph_timeseries(norm_prep, "29be7b1a76d1f575ef3ee8d7cc10f0b1")
-graph_timeseries(norm_prep, "30a0483ea3c97871b3c91f489fb13ece")
-graph_timeseries(norm_prep, "32102f31db06d8a0411da55c4102a9f9")
-graph_timeseries(norm_prep, "438ef58af72cb79f6a9220a0b79e976b")
-graph_timeseries(norm_prep, "4d0009900aead37d86f6c0a59ee97de3")
-graph_timeseries(norm_prep, "5906b37863a7a985418e910925a659ec")
-graph_timeseries(norm_prep, "5ce5182a13292aaa88c100640c03afca")
-graph_timeseries(norm_prep, "67e786df4bd7ffe42b17907db62caeee")
-
-# Death
-graph_timeseries(norm_prep, "13e479df5562e8e93d620ac363eb9644")
-graph_timeseries(norm_prep, "2c574662d10f5b34e3b31cdbb9839ba2")
-graph_timeseries(norm_prep, "79fa5edf0f6123d3ea5c2c69b897fac1")
-
-# Low abundance issues/noise?
-graph_timeseries(norm_prep, "399eb38d8361026b8f897470becd3f13")
-graph_timeseries(norm_prep, "39a1ca18bf7123d31dbc41d7c4f03214")
-```
+528 total.
 
 # Estimate growth
 
@@ -583,6 +531,8 @@ sim_estimates <- filter(sim_estimates, residuals >= 0.0001)
 
 dim(sim_estimates)
 ```
+
+Starting to think that this step is pointless because it's so unlikely.
 
 ### Select best fit for each time series
 

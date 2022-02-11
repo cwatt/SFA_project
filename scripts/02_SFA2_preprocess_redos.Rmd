@@ -26,35 +26,37 @@ sessionInfo()
 
 ```{r}
 # Rep 1
-count_rep1 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.counts-final.tsv")
-tax_rep1 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.taxonomy-final.tsv")
+count_rep1 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.counts-final.tsv")
+tax_rep1 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.taxonomy-final.tsv")
 
 # Rep 2
-count_rep2 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.counts-final.tsv")
-tax_rep2 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxonomy-final.tsv")
+count_rep2 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.counts-final.tsv")
+tax_rep2 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxonomy-final.tsv")
 
 # Rep 3
-count_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
-tax_rep3 <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
+count_rep3 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
+tax_rep3 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
 
 # Redos
-count_redos <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/redos/final/SFA2_redos.counts-final.tsv")
-tax_redos <- read_tsv(file="~/SFAgrowthrate/data_amplicon/SFA2_full/redos/final/SFA2_redos.taxonomy-final.tsv")
+count_redos <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/redos/final/SFA2_redos.counts-final.tsv")
+tax_redos <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/redos/final/SFA2_redos.taxonomy-final.tsv")
 
 # Tree
-tree <- read.tree(file="~/SFAgrowthrate/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+tree <- read.tree(file="~/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
 
 # Metadata
-meta <- read_tsv(file = "~/SFAgrowthrate/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 ```
 
 Combine replicate and redo data:
 
 ```{r}
 # Count data combine
+# INTRODUCES NAS
 count <- full_join(count_rep1, count_rep2, by="ASV") %>%
   full_join(count_rep3, by="ASV") %>% 
-  full_join(count_redos, by="ASV")
+  full_join(count_redos, by="ASV") %>%
+  mutate(across(-ASV, ~ if_else(is.na(.x), 0, .x))) # turn coerced NAs into 0s
 
 # Taxonomy table combine
 tax <- full_join(tax_rep1, tax_rep2) %>%
@@ -84,24 +86,23 @@ phy_tax <- tax_table(tax_matrix)
 phy_meta <- sample_data(meta)
 
 # Create phyloseq object
-physeq <- phyloseq(phy_count, phy_tax, phy_meta, tree)
+physeq <- phyloseq(phy_count, phy_tax, phy_meta)
 
 physeq
 ```
 
 ### Remove non-prokaryotic ASVs
 
-Mitochondrial, chloroplast, protist, unknown domain sequences.
+Mitochondrial, chloroplast, protist, and unknown domain sequences.
 
 ```{r}
 # Remove non-prokaryotic ASVs
-physeq_remove_asvs <- taxa_names(subset_taxa(physeq, Order=="Chloroplast" | Family=="Mitochondria" |
-                                          Domain=="Unassigned" | Domain=="putative Unassigned" |
-                                          Domain=="putative Bacteria"))
-physeq_all_asvs <- taxa_names(physeq)
-physeq_keep_asvs <- physeq_all_asvs[!(physeq_all_asvs %in% physeq_remove_asvs)]
+physeq2 <- subset_taxa(physeq, !(Order=="Chloroplast" | 
+                             Family=="Mitochondria" |
+                             Domain=="Unassigned" | 
+                             Domain=="putative Unassigned" |
+                             Domain=="putative Bacteria"))
 
-physeq2 <- prune_taxa(physeq_keep_asvs, physeq)
 physeq2
 ```
 
@@ -110,9 +111,12 @@ physeq2
 Keep only ASVs that occur in at least three samples.
 
 ```{r}
+# Export counts from phyloseq
+count_phy2 <- data.frame(otu_table(physeq2))
+
 # Filter out ASVs that appear in less than three samples
-sparse_pass_asvs <- count %>%
-  mutate(across(-ASV, ~if_else(.x > 0, 1, 0), {.cols})) %>%
+sparse_pass_asvs <- count_phy2 %>%
+  mutate(across(everything(), ~if_else(.x > 0, 1, 0), {.cols})) %>%
   mutate(total = rowSums(.[-1])) %>%
   filter(total > 2) %>%
   .$ASV
@@ -120,6 +124,8 @@ sparse_pass_asvs <- count %>%
 physeq3 <- prune_taxa(sparse_pass_asvs, physeq2)
 physeq3
 ```
+
+None were removed.
 
 ### Read depth
 

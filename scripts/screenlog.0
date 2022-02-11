@@ -3492,3 +3492,416 @@ Usage: [34mqiime demux summarize[0m [OPTIONS]
 [33m[W 16:20:50.511 NotebookApp][m Forbidden
 [33m[W 16:20:50.511 NotebookApp][m 403 GET /api/config/common?_=1639171251136 (127.0.0.1) 4.810000ms referer=http://localhost:3331/tree
 [32m[I 16:20:54.395 NotebookApp][m 302 GET /tree (127.0.0.1) 1.280000ms
+The Jupyter HTML Notebook.
+
+This launches a Tornado based HTML Notebook Server that serves up an
+HTML5/Javascript Notebook client.
+
+Subcommands
+-----------
+
+Subcommands are launched as `jupyter-notebook cmd [args]`. For information on
+using subcommand 'cmd', do: `jupyter-notebook cmd -h`.
+
+list
+    List currently running notebook servers.
+stop
+    Stop currently running notebook server for a given port
+password
+    Set a password for the notebook server.
+
+Options
+-------
+
+Arguments that take values are actually convenience aliases to full
+Configurables, whose aliases are listed on the help line. For more information
+on full configurables, see '--help-all'.
+
+--debug
+    set log level to logging.DEBUG (maximize logging output)
+--generate-config
+    generate default config file
+-y
+    Answer yes to any questions instead of prompting.
+--no-browser
+    Don't open the notebook in a browser after startup.
+--pylab
+    DISABLED: use %pylab or %matplotlib in the notebook to enable matplotlib.
+--no-mathjax
+    Disable MathJax
+    
+    MathJax is the javascript library Jupyter uses to render math/LaTeX. It is
+    very large, so you may want to disable it if you have a slow internet
+    connection, or for offline use of the notebook.
+    
+    When disabled, equations etc. will appear as their untransformed TeX source.
+--allow-root
+    Allow the notebook to be run from root user.
+--script
+    DEPRECATED, IGNORED
+--no-script
+    DEPRECATED, IGNORED
+--log-level=<Enum> (Application.log_level)
+    Default: 30
+    Choices: (0, 10, 20, 30, 40, 50, 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL')
+    Set the log level by value or name.
+--config=<Unicode> (JupyterApp.config_file)
+    Default: ''
+    Full path of a config file.
+--ip=<Unicode> (NotebookApp.ip)
+    Default: 'localhost'
+    The IP address the notebook server will listen on.
+--port=<Int> (NotebookApp.port)
+    Default: 8888
+    The port the notebook server will listen on.
+--port-retries=<Int> (NotebookApp.port_retries)
+    Default: 50
+    The number of additional ports to try if the specified port is not
+    available.
+--transport=<CaselessStrEnum> (KernelManager.transport)
+    Default: 'tcp'
+    Choices: ['tcp', 'ipc']
+--keyfile=<Unicode> (NotebookApp.keyfile)
+    Default: ''
+    The full path to a private key file for usage with SSL/TLS.
+--certfile=<Unicode> (NotebookApp.certfile)
+    Default: ''
+    The full path to an SSL/TLS certificate file.
+--client-ca=<Unicode> (NotebookApp.client_ca)
+    Default: ''
+    The full path to a certificate authority certificate for SSL/TLS client
+    authentication.
+--notebook-dir=<Unicode> (NotebookApp.notebook_dir)
+    Default: ''
+    The directory to use for notebooks and kernels.
+--browser=<Unicode> (NotebookApp.browser)
+    Default: ''
+    Specify what command to use to invoke a web browser when opening the
+    notebook. If not specified, the default browser will be determined by the
+    `webbrowser` standard library module, which allows setting of the BROWSER
+    environment variable to override it.
+--pylab=<Unicode> (NotebookApp.pylab)
+    Default: 'disabled'
+    DISABLED: use %pylab or %matplotlib in the notebook to enable matplotlib.
+--gateway-url=<Unicode> (GatewayClient.url)
+    Default: None
+    The url of the Kernel or Enterprise Gateway server where kernel
+    specifications are defined and kernel management takes place. If defined,
+    this Notebook server acts as a proxy for all kernel management and kernel
+    specification retrieval.  (JUPYTER_GATEWAY_URL env var)
+
+To see all available configurables, use `--help-all`
+
+Examples
+--------
+
+    jupyter notebook                       # start the notebook
+    jupyter notebook --certfile=mycert.pem # use SSL/TLS certificate
+    jupyter notebook password              # enter a password to protect the server
+
+[C 10:59:53.202 NotebookApp] Bad config encountered during initialization:
+[C 10:59:53.202 NotebookApp] The 'port' trait of a NotebookApp instance must be an int, but a value of 'seq-process' <class 'str'> was specified.
+[32m[I 11:00:08.775 NotebookApp][m The port 3331 is already in use, trying another port.
+[32m[I 11:00:08.882 NotebookApp][m JupyterLab extension loaded from /home/cassi/anaconda3/lib/python3.7/site-packages/jupyterlab
+[32m[I 11:00:08.882 NotebookApp][m JupyterLab application directory is /home/cassi/anaconda3/share/jupyter/lab
+[32m[I 11:00:08.888 NotebookApp][m Serving notebooks from local directory: /home/cassi/SFA/scripts
+[32m[I 11:00:08.888 NotebookApp][m The Jupyter Notebook is running at:
+[32m[I 11:00:08.888 NotebookApp][m http://localhost:3332/?token=9df40e961fa30bd8dc6463936981fa18122f29ea7b59cfda
+[32m[I 11:00:08.888 NotebookApp][m  or http://127.0.0.1:3332/?token=9df40e961fa30bd8dc6463936981fa18122f29ea7b59cfda
+[32m[I 11:00:08.888 NotebookApp][m Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 11:00:08.900 NotebookApp] 
+    
+    To access the notebook, open this file in a browser:
+        file:///home/cassi/.local/share/jupyter/runtime/nbserver-1662-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:3332/?token=9df40e961fa30bd8dc6463936981fa18122f29ea7b59cfda
+     or http://127.0.0.1:3332/?token=9df40e961fa30bd8dc6463936981fa18122f29ea7b59cfda
+^C[32m[I 11:00:23.813 NotebookApp][m interrupted
+Serving notebooks from local directory: /home/cassi/SFA/scripts
+0 active kernels
+The Jupyter Notebook is running at:
+http://localhost:3332/?token=9df40e961fa30bd8dc6463936981fa18122f29ea7b59cfda
+ or http://127.0.0.1:3332/?token=9df40e961fa30bd8dc6463936981fa18122f29ea7b59cfda
+Shutdown this notebook server (y/[n])? y
+[C 11:00:25.196 NotebookApp] Shutdown confirmed
+[32m[I 11:00:25.196 NotebookApp][m Shutting down 0 kernels
+history
+lsl
+^C[32m[I 11:05:56.782 NotebookApp][m interrupted
+Serving notebooks from local directory: /home/cassi/SFAgrowthrate/scripts
+2 active kernels
+Jupyter Notebook 6.3.0 is running at:
+http://localhost:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+ or http://127.0.0.1:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+Shutdown this notebook server (y/[n])? nNo answer for 5s: resuming operation...
+
+[32m[I 11:06:08.061 NotebookApp][m 302 GET /?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%20or%20http://127.0.0.1:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 0.920000ms
+[32m[I 11:06:08.111 NotebookApp][m 302 GET /tree?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%20or%20http://127.0.0.1:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 1.300000ms
+[33m[W 11:06:15.082 NotebookApp][m 401 POST /login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 2.730000ms referer=http://localhost:3331/login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+[32m[I 11:06:37.113 NotebookApp][m 302 POST /login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 2.240000ms
+[33m[W 11:06:37.240 NotebookApp][m 404 GET /tree?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%20or%20http://127.0.0.1:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 80.240000ms referer=http://localhost:3331/login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+[33m[W 11:06:42.930 NotebookApp][m 401 POST /login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 2.730000ms referer=http://localhost:3331/login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+screen        ^X  [33m[W 12:04:57.760 NotebookApp][m 401 POST /login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 5.050000ms referer=http://localhost:3331/login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+[32m[I 12:05:00.211 NotebookApp][m 302 POST /login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 2.190000ms
+[33m[W 12:05:00.269 NotebookApp][m 404 GET /tree?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%20or%20http://127.0.0.1:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 2.580000ms referer=http://localhost:3331/login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+[33m[W 12:05:08.545 NotebookApp][m 404 GET /tree (127.0.0.1) 2.290000ms referer=http://localhost:3331/login?next=%2Ftree%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216%2520or%2520http%3A%2F%2F127.0.0.1%3A3331%2F%3Ftoken%3D0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+[32m[I 12:05:16.316 NotebookApp][m 302 GET /?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 0.880000ms
+[33m[W 12:05:16.364 NotebookApp][m 404 GET /tree?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216 (127.0.0.1) 2.710000ms referer=None
+^C[32m[I 12:05:55.668 NotebookApp][m interrupted
+Serving notebooks from local directory: /home/cassi/SFAgrowthrate/scripts
+2 active kernels
+Jupyter Notebook 6.3.0 is running at:
+http://localhost:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+ or http://127.0.0.1:3331/?token=0fd055ba0ecc56e1195662d1f2930448f94b6ed281fb3216
+Shutdown this notebook server (y/[n])? y
+[35m[C 12:05:58.306 NotebookApp][m Shutdown confirmed
+[32m[I 12:05:58.307 NotebookApp][m Shutting down 2 kernels
+[32m[I 12:05:58.732 NotebookApp][m Kernel shutdown: 366eea28-64b8-4941-9db7-4fc1a40ca7bb
+[32m[I 12:05:58.732 NotebookApp][m Kernel shutdown: 9ec8566d-dfd2-4702-9d04-8cf4f62684a1
+[32m[I 12:05:58.733 NotebookApp][m Shutting down 0 terminals
+The Jupyter HTML Notebook.
+
+This launches a Tornado based HTML Notebook Server that serves up an
+HTML5/Javascript Notebook client.
+
+Subcommands
+-----------
+
+Subcommands are launched as `jupyter-notebook cmd [args]`. For information on
+using subcommand 'cmd', do: `jupyter-notebook cmd -h`.
+
+list
+    List currently running notebook servers.
+stop
+    Stop currently running notebook server for a given port
+password
+    Set a password for the notebook server.
+
+Options
+-------
+
+Arguments that take values are actually convenience aliases to full
+Configurables, whose aliases are listed on the help line. For more information
+on full configurables, see '--help-all'.
+
+--debug
+    set log level to logging.DEBUG (maximize logging output)
+--generate-config
+    generate default config file
+-y
+    Answer yes to any questions instead of prompting.
+--no-browser
+    Don't open the notebook in a browser after startup.
+--pylab
+    DISABLED: use %pylab or %matplotlib in the notebook to enable matplotlib.
+--no-mathjax
+    Disable MathJax
+    
+    MathJax is the javascript library Jupyter uses to render math/LaTeX. It is
+    very large, so you may want to disable it if you have a slow internet
+    connection, or for offline use of the notebook.
+    
+    When disabled, equations etc. will appear as their untransformed TeX source.
+--allow-root
+    Allow the notebook to be run from root user.
+--script
+    DEPRECATED, IGNORED
+--no-script
+    DEPRECATED, IGNORED
+--log-level=<Enum> (Application.log_level)
+    Default: 30
+    Choices: (0, 10, 20, 30, 40, 50, 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL')
+    Set the log level by value or name.
+--config=<Unicode> (JupyterApp.config_file)
+    Default: ''
+    Full path of a config file.
+--ip=<Unicode> (NotebookApp.ip)
+    Default: 'localhost'
+    The IP address the notebook server will listen on.
+--port=<Int> (NotebookApp.port)
+    Default: 8888
+    The port the notebook server will listen on.
+--port-retries=<Int> (NotebookApp.port_retries)
+    Default: 50
+    The number of additional ports to try if the specified port is not
+    available.
+--transport=<CaselessStrEnum> (KernelManager.transport)
+    Default: 'tcp'
+    Choices: ['tcp', 'ipc']
+--keyfile=<Unicode> (NotebookApp.keyfile)
+    Default: ''
+    The full path to a private key file for usage with SSL/TLS.
+--certfile=<Unicode> (NotebookApp.certfile)
+    Default: ''
+    The full path to an SSL/TLS certificate file.
+--client-ca=<Unicode> (NotebookApp.client_ca)
+    Default: ''
+    The full path to a certificate authority certificate for SSL/TLS client
+    authentication.
+--notebook-dir=<Unicode> (NotebookApp.notebook_dir)
+    Default: ''
+    The directory to use for notebooks and kernels.
+--browser=<Unicode> (NotebookApp.browser)
+    Default: ''
+    Specify what command to use to invoke a web browser when opening the
+    notebook. If not specified, the default browser will be determined by the
+    `webbrowser` standard library module, which allows setting of the BROWSER
+    environment variable to override it.
+--pylab=<Unicode> (NotebookApp.pylab)
+    Default: 'disabled'
+    DISABLED: use %pylab or %matplotlib in the notebook to enable matplotlib.
+--gateway-url=<Unicode> (GatewayClient.url)
+    Default: None
+    The url of the Kernel or Enterprise Gateway server where kernel
+    specifications are defined and kernel management takes place. If defined,
+    this Notebook server acts as a proxy for all kernel management and kernel
+    specification retrieval.  (JUPYTER_GATEWAY_URL env var)
+
+To see all available configurables, use `--help-all`
+
+Examples
+--------
+
+    jupyter notebook                       # start the notebook
+    jupyter notebook --certfile=mycert.pem # use SSL/TLS certificate
+    jupyter notebook password              # enter a password to protect the server
+
+[C 12:09:56.226 NotebookApp] Bad config encountered during initialization:
+[C 12:09:56.226 NotebookApp] The 'port' trait of a NotebookApp instance must be an int, but a value of 'SFA' <class 'str'> was specified.
+[32m[I 12:10:17.012 NotebookApp][m JupyterLab extension loaded from /home/cassi/anaconda3/lib/python3.7/site-packages/jupyterlab
+[32m[I 12:10:17.012 NotebookApp][m JupyterLab application directory is /home/cassi/anaconda3/share/jupyter/lab
+[32m[I 12:10:17.014 NotebookApp][m Serving notebooks from local directory: /home/cassi/SFA/scripts
+[32m[I 12:10:17.014 NotebookApp][m The Jupyter Notebook is running at:
+[32m[I 12:10:17.014 NotebookApp][m http://localhost:3331/?token=22a25557f08e4c40f6259d67c2693e792b2dff4b3cc14603
+[32m[I 12:10:17.014 NotebookApp][m  or http://127.0.0.1:3331/?token=22a25557f08e4c40f6259d67c2693e792b2dff4b3cc14603
+[32m[I 12:10:17.014 NotebookApp][m Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 12:10:17.017 NotebookApp] 
+    
+    To access the notebook, open this file in a browser:
+        file:///home/cassi/.local/share/jupyter/runtime/nbserver-94512-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:3331/?token=22a25557f08e4c40f6259d67c2693e792b2dff4b3cc14603
+     or http://127.0.0.1:3331/?token=22a25557f08e4c40f6259d67c2693e792b2dff4b3cc14603
+[32m[I 12:10:26.182 NotebookApp][m 302 GET /?token=22a25557f08e4c40f6259d67c2693e792b2dff4b3cc14603 (127.0.0.1) 1.20ms
+[32m[I 12:11:06.977 NotebookApp][m Kernel started: a0fce090-2639-4275-aa33-444a4b0633f9
+[32m[I 12:13:07.304 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:17:06.946 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:19:07.032 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:23:07.304 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:25:06.997 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+sh: 1: qiime: not found
+[32m[I 12:26:29.934 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:26:31.396 NotebookApp][m Starting buffering for a0fce090-2639-4275-aa33-444a4b0633f9:630174f398dc4628a6690763108c055c
+[32m[I 12:38:42.793 NotebookApp][m Serving notebooks from local directory: /home/cassi/SFA/scripts
+[32m[I 12:38:42.793 NotebookApp][m Jupyter Notebook 6.3.0 is running at:
+[32m[I 12:38:42.793 NotebookApp][m http://localhost:3331/?token=4b6ee2c022e046090e1a0e59deeda01f2937c0ccc49f7919
+[32m[I 12:38:42.793 NotebookApp][m  or http://127.0.0.1:3331/?token=4b6ee2c022e046090e1a0e59deeda01f2937c0ccc49f7919
+[32m[I 12:38:42.793 NotebookApp][m Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[35m[C 12:38:42.802 NotebookApp][m 
+    
+    To access the notebook, open this file in a browser:
+        file:///home/cassi/.local/share/jupyter/runtime/nbserver-40368-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:3331/?token=4b6ee2c022e046090e1a0e59deeda01f2937c0ccc49f7919
+     or http://127.0.0.1:3331/?token=4b6ee2c022e046090e1a0e59deeda01f2937c0ccc49f7919
+[32m[I 12:38:47.667 NotebookApp][m 302 GET /?token=4b6ee2c022e046090e1a0e59deeda01f2937c0ccc49f7919 (127.0.0.1) 0.760000ms
+[32m[I 12:38:59.226 NotebookApp][m Kernel started: aaded9de-f6eb-4976-a0c8-2c318e0d8029, name: python3
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32m[I 12:41:00.374 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32m[I 12:43:00.339 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mExported /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza as NewickDirectoryFormat to directory /home/cassi/SFA/data_amplicon/SFA2_full/tree/[0m
+[32m[I 12:44:42.535 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 12:54:59.336 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mExported /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFA/data_amplicon/SFA2_full/tree/[0m
+[32m[I 12:56:59.305 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mExported /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFA/data_amplicon/SFA2_full/tree/[0m
+[32m[I 12:58:59.331 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 13:07:00.322 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 13:08:59.300 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 13:10:59.381 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged.qza[0m
+[32mExported /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFA/data_amplicon/SFA2_full/tree/[0m
+[32m[I 13:12:59.319 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 13:18:54.677 NotebookApp][m Starting buffering for aaded9de-f6eb-4976-a0c8-2c318e0d8029:0331e12c655043cd8dd7de3cb0a5e62a
+[32m[I 13:18:54.932 NotebookApp][m Kernel restarted: aaded9de-f6eb-4976-a0c8-2c318e0d8029
+[32m[I 13:18:55.026 NotebookApp][m Restoring connection for aaded9de-f6eb-4976-a0c8-2c318e0d8029:0331e12c655043cd8dd7de3cb0a5e62a
+[32m[I 13:18:55.289 NotebookApp][m Replaying 3 buffered messages
+[32m[I 13:18:59.265 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved FeatureData[Sequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32m[I 13:21:00.251 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned.qza[0m
+[32mSaved FeatureData[AlignedSequence] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged-aligned-masked.qza[0m
+[32mSaved Phylogeny[Unrooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-unrooted.qza[0m
+[32mSaved Phylogeny[Rooted] to: /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza[0m
+[32m[I 13:38:59.319 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mExported /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-rooted.qza as NewickDirectoryFormat to directory /home/cassi/SFA/data_amplicon/SFA2_full/tree/[0m
+[32m[I 13:41:44.414 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 14:50:02.462 NotebookApp][m Starting buffering for aaded9de-f6eb-4976-a0c8-2c318e0d8029:0331e12c655043cd8dd7de3cb0a5e62a
+Usage: [34mqiime tools export[0m [OPTIONS]
+
+  Exporting extracts (and optionally transforms) data stored inside an
+  Artifact or Visualization. Note that Visualizations cannot be transformed
+  with --output-format
+
+[1mOptions[0m:
+  [34m[4m--input-path[0m ARTIFACT/VISUALIZATION
+                        Path to file that should be exported        [35m[required][0m
+  [34m[4m--output-path[0m PATH    Path to file or directory where data should be
+                        exported to                                 [35m[required][0m
+  [34m--output-format[0m TEXT  Format which the data should be exported as. This
+                        option cannot be used with Visualizations
+  [34m--help[0m                Show this message and exit.
+
+[33m                    There was a problem with the command:                     [0m
+[31m[1m (1/1) Invalid value for '--input-path': File
+  '/home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_redos.rep-seqs-
+  merged.qza' does not exist.[0m
+[32m[I 13:12:25.974 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+ls
+[32m[I 13:14:25.969 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32mExported /home/cassi/SFA/data_amplicon/SFA2_full/tree/SFA2_full.rep-seqs-merged.qza as DNASequencesDirectoryFormat to directory /home/cassi/SFA/data_amplicon/SFA2_full/tree/[0m
+[32m[I 13:16:25.962 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 13:24:10.351 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 13:24:10.992 NotebookApp][m Starting buffering for aaded9de-f6eb-4976-a0c8-2c318e0d8029:65f23f8484cf4bc5830dda7b39600e3f

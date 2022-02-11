@@ -317,6 +317,17 @@ physeq_allrar
 physeq_allrar <- subset_samples(physeq_allrar, DOC %in% c("high", "low"))
 ```
 
+### Reformatting metadata
+
+```{r}
+meta <- data.frame(sample_data(physeq_allrar)) %>% 
+  as_tibble() %>% 
+  mutate(Innoculant = as_factor(Innoculant))
+
+physeq_allrar <- phyloseq(otu_table(physeq_allrar, taxa_are_rows = TRUE), sample_data(meta),
+                          tax_table(physeq_allrar), phy_tree(physeq_allrar))
+```
+
 ### Richness
 
 ```{r}
@@ -407,7 +418,7 @@ all_alphadiv <- all_richness %>%
   inner_join(all_even)
 ```
 
-Plot
+Plot:
 
 ```{r}
 all_alphadiv %>% 
@@ -434,27 +445,33 @@ all_alphadiv %>%
 wunifrac_dist <- distance(physeq_allrar, method="wunifrac")
 ord_wunifrac <- ordinate(physeq_allrar, distance=wunifrac_dist, method="NMDS")
 
-wunifrac_nmds_plot <- plot_ordination(physeq_allrar, ord_unifrac, color="DOC") +
-  stat_ellipse(type="t") +
-  facet_wrap(~Day) +
-  theme_test() +
-  theme(title = element_text(size=18),
+# Plot each day individually
+for (day in unique(sample_data(physeq_allrar)$Day)) {
+  graph <- plot_ordination(subset_samples(physeq_allrar, Day==day), ord_wunifrac, color="Innoculant") +
+    facet_wrap(~DOC) +
+    labs(title=paste0("Day ", day)) +
+    theme_test() +
+    theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
-wunifrac_nmds_plot 
+  print(graph)
+  ggsave(graph, file=paste0("../figures/animation/SFA2_wuniord_day", day, ".png"))
+}
+
+
+
 
 # Unweighted unifrac
 unifrac_dist <- distance(physeq_allrar, method="unifrac")
 ord_unifrac <- ordinate(physeq_allrar, distance=unifrac_dist, method="NMDS")
 
-unifrac_nmds_plot <- plot_ordination(physeq_allrar, ord_unifrac, color="DOC") +
+plot_ordination(physeq_allrar, ord_unifrac, color="DOC") +
   stat_ellipse(type="t") +
   facet_wrap(~Day) +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
-unifrac_nmds_plot
 ```
 
 # Growing community comparisons

@@ -152,6 +152,8 @@ death_estimates <- filter(death_estimates, residuals >= 0.0001)
 dim(death_estimates)
 ```
 
+Two removed.
+
 ### Select best fit for each time series
 
 * Lowest p-value of the slope
@@ -321,6 +323,7 @@ colnames(false_pos)=c("pvalue","false")
 
 ggplot(false_pos, aes(x=pvalue, y=false)) +
   geom_point() +
+  geom_smooth(method="lm") +
   theme_test() +
   labs(title="Relationship between p-value and number of false positives", x="P-value", y="False positives")
 ```
