@@ -29,10 +29,13 @@ sessionInfo()
 
 ```{r}
 # Growth
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+
+# Normalized abundance data
+norm <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
 
 # Taxonomic information
-tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 ```
 
 # Overview
@@ -42,7 +45,7 @@ tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
 ```{r}
 # Number of taxa growing
 num_grow <- growth %>% 
-  group_by(DOC, Innoculant) %>% 
+  group_by(DOC, Inoculant) %>% 
   summarize(num_grew = n()) %>% 
   ungroup()
 
@@ -64,10 +67,10 @@ num_grow %>%
 Statistics
 
 ```{r}
-# ANOVA
+# Linear model
 num_lm <- lm(num_grew ~ DOC, data=num_grow)
 hist(resid(num_lm))
-plot(predict(num_lm), resid(num_lm)) # heteroskedastic
+plot(predict(num_lm), resid(num_lm)) # very heteroskedastic
 
 # Welch's t-test
 num_welch <- t.test(num_grew ~ DOC, data=num_grow, var.equal=FALSE)
@@ -82,7 +85,7 @@ growth_tax <- inner_join(growth, tax)
 
 # Graph phylogenetic membership
 growth_phylo_plot <- growth_tax %>% 
-  group_by(Phylum, DOC, Innoculant) %>% 
+  group_by(Phylum, DOC, Inoculant) %>% 
   summarize(count = n()) %>% 
   ungroup() %>% 
   arrange(count) %>% 
@@ -120,7 +123,7 @@ Mean of all ASVs in each replicate.
 ```{r}
 # Summarize parameters
 growth_sample <- growth %>% 
-  group_by(DOC, Innoculant) %>% 
+  group_by(DOC, Inoculant) %>% 
   summarize(k = mean(k),
             start_day = mean(start_day),
             end_day = mean(end_day),
@@ -221,34 +224,29 @@ genome_plot
 Specific growth rate:
 
 ```{r}
-# ANOVA
+# Linear model
 k_lm <- lm(k ~ DOC, data=growth_sample)
 hist(resid(k_lm))
 plot(predict(k_lm), resid(k_lm))
-anova(k_lm)
+summary(k_lm)
 ```
 
 Lag time:
 
 ```{r}
-# ANOVA
+# Linear model
 lag_lm <- lm(start_day ~ DOC, data=growth_sample)
 hist(resid(lag_lm))
 plot(predict(lag_lm), resid(lag_lm))
-anova(lag_lm)
+summary(lag_lm)
 ```
 
 Length of growth:
 
 ```{r}
-# ANOVA
+# Linear model
 length_lm <- lm(length ~ DOC, data=growth_sample)
-hist(resid(length_lm)) # non-normal
-plot(predict(length_lm), resid(length_lm)) # heteroskedastic
-
-# Try log transform
-length_lm <- lm(log(length) ~ DOC, data=growth_sample)
-hist(resid(length_lm)) # non-normal
+hist(resid(length_lm))
 plot(predict(length_lm), resid(length_lm)) # heteroskedastic
 
 # Use Welch's t-test
@@ -259,46 +257,44 @@ length_welch
 Mean change in abundance:
 
 ```{r}
-# ANOVA
-change_lm <- lm(log(mean_change_abund) ~ DOC, data=growth_sample)
+# Linear model
+change_lm <- lm(mean_change_abund ~ DOC, data=growth_sample)
 hist(resid(change_lm))
 plot(predict(change_lm), resid(change_lm))
-
-anova(change_lm)
+summary(change_lm)
 ```
 
 Total change in abundance:
 
 ```{r}
-# ANOVA
+# Linear model
 total_change_lm <- lm(total_change_abund ~ DOC, data=growth_sample)
 hist(resid(total_change_lm))
-plot(predict(total_change_lm), resid(total_change_lm))
-anova(total_change_lm)
+plot(predict(total_change_lm), resid(total_change_lm)) # heteroskedastic
+
+# Use Welch's t-test
+change_welch <- t.test(total_change_abund ~ DOC, data=growth_sample, var.equal=FALSE)
+change_welch
 ```
 
 rrn copies:
 
 ```{r}
-# ANOVA
+# Linear model
 rrn_lm <- lm(n16S ~ DOC, data=growth_sample)
 hist(resid(rrn_lm))
-plot(predict(rrn_lm), resid(rrn_lm)) # pretty heteroskedastic
-
-# Welch's t-test
-rrn_welch <- t.test(n16S ~ DOC, data=growth_sample, var.equal=FALSE)
-rrn_welch
+plot(predict(rrn_lm), resid(rrn_lm))
+summary(rrn_lm)
 ```
 
 Genome size:
 
 ```{r}
-# ANOVA
+# Linear model
 genome_lm <- lm(genome_size ~ DOC, data=growth_sample)
 hist(resid(genome_lm))
-plot(predict(genome_lm), resid(genome_lm))
-
-anova(genome_lm)
+plot(predict(genome_lm), resid(genome_lm)) # heteroskedastic, log transform makes worse
+summary(genome_lm)
 ```
 
 ### Relationship to DOC concentration
@@ -313,14 +309,14 @@ doc <- readRDS("../data_DOC/SFA2/SFA2_doc.rds") %>%
 
 # Metadata
 meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_full_metadata.tsv") %>% 
-  select(Sample, Type, Innoculant, DOC, Replicate, Day)
+  select(Sample, Type, Inoculant, DOC, Replicate, Day)
 
 # Merge and average technical replicates
 doc_meta <- left_join(doc, meta) %>% 
-  group_by(DOC, Innoculant) %>% 
+  group_by(DOC, Inoculant) %>% 
   summarize(mean_doc = mean(mean)) %>% 
   ungroup() %>% 
-  mutate(Innoculant = as.character(Innoculant))
+  mutate(Inoculant = as.character(Inoculant))
 
 # Join with growth estimates
 doc_growth <- inner_join(doc_meta, growth_sample)
@@ -437,7 +433,7 @@ growth_asv %>%
 Change in abundance:
 
 ```{r}
-# Distribution of change in abundance during growth_asv
+# Distribution of change in abundance during growth
 growth_asv %>%
   ggplot(aes(x=log(change_abund), color=DOC)) +
   geom_density(alpha=0.5) +
@@ -449,27 +445,13 @@ growth_asv %>%
         axis.title=element_text(size=12))
 ```
 
-Start abundance:
+Lag time:
 
 ```{r}
 growth_asv %>%
-  ggplot(aes(x=log(start_abund), color=DOC)) +
+  ggplot(aes(x=start_day, color=DOC)) +
   geom_density(alpha=0.5) +
-  labs(x="ln starting abundance", y="Kernel Density") +
-  theme_test() +
-  theme(#legend.position="none",
-        title=element_text(size=12),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=12))
-```
-
-End abundance:
-
-```{r}
-growth_asv %>%
-  ggplot(aes(x=log(end_abund), color=DOC)) +
-  geom_density(alpha=0.5) +
-  labs(x="ln ending abundance", y="Kernel Density") +
+  labs(x="lag time (days)", y="Kernel Density") +
   theme_test() +
   theme(#legend.position="none",
         title=element_text(size=12),
@@ -519,6 +501,36 @@ growth_asv %>%
         axis.title=element_text(size=12))
 ```
 
+### Correlations
+
+Change in abundace vs length of growth:
+
+Prediction: ASvs that grew longer had more time to increase in abundance
+
+```{r}
+growth_asv %>% 
+  ggplot(aes(x=length, y=log(change_abund))) +
+  geom_point() +
+  facet_wrap(~DOC) +
+  geom_smooth(method="lm") +
+  theme_test()
+```
+
+Stronger trend in high than low DOC. 
+
+Change in abundace vs start of growth:
+
+Prediction: ASVs that started growth earlier had more time to increase in abundance
+
+```{r}
+growth_asv %>% 
+  ggplot(aes(x=start_day, y=log(change_abund))) +
+  geom_point() +
+  facet_wrap(~DOC) +
+  geom_smooth(method="lm") +
+  theme_test()
+```
+
 # Mixed model approach
 
 Likely losing too much power by taking averages. I'm going to use all of the data available in a mixed-model approach.
@@ -527,24 +539,19 @@ Likely losing too much power by taking averages. I'm going to use all of the dat
 
 ```{r}
 # Growth rate
-growth %>% ggplot(aes(x=DOC, y=k, color=Innoculant)) +
+growth %>% ggplot(aes(x=DOC, y=k, color=Inoculant)) +
   geom_boxplot() +
   geom_jitter() +
   theme_test()
 
 # Lag time
-growth %>% ggplot(aes(x=DOC, y=start_day, color=Innoculant)) +
+growth %>% ggplot(aes(x=DOC, y=start_day, color=Inoculant)) +
   geom_boxplot() +
   geom_jitter() +
   theme_test()
 
 # Change in abundance
-growth %>% ggplot(aes(x=DOC, y=change_abund, color=Innoculant)) +
-  geom_boxplot() +
-  geom_jitter() +
-  theme_test()
-
-growth %>% ggplot(aes(x=DOC, y=log(change_abund), color=Innoculant)) +
+growth %>% ggplot(aes(x=DOC, y=change_abund, color=Inoculant)) +
   geom_boxplot() +
   geom_jitter() +
   theme_test()
@@ -579,60 +586,91 @@ out_asvs <- unique(outliers$ASV)
 growth %>% filter(DOC=="high" & ASV %in% out_asvs)
 ```
 
-Yes, how do their change in abundances compare between treatments?
+Yes, some of them do. How do their change in abundances compare between treatments?
 
 ```{r}
 growth %>% 
   filter(ASV %in% out_asvs) %>% 
-  ggplot(aes(x=DOC, y=log(change_abund))) +
+  ggplot(aes(x=DOC, y=change_abund)) +
   geom_jitter() +
   geom_boxplot() +
   theme_test()
 ```
 
-Statistics
+Statistics:
 
 ```{r}
-out_chabund_lm <- lm(log(change_abund) ~ DOC, filter(growth, ASV %in% out_asvs))
+# Linear model
+out_chabund_lm <- lm(change_abund ~ DOC, filter(growth, ASV %in% out_asvs))
 hist(resid(out_chabund_lm))  
-plot(predict(out_chabund_lm), resid(out_chabund_lm))
-summary(out_chabund_lm)
+plot(predict(out_chabund_lm), resid(out_chabund_lm)) # heteroskedastic
+
+# Welch's t-test
+out_chabund_welch  <- t.test(change_abund ~ DOC, filter(growth, ASV %in% out_asvs))
+out_chabund_welch
 ```
 
 ### Statistics
 
-Treating innoculant as a random variable, like a blocking effect.
+Treating Inoculant as a random variable, like a blocking effect.
 
-Growth rate
+Growth rate:
 
 ```{r}
 # Linear mixed effects
-k_lmer <- lmer(log(k) ~ DOC + (1|Innoculant), data=growth)
+k_lmer <- lmer(log(k) ~ DOC + (1|Inoculant), data=growth)
 hist(resid(k_lmer))
 plot(predict(k_lmer), resid(k_lmer))
-
 summary(k_lmer)
 ```
 
-Lag time
+Change in abundance:
 
 ```{r}
 # Linear mixed effects
-lag_lmer <- lmer(start_day ~ DOC + (1|Innoculant), data=growth)
-hist(resid(lag_lmer))
-plot(predict(lag_lmer), resid(lag_lmer))
-
-summary(lag_lmer)
-```
-
-Change in abundance
-
-```{r}
-# Linear mixed effects
-chgabund_lmer <- lmer(log(change_abund) ~ DOC + (1|Innoculant), data=growth)
+chgabund_lmer <- lmer(log(change_abund) ~ DOC + (1|Inoculant), data=growth)
 hist(resid(chgabund_lmer))
 plot(predict(chgabund_lmer), resid(chgabund_lmer))
 
 summary(chgabund_lmer)
 ```
+
+# Window heatmap
+
+I want to know if the time frame of growth might be a mechanism determining DOC.
+
+Reformat data:
+
+```{r}
+# Mark each day where growth occurs for each taxon
+norm_heat <- data.frame()
+for (l in unique(growth$label)) {
+  growth_sub <- filter(growth, label==l)
+  start <- growth_sub$start_day
+  end <- growth_sub$end_day
+  norm_sub <- filter(norm, label==l)
+  norm_sub2 <- mutate(norm_sub, window = if_else(Day <= end & Day >= start, 1, 0))
+  norm_heat <- bind_rows(norm_heat, norm_sub2)
+}
+
+# Summarize each Inoculant
+norm_heat <- norm_heat %>% 
+  group_by(Inoculant, DOC, Day) %>% 
+  summarize(value = sum(window)) %>% 
+  ungroup()
+```
+
+Plot:
+
+Here, value refers to the number of taxa that were actively growing at that time point.
+
+```{r}
+norm_heat %>% 
+  ggplot(aes(x=Day, y=Inoculant)) +
+  geom_tile(aes(fill=value)) +
+  scale_fill_gradient(low="white", high="green") +
+  facet_wrap(~DOC, nrow = 2) +
+  theme_test()
+```
+
 

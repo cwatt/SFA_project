@@ -29,8 +29,9 @@ doc = readRDS("../data_DOC/SFA2/SFA2_doc.rds") %>%
   select(sample_id, "doc"=mean)
 
 # Import metadata
-meta = read.csv("../data_DOC/SFA2/SFA2_doc_metadata.csv")
-
+meta = read.csv("../data_DOC/SFA2/SFA2_doc_metadata.csv") %>% 
+  mutate(Inoculant = as.character(Inoculant))
+  
 # Merge
 doc.meta = full_join(meta, doc, by=c("Sample" = "sample_id"))
 ```
@@ -38,7 +39,7 @@ doc.meta = full_join(meta, doc, by=c("Sample" = "sample_id"))
 # Visualize
 
 ```{r}
-ggplot(doc.meta, aes(x=as.factor(Innoculant), y=doc, color=DOC_pheno)) +
+ggplot(doc.meta, aes(x=Inoculant, y=doc, color=DOC_pheno)) +
   geom_point() +
   facet_wrap(~Group) +
   theme_test() +
@@ -63,36 +64,42 @@ doc.plot <- doc.meta %>%
 doc.plot
 ```
 
-```{r, eval=FALSE}
-ggsave(doc.plot, file="../figures/SFA2_doc.png", units="mm", width=100, height=100)
-```
-
 # Statistics
 
 Test separately for headspace and growth experiments.
 
 **Headspace microcosms**
 
-Linear mixed effects model to allow innoculant to be random effect.
+Linear mixed effects model to allow inoculant to be random effect.
 
 ```{r}
 headspace.doc = filter(doc.meta, Group=="Headspace" & Type=="Sample")
-head.doc.lmer = lmer(doc ~ DOC_pheno + (1|Innoculant), data = headspace.doc) # linear mixed effects model, allow innoculant to vary independently
+head.doc.lmer = lmer(doc ~ DOC_pheno + (1|Inoculant), data = headspace.doc) # linear mixed effects model, allow inoculant to vary independently
 hist(residuals(head.doc.lmer))
 plot(predict(head.doc.lmer), residuals(head.doc.lmer))
-summary(head.doc.lmer)
+anova(head.doc.lmer)
 ```
 
-**Growth**
+**Growth microcosms**
 
-Linear mixed effects model to allow innoculant to be random effect.
+Linear mixed effects model to allow inoculant to be random effect.
 
 ```{r}
 growth.doc = filter(doc.meta, Group=="Growth" & Type=="Sample")
-grow.doc.lmer = lmer(log(doc) ~ DOC_pheno + (1|Innoculant), data = growth.doc) # linear mixed effects model, allow innoculant to vary independently
+grow.doc.lmer = lmer(log(doc) ~ DOC_pheno + (1|Inoculant), data = growth.doc) # linear mixed effects model, allow inoculant to vary independently
 hist(residuals(grow.doc.lmer))
-plot(residuals(grow.doc.lmer), predict(grow.doc.lmer))
-summary(head.doc.lmer)
+plot(predict(grow.doc.lmer), residuals(grow.doc.lmer))
+anova(grow.doc.lmer)
+```
+
+**Headspace vs growth**
+
+```{r}
+headgr_doc_lmer = lmer(log(doc) ~ Group + DOC_pheno + Group:DOC_pheno + (1|Inoculant), data = filter(doc.meta, Type=="Sample")) 
+hist(residuals(headgr_doc_lmer))
+plot(predict(headgr_doc_lmer), residuals(headgr_doc_lmer))
+anova(headgr_doc_lmer)
+emmeans(headgr_doc_lmer, specs=pairwise ~ Group:DOC_pheno, adjust="none")
 ```
 
 # DOC vs CO2
@@ -102,9 +109,10 @@ Is there a relationship between DOC and CO2?
 ```{r}
 # Import CO2 data
 co2 = readRDS("../data_CO2/SFA2/SFA2_CO2.rds") %>%
-  rename(DOC_pheno = DOC_predict)
+  rename(DOC_pheno = DOC_predict) %>% 
+  mutate(Inoculant = as.character(Inoculant))
 
-doc.co2 = full_join(headspace.doc, co2, by=c("Sample", "Innoculant", "DOC_pheno"))
+doc.co2 = full_join(headspace.doc, co2, by=c("Sample", "Inoculant", "DOC_pheno"))
 ```
 
 **Visualize**
@@ -122,12 +130,12 @@ No relationship between DOC and CO2.
 
 # DOC vs protein
 
-Assessing to check that the starting volume of innoculant did not affect DOC outcome. Making sure the protein measurement allowed us to control for starting biomass.
+Assessing to check that the starting volume of inoculant did not affect DOC outcome. Making sure the protein measurement allowed us to control for starting biomass.
 
 ```{r}
 # Import protein metadata
 prot = read_csv("~/SFAgrowthrate/data_protein/SFA1_washprotein_metadata.csv")
-head.doc.prot = left_join(headspace.doc, prot, by=c("Innoculant"="Sample"))
+head.doc.prot = left_join(headspace.doc, prot, by=c("Inoculant"="Sample"))
 ```
 
 **Visualize**

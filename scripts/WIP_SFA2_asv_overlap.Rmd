@@ -5,6 +5,12 @@ date: "1/20/2022"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
 ```{r}
 # Clear working directory, load in packages, generate package info
 rm(list=ls())
@@ -18,16 +24,16 @@ sessionInfo()
 
 ```{r}
 # growth
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 
 # death
-death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
 
 # Taxonomic information
-tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 ```
 
-# Overlapping ASVs - growth
+# Growth overlap
 
 ```{r}
 asv_overlap <- growth %>% 
@@ -41,7 +47,7 @@ asv_overlap <- growth %>%
 dim(asv_overlap)
 ```
 
-There are 25 shared ASVs between high and low DOC phenotype communities. Who are they?
+There are 22 shared ASVs between high and low DOC phenotype communities. Who are they?
 
 ```{r}
 asv_overlap <- inner_join(asv_overlap, tax)
@@ -55,14 +61,14 @@ asv_overlap %>%
   arrange(-count)
 ```
 
-Overlapping taxa mainly consist of Actinobacteria, Firmicutes, and Proteobacteria.
+Overlapping taxa mainly consist of Actinobacteria, Proteobacteria, and Firmicutes.
 
-Change in normalized abundance was significantly different between treatments. Do overlapping taxa show same trend?
+Change in total normalized abundance was significantly different between treatments. Do overlapping taxa show same trend?
 
 ```{r}
 growth_overlap <- inner_join(asv_overlap, growth, by="ASV") %>%
-  group_by(DOC, Innoculant) %>% 
-  summarize(change_abund = mean(end_abund/n16S - start_abund/n16S)) %>% 
+  group_by(DOC, Inoculant) %>% 
+  summarize(change_abund = sum(end_abund/n16S - start_abund/n16S)) %>% 
   ungroup()
 
 growth_overlap %>% 
@@ -71,19 +77,33 @@ growth_overlap %>%
   theme_test()
 ```
 
-Statistics
+Statistics:
 
 ```{r}
 # ANOVA
-groverlap_lm <- lm(change_abund ~ DOC, data=growth_overlap)
+groverlap_lm <- lm(log(change_abund) ~ DOC, data=growth_overlap)
 hist(resid(groverlap_lm))
 plot(predict(groverlap_lm), resid(groverlap_lm)) # heteroskedastic
-
-# Welch t-test
-groverlap_welch <- t.test(change_abund ~ DOC, data=growth_overlap, var.equal=FALSE)
-groverlap_welch
+summary(groverlap_lm)
 ```
 
+Not quite, but the trend is there.
+
+What about the taxa that DONT overlap?
+
+```{r}
+growth_distinct <- anti_join(growth, asv_overlap, by="ASV") %>%
+  group_by(DOC, Inoculant) %>% 
+  summarize(change_abund = sum(end_abund/n16S - start_abund/n16S)) %>% 
+  ungroup()
+
+growth_distinct %>% 
+  ggplot(aes(x=DOC, y=change_abund)) + 
+  geom_point(alpha=0.5) + 
+  theme_test()
+```
+ 
+Quite variable.
 
 
 

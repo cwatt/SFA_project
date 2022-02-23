@@ -74,7 +74,7 @@ dil <- 23 # hand-dilution of samples before running
 ```{r}
 # Import raw data with header notes removed manually in excel or text editor
 # The data was export in two separate files, one for the standards and one for the samples
-raw = read_csv("~/SFAgrowthrate/data_DOC/SFA2/toc_results_01212021.csv")
+raw = read_csv("~/SFA/data_DOC/SFA2/toc_results_01212021.csv")
 
 # Clean up
 raw.clean = raw %>%
@@ -225,6 +225,6 @@ samples.final.avg <- samples.final %>%
 Save results for analysis
 
 ```{r}
-saveRDS(samples.final.avg, "data_DOC/SFA2/SFA2_doc.rds")
+saveRDS(samples.final.avg, "../data_DOC/SFA2/SFA2_doc.rds")
 ```
 

@@ -36,7 +36,7 @@ norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>%
   mutate(SampleID = as.double(gsub("sa", "", SampleID)))
 
 # Taxonomy
-tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Metadata
 meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
@@ -45,7 +45,7 @@ meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 norm_prep <- inner_join(norm, tax, by="ASV") %>% 
   inner_join(meta, by="SampleID") %>% 
   select(c(SampleID, Sample, Type:Replicate, Domain:Species, ASV, norm_abund)) %>% 
-  mutate(Innoculant = as_factor(Innoculant),
+  mutate(Inoculant = as_factor(Inoculant),
          Replicate = as_factor(Replicate)) %>% 
   mutate(across(Domain:Species, ~as.character(.x), {.col}))
 
@@ -64,7 +64,7 @@ norm_prep <- norm_prep[!is.infinite(norm_prep$norm_abund),]
 dim(norm_prep)
 ```
 
-Remove samples that were not part of the growth rate measurement
+Remove samples that were not part of the growth rate measurement:
 
 ```{r}
 norm_prep <- filter(norm_prep, Type=="Growth")
@@ -72,41 +72,41 @@ norm_prep <- filter(norm_prep, Type=="Growth")
 dim(norm_prep)
 ```
 
-Remove non-present taxa
+Remove non-present taxa:
 
 ```{r}
-norm_prep <- norm_prep %>% 
-  filter(norm_abund != 0)
+norm_prep <- filter(norm_prep, norm_abund != 0) 
+  
 
 dim(norm_prep)
 ```
 
-Average across technical replicates
+Average across technical replicates:
 
 * For better coverage of time series
-* All samples are destructively sampled anyway and independent of one another, including replicates
+* All samples are destructively sampled and independent of one another, including replicates
 
 ```{r}
 norm_prep <- norm_prep %>% 
-  group_by(Type, Innoculant, DOC, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
+  group_by(Type, Inoculant, DOC, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
   summarize(norm_abund_avg = mean(norm_abund, na.rm = TRUE)) %>% 
   ungroup()
 
 dim(norm_prep)
 ```
 
-Remove taxa that didn't occur in at least four time points
+Remove taxa that didn't occur in at least four time points:
 
 ```{r}
 # Identify ASVs that appeared less than 4 times in time series
 occurences <- norm_prep %>% 
-  group_by(ASV, Type, Innoculant) %>% 
+  group_by(ASV, Type, Inoculant) %>% 
   summarize(occurs = n()) %>% 
   filter(occurs > 3) %>% 
   ungroup()
 
 # Filter
-norm_prep <- inner_join(norm_prep, occurences, by=c("ASV", "Innoculant", "Type")) %>% 
+norm_prep <- inner_join(norm_prep, occurences, by=c("ASV", "Inoculant", "Type")) %>% 
   select(everything(), -occurs)
 
 dim(norm_prep)
@@ -125,7 +125,7 @@ Create unique label for each ASV and time series:
 
 ```{r}
 norm_prep <- norm_prep %>%
-  mutate(label = paste0(DOC, Innoculant, "_", ASV))
+  mutate(label = paste0(DOC, Inoculant, "_", ASV))
 
 dim(norm_prep)
 ```
@@ -139,7 +139,7 @@ All ASVS:
 # Opens in browser
 norm_prep %>% 
   filter(Type=="Growth") %>% 
-  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Innoculant)) +
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Inoculant)) +
   facet_wrap(~DOC) +
   geom_point() +
   geom_line() +
@@ -148,17 +148,18 @@ norm_prep %>%
   theme_test()
 ```
 
-528 total.
+517 total.
 
 # Estimate growth
 
 Prepare data:
 
 ```{r}
-# Rename columns to match function reqiurements (this is easier to code)
+# Rename columns to match function reqiurements
 norm_prepped <- norm_prep %>% 
-  select(-Type, -c(Domain:Species), norm_abund_avg, time=Day, abund=ln_norm_abund_avg, label, Innoculant, DOC, ASV) %>% 
-  select(Innoculant, DOC, ASV, label, time, abund, norm_abund_avg)
+  select(-Type, -c(Domain:Species), norm_abund_avg, time=Day,
+         abund=ln_norm_abund_avg, label, Inoculant, DOC, ASV) %>% 
+  select(Inoculant, DOC, ASV, label, time, abund, norm_abund_avg)
 ```
 
 ```{r}
@@ -202,10 +203,10 @@ for (label in as.character(unique(df$label))) {
   df_sub <- df[df$label==label,] 
   stop <- FALSE
     
-  # Sliding window
-  for (start in 1:(nrow(df_sub) - 2)) {
+  # Sliding window (at least four time points in window)
+  for (start in 1:(nrow(df_sub) - 3)) {
     stop <- FALSE
-    for (end in (start + 2):nrow(df_sub)) {
+    for (end in (start + 3):nrow(df_sub)) {
       if (stop == TRUE) {break}
      
       # Fit linear model to the window
@@ -461,9 +462,9 @@ for (label in as.character(unique(df$label))) {
   stop <- FALSE
     
   # Sliding window
-  for (start in 1:(nrow(df_sub) - 2)) {
+  for (start in 1:(nrow(df_sub) - 3)) {
     stop <- FALSE
-    for (end in (start + 2):nrow(df_sub)) {
+    for (end in (start + 3):nrow(df_sub)) {
       if (stop == TRUE) {break}
      
       # Fit linear model to the window
@@ -531,8 +532,6 @@ sim_estimates <- filter(sim_estimates, residuals >= 0.0001)
 
 dim(sim_estimates)
 ```
-
-Starting to think that this step is pointless because it's so unlikely.
 
 ### Select best fit for each time series
 
@@ -603,7 +602,9 @@ false2.5_pval <- (25 - intercept)/slope
 false1_pval <- (10 - intercept)/slope
 ```
 
-Filter p-values based on cut-offs determined (10%, 5%, 2.5%, 1%):
+### Filter by false positive rate
+
+Number of estimates in each category:
 
 ```{r, restuls="show"}
 # ~10% false positives
@@ -623,7 +624,82 @@ growth_falsepos1 <- subset(growth_estimates, pval <= false1_pval)
 nrow(growth_falsepos1)
 ```
 
-I'll go with 10% false positive rate because it retains more estimates.
+Visualize
+
+10% false positive rate:
+
+```{r}
+set.seed(10)
+
+# 10% false positive rate
+labels10 <- as.character(growth_falsepos10$label)
+
+# Randomly plot 10 w/growth estimate
+for (n in 1:10) {
+  # Choose randomly
+  rand_num <- sample(1:nrow(growth_falsepos10), 1)
+  l <- labels10[rand_num]
+  
+  # Estimated growth window
+  start <- growth_falsepos10 %>% 
+    filter(label==l) %>% 
+    .$start
+  
+  end <- growth_falsepos10 %>% 
+    filter(label==l) %>% 
+    .$end
+  
+  # Plot
+  data_sub <- norm_prepped %>% 
+    filter(label == l)
+  plot <- data_sub %>% 
+    ggplot(aes(x=time, y=abund)) +
+    geom_smooth(method="lm", data=data_sub[start:end,], linetype=2) +
+    geom_point() +
+    geom_line() +
+    theme_test()
+  print(plot)
+}
+    
+```
+
+5% false positive rate:
+
+```{r}
+set.seed(5)
+
+# 10% false positive rate
+labels5 <- as.character(growth_falsepos5$label)
+
+# Randomly plot 10 w/growth estimate
+for (n in 1:10) {
+  # Choose randomly
+  rand_num <- sample(1:nrow(growth_falsepos5), 1)
+  l <- labels5[rand_num]
+  
+  # Estimated growth window
+  start <- growth_falsepos5 %>% 
+    filter(label==l) %>% 
+    .$start
+  
+  end <- growth_falsepos10 %>% 
+    filter(label==l) %>% 
+    .$end
+  
+  # Plot
+  data_sub <- norm_prepped %>% 
+    filter(label == l)
+  plot <- data_sub %>% 
+    ggplot(aes(x=time, y=abund)) +
+    geom_smooth(method="lm", data=data_sub[start:end,], linetype=2) +
+    geom_point() +
+    geom_line() +
+    theme_test()
+  print(plot)
+}
+    
+```
+Look similarly trustworthy. I'll go with 10% false positive rate because it retains more estimates.
 
 # Calculate growth metrics
 
@@ -656,7 +732,7 @@ for (l in growth_falsepos10$label) {
 }
 ```
 
-### Start and end day, change in relational abundance
+### Start and end day, change in abundance
 
 ```{r}
 # Convert start and end to actual day
@@ -697,11 +773,11 @@ est_labels <- as.character(growth_estimates$label)
 norm_tidy <- norm_prepped %>% 
   filter(label %in% est_labels) %>% 
   select(label, everything(), norm_abund_avg, ln_norm_abund_avg=abund, Day=time) %>% 
-  select(label, Innoculant, DOC, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
+  select(label, Inoculant, DOC, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
 ```
 
 ```{r, eval=FALSE}
-saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_growth_estimated.rds")
+saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_grestimated.rds")
 ```
 
 Growth estimates:
@@ -710,9 +786,9 @@ Growth estimates:
 # Add back metadata
 growth_tidy <- growth_final %>% 
   mutate(DOC = if_else(grepl("high", label), "high", "low"),
-         Innoculant = gsub("[a-z]+([0-9]+)_.+", "\\1", label),
+         Inoculant = gsub("[a-z]+([0-9]+)_.+", "\\1", label),
          ASV = gsub("[a-z]+[0-9]+_(.+)", "\\1", label)) %>% 
-  select(label, DOC, Innoculant, ASV, k:change_abund)
+  select(label, DOC, Inoculant, ASV, k:change_abund)
 ```
 
 ```{r, eval=FALSE}
@@ -732,15 +808,19 @@ write_tsv(growth_asvs, file="../paprica_analysis/growth_asvs.txt")
 # For messing with graphs
 growth_testing <- head(growth_tidy)
 
+count <- 0
+
 for (l in as.character(growth_tidy$label)) {
+  count <- count + 1
   # Subset time series
   growth_label <- filter(growth_tidy, label==l)
   norm_label <- filter(norm_tidy, label==l) %>% 
-    arrange(Day)
+  arrange(Day)
   # Title information
   asv <- growth_label$ASV
   tax_info <- filter(tax, ASV == asv)
-  title <- paste0(tax_info$Phylum, ", ", tax_info$Genus)
+  
+  title <- paste0(count, ". ", tax_info$Phylum, ", ", tax_info$Genus)
   # Graph with estimate
   graph <- ggplot(norm_label, aes(x=Day, y=ln_norm_abund_avg)) +
     geom_point(shape=1, size=2, color="#6F7378") +
@@ -751,8 +831,10 @@ for (l in as.character(growth_tidy$label)) {
     theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
+  
+  # Print
   print(graph)
-}
+  }
 ```
 
 

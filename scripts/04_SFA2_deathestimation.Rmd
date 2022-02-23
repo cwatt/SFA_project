@@ -23,7 +23,7 @@ sessionInfo()
 
 # Import data
 
-* The already prepped data from 03_SFA2_deathestimation.Rmd
+* The already prepped data from 03_SFA2_growthestimation.Rmd
 * Taxonomy
 * Metadata
 
@@ -32,7 +32,7 @@ sessionInfo()
 norm_prepped <- readRDS("../data_intermediate/SFA2_norm_prepped.rds")
 
 # Taxonomy
-tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Metadata
 meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
@@ -80,9 +80,9 @@ for (label in as.character(unique(df$label))) {
   stop <- FALSE
     
   # Sliding window
-  for (start in 1:(nrow(df_sub) - 2)) {
+  for (start in 1:(nrow(df_sub) - 3)) {
     stop <- FALSE
-    for (end in (start + 2):nrow(df_sub)) {
+    for (end in (start + 3):nrow(df_sub)) {
       if (stop == TRUE) {break}
      
       # Fit linear model to the window
@@ -152,8 +152,6 @@ death_estimates <- filter(death_estimates, residuals >= 0.0001)
 dim(death_estimates)
 ```
 
-Two removed.
-
 ### Select best fit for each time series
 
 * Lowest p-value of the slope
@@ -216,9 +214,9 @@ for (label in as.character(unique(df$label))) {
   stop <- FALSE
     
   # Sliding window
-  for (start in 1:(nrow(df_sub) - 2)) {
+  for (start in 1:(nrow(df_sub) - 3)) {
     stop <- FALSE
-    for (end in (start + 2):nrow(df_sub)) {
+    for (end in (start + 3):nrow(df_sub)) {
       if (stop == TRUE) {break}
      
       # Fit linear model to the window
@@ -375,11 +373,11 @@ death_falsepos1 <- subset(death_estimates, pval <= false1_pval)
 nrow(death_falsepos1)
 ```
 
-Going with 10% again to match growth estimations.
+Going with 10% again to match growth estimations and conserve largest number of estimates.
 
 # Calculate death metrics
 
-### Start and end day, change in relational abundance
+### Start and end day, change in abundance
 
 ```{r}
 # Convert start and end to actual day
@@ -400,7 +398,7 @@ for (l in as.character(unique(death_falsepos10$label))) {
   end_abund <- norm_label[end,]$norm_abund_avg
   change_abund <- end_abund - start_abund
   # Save output
-  this_row <- bind_cols(label = as.character(death_label$label), slope = death_label$coeff,
+  this_row <- bind_cols(label = as.character(death_label$label), k = death_label$coeff,
                         start_pt = death_label$start, end_pt = death_label$end,
                         start_day = start_day, end_day = end_day, 
                         start_abund = start_abund, end_abund = end_abund, change_abund = change_abund)
@@ -420,11 +418,11 @@ est_labels <- as.character(death_estimates$label)
 norm_tidy <- norm_prepped %>% 
   filter(label %in% est_labels) %>% 
   select(label, everything(), ln_norm_abund_avg=abund, Day=time) %>% 
-  select(label, Innoculant, DOC, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
+  select(label, Inoculant, DOC, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
 ```
 
 ```{r, eval=FALSE}
-saveRDS(norm_tidy, file="../data_intermediate/SFA2_death_norm_estimated.rds")
+saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_deestimated.rds")
 ```
 
 Death estimates:
@@ -433,9 +431,9 @@ Death estimates:
 # Add back metadata
 death_tidy <- death_final %>% 
   mutate(DOC = if_else(grepl("high", label), "high", "low"),
-         Innoculant = gsub("[a-z]+([0-9]+)_.+", "\\1", label),
+         Inoculant = gsub("[a-z]+([0-9]+)_.+", "\\1", label),
          ASV = gsub("[a-z]+[0-9]+_(.+)", "\\1", label)) %>% 
-  select(label, DOC, Innoculant, ASV, slope:change_abund)
+  select(label, DOC, Inoculant, ASV, k:change_abund)
 ```
 
 ```{r, eval=FALSE}
@@ -455,15 +453,19 @@ write_tsv(death_asvs, file="../paprica_analysis/death_asvs.txt")
 # For messing with graphs
 death_testing <- head(death_tidy)
 
+count <- 0
+
 for (l in as.character(death_tidy$label)) {
+  count <- count + 1
   # Subset time series
   death_label <- filter(death_tidy, label==l)
   norm_label <- filter(norm_tidy, label==l) %>% 
-    arrange(Day)
+  arrange(Day)
   # Title information
   asv <- death_label$ASV
   tax_info <- filter(tax, ASV == asv)
-  title <- paste0(tax_info$Phylum, ", ", tax_info$Genus)
+  
+  title <- paste0(count, ". ", tax_info$Phylum, ", ", tax_info$Genus)
   # Graph with estimate
   graph <- ggplot(norm_label, aes(x=Day, y=ln_norm_abund_avg)) +
     geom_point(shape=1, size=2, color="#6F7378") +
@@ -474,8 +476,14 @@ for (l in as.character(death_tidy$label)) {
     theme(title = element_text(size=18),
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
+  
+  # Print/save
   print(graph)
-}
+  #path <- "../figures/grestimates_10fpr3window/"
+  #filename <- paste0(count, "_", tax_info$Phylum, "_", tax_info$Genus, ".png")
+  #ggsave(plot=graph, filename=paste0(path, filename), device="png")
+
+  }
 ```
 
 # Plot growth and death
@@ -486,11 +494,11 @@ growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds") %>%
   select(everything(), growth_k=k, growth_start_pt=start_pt, growth_end_pt=end_pt,
          growth_start_day=start_day, growth_end_day=end_day,
          growth_start_abund=start_abund, growth_end_abund=end_abund, growth_change_abund=change_abund)
-norm_growth <- readRDS("../data_intermediate/SFA2_norm_growth_estimated.rds")
+norm_growth <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
 
 # Rename death columns
 death_rename <- death_tidy %>% 
-  select(everything(), death_slope=slope, death_start_pt=start_pt, death_end_pt=end_pt,
+  select(everything(), death_k=k, death_start_pt=start_pt, death_end_pt=end_pt,
          death_start_day=start_day, death_end_day=end_day,
          death_start_abund=start_abund, death_end_abund=end_abund, death_change_abund=change_abund)
 

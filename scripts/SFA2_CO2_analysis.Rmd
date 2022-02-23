@@ -228,7 +228,7 @@ sample.df = anti_join(area.df, std.df) %>%
   mutate(Sample, Sample = parse_number(Sample))# convert to numeric
 ```
 
-Add metadata information about innoculants
+Add metadata information about inoculants
 
 ```{r}
 # Import metadata
@@ -321,7 +321,7 @@ sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 
 
 # Cumulative mg CO2 and C
 sample.totals = sample.conv %>%
-  group_by(Sample, Innoculant, DOC_predict) %>%
+  group_by(Sample, Inoculant, DOC_predict) %>%
   summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>% 
   ungroup()
 ```
@@ -330,9 +330,9 @@ Visualize
 
 ```{r}
 sample.totals %>%
-  ggplot(aes(x=Innoculant, y=totalCO2mg, color=DOC_predict)) +
+  ggplot(aes(x=Inoculant, y=totalCO2mg, color=DOC_predict)) +
   geom_point() +
-  labs(title="Cumulative CO2 respiration", y="CO2 mg", x="Innoculant") +
+  labs(title="Cumulative CO2 respiration", y="CO2 mg", x="Inoculant") +
   theme_test()
 
 resp_plot <- sample.totals %>%
@@ -348,9 +348,8 @@ resp_plot
 ```
 
 ```{r, eval=FALSE}
-ggsave("../figures/SFA2_CO2.png", resp_plot, units="mm", width=100, height=100)
-
-saveRDS(sample.totals, file="data_CO2/SFA2/SFA2_CO2.rds")
+# BOOKMARK
+saveRDS(sample.totals, file="../data_CO2/SFA2/SFA2_CO2.rds")
 ```
 
 # CO2 respiration over time
@@ -369,13 +368,13 @@ sample.late = anti_join(sample.conv, sample.early)
 
 # Calculate cumulative CO2 for early and late
 sample.total.early = sample.early %>%
-  group_by(Sample, Innoculant, DOC_predict) %>%
+  group_by(Sample, Inoculant, DOC_predict) %>%
   summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>%
   add_column(Incubation_stage = "early") %>% 
   ungroup()
 
 sample.total.late = sample.late %>%
-  group_by(Sample, Innoculant, DOC_predict) %>%
+  group_by(Sample, Inoculant, DOC_predict) %>%
   summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>%
   add_column(Incubation_stage = "late") %>% 
   ungroup()

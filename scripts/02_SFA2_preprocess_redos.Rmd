@@ -48,11 +48,10 @@ tree <- read.tree(file="~/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.
 meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
 ```
 
-Combine replicate and redo data:
+Combine replicates and redos:
 
 ```{r}
 # Count data combine
-# INTRODUCES NAS
 count <- full_join(count_rep1, count_rep2, by="ASV") %>%
   full_join(count_rep3, by="ASV") %>% 
   full_join(count_redos, by="ASV") %>%
@@ -83,26 +82,28 @@ tax_matrix <- tax %>%
 phy_tax <- tax_table(tax_matrix)
 
 # Metadata import
-phy_meta <- sample_data(meta)
+meta_fix <- meta %>% 
+  mutate(Inoculant = as.character(Inoculant))
+phy_meta <- sample_data(meta_fix)
 
 # Create phyloseq object
-physeq <- phyloseq(phy_count, phy_tax, phy_meta)
+physeq <- phyloseq(phy_count, phy_tax, phy_meta, tree)
 
 physeq
 ```
 
 ### Remove non-prokaryotic ASVs
 
-Mitochondrial, chloroplast, protist, and unknown domain sequences.
+Mitochondrial, chloroplast, protist, and unknown domain/phylum sequences.
+
+* Decided to remove unknown phyla because I am concerned these are plant DNA sequences
+* When BLASTed many of these sequences match to mitochondria from plants or fungi
+* Many tend to be high abundance and highly variable, consistent with DNA extraction from plant/fungus tissue
 
 ```{r}
 # Remove non-prokaryotic ASVs
-physeq2 <- subset_taxa(physeq, !(Order=="Chloroplast" | 
-                             Family=="Mitochondria" |
-                             Domain=="Unassigned" | 
-                             Domain=="putative Unassigned" |
-                             Domain=="putative Bacteria"))
-
+physeq2 <- subset_taxa(physeq, !(Order=="Chloroplast" | Family=="Mitochondria" | Domain=="Unassigned" | 
+                                   Domain=="putative Unassigned" | Domain=="putative Bacteria" | Phylum == "unclassified Bacteria"))
 physeq2
 ```
 
@@ -111,21 +112,17 @@ physeq2
 Keep only ASVs that occur in at least three samples.
 
 ```{r}
-# Export counts from phyloseq
-count_phy2 <- data.frame(otu_table(physeq2))
+# Convert counts to 0 or 1 based on presence in sample
+physeq_presabs <- transform_sample_counts(physeq2, function(x) ifelse(x > 0, 1, 0))
+  
+# Prune taxa that occur in less than three samples
+physeq_presabs2 <- prune_taxa(taxa_sums(physeq_presabs) > 2, physeq_presabs) 
 
-# Filter out ASVs that appear in less than three samples
-sparse_pass_asvs <- count_phy2 %>%
-  mutate(across(everything(), ~if_else(.x > 0, 1, 0), {.cols})) %>%
-  mutate(total = rowSums(.[-1])) %>%
-  filter(total > 2) %>%
-  .$ASV
+sparse_pass_asvs <- taxa_names(physeq_presabs2)
 
 physeq3 <- prune_taxa(sparse_pass_asvs, physeq2)
 physeq3
 ```
-
-None were removed.
 
 ### Read depth
 
@@ -245,8 +242,6 @@ reseq_compare_wide %>%
   mutate(keep = if_else(total_reads_1 > total_reads_2 & richness_1 > richness_2 & std_count_1 > std_count_2 & std_prop_1 <= std_prop_2, 1, 2))
 ```
 
-The redo sample is always better.
-
 Replace originals with redos in dataset:
 
 ```{r}
@@ -263,10 +258,18 @@ physeq4 <- subset_samples(physeq3, SampleID %!in% rm_samIDs)
 physeq4
 ```
 
-Save for later use:
+Save preprocessed count data:
 
 ```{r, eval=FALSE}
-saveRDS(physeq4, file="../data_intermediate/SFA2_physeq_counts.rds")
+# Remove aquifex ASVs from phlyoseq object
+physeq5 <- subset_taxa(physeq4, Phylum!="Aquificota")
+
+saveRDS(physeq5, file="../data_intermediate/SFA2_physeq_counts.rds")
+
+# Taxonomy table (takes a long time to extract so saving separately)
+tax_final <- data.frame(tax_table(physeq5)) %>% 
+  rownames_to_column(var="ASV")
+saveRDS(tax_final, file="../data_intermediate/SFA2_taxonomy.rds")
 ```
 
 ### Normalize to the internal standard
@@ -297,33 +300,20 @@ count_stdsummed <- count_stdcorrected %>%
   ungroup()
 ```
 
-Normalize to the internal standard:
+Divide by Aquifex ASV total:
 
 ```{r}
 # Divide taxa counts by internal std counts in each sample
-count_normalized <- count_stdsummed %>% 
+count_norm <- count_stdsummed %>% 
   pivot_wider(SampleID, names_from = ASV, values_from = count_sum) %>%
   mutate(across(-SampleID, ~ .x/aquifex_asv, {.col})) %>%
-  select(-aquifex_asv)
+  select(-aquifex_asv) # remove Aquifex ASVs
 ```
 
 Save normalized data:
 
 ```{r, eval=FALSE}
-# Normalized count data
-saveRDS(count_normalized, file="../data_intermediate/SFA2_count_normalized.rds")
-
-# Remove aquifex ASVs from ohlyoseq object
-physeq5 <- subset_taxa(physeq4, Phylum!="Aquificota")
-
-# Export and save taxonomy
-tax_normalized <- data.frame(tax_table(physeq5))
-tax_normalized <- tax_normalized %>% 
-  rownames_to_column(var="ASV")
-saveRDS(tax_normalized, file="../data_intermediate/SFA2_tax_normalized.rds")
-
-# Export tree
-tree_normalized <- phy_tree(physeq5)
-saveRDS(tree_normalized, file="../data_intermediate/SFA2_tree_normalized.rds")
+# Save normalized abundances
+saveRDS(count_norm, file="../data_intermediate/SFA2_count_normalized.rds")
 ```
 

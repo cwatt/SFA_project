@@ -5,6 +5,12 @@ date: "1/27/2022"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
 ```{r}
 # Clear working directory, load in packages, generate package info
 rm(list=ls())
@@ -22,21 +28,21 @@ sessionInfo()
 
 ```{r}
 # Normalized abundances
-norm_growth <- readRDS("../data_intermediate/SFA2_norm_growth_estimated.rds")
-norm_death <- readRDS("../data_intermediate/SFA2_norm_death_estimated.rds")
+norm_growth <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+norm_death <- readRDS("../data_intermediate/SFA2_norm_deestimated.rds")
 norm <- full_join(norm_growth, norm_death)
 
 # Taxonomic information
-tax <- readRDS("../data_intermediate/SFA2_tax_normalized.rds")
+tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Join
 norm_tax <- inner_join(norm, tax)
 
 # Growth
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 
 # Death
-death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
 
 # Growth and death ASVs
 growth_asvs <- growth %>% 
@@ -60,45 +66,45 @@ norm_label <- inner_join(norm_tax, growth_death_asvs) %>%
 
 # Plots
 
-### Growth and death
+### Growth/death
 
-All
+All estimates:
 
 ```{r}
 norm_tax %>%
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, fill=ASV)) +
   geom_line() +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test() +
   theme(legend.position = "none")
 ```
 
-Highlight growth
+Highlight growth:
 
 ```{r}
 norm_label %>%
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=grew)) +
   geom_line(aes(alpha=grew)) +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test() +
   guides(color = FALSE)
 ```
 
-Highlight death
+Highlight death:
 
 ```{r}
 norm_label %>%
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=died)) +
   geom_line(aes(alpha=died)) +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test() +
   guides(color = FALSE)
 ```
 
-Highlight both growth and death
+Highlight both growth and death:
 
 ```{r}
 norm_label %>%
@@ -106,14 +112,14 @@ norm_label %>%
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=both)) +
   geom_line(aes(alpha=both)) +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test() +
   guides(color = FALSE)
 ```
 
 ### Phyla
 
-Actinobacteriota
+Actinobacteriota:
 
 ```{r}
 norm_label %>%
@@ -122,12 +128,12 @@ norm_label %>%
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
   geom_line(aes(alpha=target)) +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test() +
   guides(color = FALSE)
 ```
 
-Firmicutes
+Firmicutes:
 
 ```{r}
 norm_label %>%
@@ -135,12 +141,12 @@ norm_label %>%
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
   geom_line(aes(alpha=target)) +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test() +
   guides(color = FALSE)
 ```
 
-Proteobacteria
+Proteobacteria:
 
 ```{r}
 norm_label %>%
@@ -148,18 +154,19 @@ norm_label %>%
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=ASV, alpha=target)) +
   geom_line(aes(alpha=target)) +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test() +
   guides(color = FALSE)
 ```
 
 ### Outlier change in abundance
 
-In the low DOC treatment. I think these few ASVs are contributing to a trend of more biomass gain overall in low treatment.
+In the low DOC treatment. I think these few ASVs could be contributing to a trend of more biomass gain overall in low treatment.
 
 ```{r}
 outliers <- readRDS("../data_intermediate/SFA2_growth_changeabundlow_outliers.rds")
 outlier_labels <- outliers$label
+outlier_asvs <- outliers$ASV
 
 norm_label %>% 
   mutate(target = if_else(label %in% outlier_labels, "yes", "no")) %>% 
@@ -174,7 +181,7 @@ norm_label %>%
   ggplot(aes(x=Day, y=norm_abund_avg, color=Phylum, alpha=target)) +
   geom_line(aes(alpha=target)) +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test()
 
 norm_label %>% 
@@ -182,7 +189,24 @@ norm_label %>%
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Phylum, alpha=target)) +
   geom_line(aes(alpha=target)) +
   geom_point() +
-  facet_wrap(DOC ~ Innoculant) +
+  facet_wrap(DOC ~ Inoculant) +
   theme_test()
 ```
 
+```{r}
+norm_label %>% 
+  mutate(target = if_else(ASV %in% outlier_asvs, "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=norm_abund_avg, color=Phylum, alpha=target)) +
+  geom_line(aes(alpha=target)) +
+  geom_point() +
+  facet_wrap(DOC ~ Inoculant) +
+  theme_test()
+
+norm_label %>% 
+  mutate(target = if_else(ASV %in% outlier_asvs, "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Phylum, alpha=target)) +
+  geom_line(aes(alpha=target)) +
+  geom_point() +
+  facet_wrap(DOC ~ Inoculant) +
+  theme_test()
+```
