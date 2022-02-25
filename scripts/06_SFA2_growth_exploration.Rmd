@@ -123,7 +123,7 @@ Mean of all ASVs in each replicate.
 ```{r}
 # Summarize parameters
 growth_sample <- growth %>% 
-  group_by(DOC, Inoculant) %>% 
+  group_by(DOC, Innoculant) %>% 
   summarize(k = mean(k),
             start_day = mean(start_day),
             end_day = mean(end_day),
@@ -531,6 +531,16 @@ growth_asv %>%
   theme_test()
 ```
 
+```{r}
+growth_asv %>% 
+  ggplot(aes(x=start_day, y=log(n16S))) +
+  geom_point() +
+  facet_wrap(~DOC) +
+  geom_smooth(method="lm") +
+  theme_test()
+```
+
+
 # Mixed model approach
 
 Likely losing too much power by taking averages. I'm going to use all of the data available in a mixed-model approach.
@@ -545,13 +555,19 @@ growth %>% ggplot(aes(x=DOC, y=k, color=Inoculant)) +
   theme_test()
 
 # Lag time
-growth %>% ggplot(aes(x=DOC, y=start_day, color=Inoculant)) +
+growth %>% ggplot(aes(x=DOC, y=start_day, color=Innoculant)) +
   geom_boxplot() +
   geom_jitter() +
   theme_test()
 
 # Change in abundance
 growth %>% ggplot(aes(x=DOC, y=change_abund, color=Inoculant)) +
+  geom_boxplot() +
+  geom_jitter() +
+  theme_test()
+
+# Change in abundance
+growth %>% ggplot(aes(x=DOC, y=n16S, color=Innoculant)) +
   geom_boxplot() +
   geom_jitter() +
   theme_test()

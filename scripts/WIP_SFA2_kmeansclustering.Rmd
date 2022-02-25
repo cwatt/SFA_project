@@ -82,7 +82,7 @@ growth_summary <- growth_prep %>%
             change_abund_mean = mean(change_abund), change_abund_sd = sd(change_abund))
 
 # Normalize all values
-growth_norm <- growth_prep %>% 
+growth_zscore <- growth_prep %>% 
   mutate(k = (k - growth_summary$k_mean)/growth_summary$k_sd,
          start_day = (start_day - growth_summary$start_day_mean)/growth_summary$start_day_sd,
          end_day = (end_day - growth_summary$end_day_mean)/growth_summary$end_day_sd,
@@ -96,11 +96,12 @@ I want to check visually for clusters.
 
 ```{r}
 # Calculate principle components
-growth_pca <- prcomp(growth_norm)
+growth_pca <- prcomp(growth_zscore)
 summary(growth_pca)
 
 # Plot
-autoplot(growth_pca, data=growth_norm)
+autoplot(growth_pca, data=growth_zscore, 
+         loadings=TRUE, loadings.label = TRUE, loadings.label.size = 5)
 ```
 
 Nothing is jumping out to me, but let's see what k-means clustering can do.
@@ -110,24 +111,151 @@ Nothing is jumping out to me, but let's see what k-means clustering can do.
 Determine appropriate number of clusters:
 
 ```{r}
-fviz_nbclust(growth_norm, kmeans, method="wss") # Using within cluster sum of squares
+fviz_nbclust(growth_zscore, kmeans, method="wss") # Using within cluster sum of squares
 ```
 
-Not much of an elbow. I would say 4 is where the drop in WSS starts to slow down.
+Not much of an elbow. I would say 4 is where the drop in WSS starts to slow down. There's another large drop at 7 but that's too many clusters to make biological sense of.
 
 Cluster:
 
 ```{r}
+# K means clustering to 4 clusters
 set.seed(4)
-
-growth_km <- kmeans(growth_norm, centers = 4, nstart = 25)
-growth_km
+growth_km <- kmeans(growth_zscore, centers = 4, nstart = 25)
 
 # Plot
-fviz_cluster(growth_km, data = growth_norm, labelsize=0)
+fviz_cluster(growth_km, data = growth_zscore, labelsize=0, ggtheme=theme_test())
 ```
 
-Outlier forms it's own cluster and should probably be disregarded?
+Create data frame of clustered ASVs:
+
+```{r}
+growth_clusters <- data.frame()
+
+for (i in 1:length(growth_km$cluster)) {
+  label <- names(growth_km$cluster[i])
+  cluster <- as.numeric(growth_km$cluster[i])
+  this_row <- data.frame(label, cluster)
+  growth_clusters <- bind_rows(growth_clusters, this_row)
+}
+
+growth_clusters <- inner_join(growth, growth_clusters)
+```
+
+Summarize cluster characteristics:
+
+```{r}
+gr_cluster_summary <- growth_clusters %>% 
+  group_by(DOC, Inoculant, cluster) %>% 
+  summarize(total_asvs = n(),
+            k = mean(k),
+            start_day = mean(start_day),
+            end_day = mean(end_day),
+            start_abund = mean(start_abund/n16S),
+            end_abund = mean(end_abund/n16S),
+            change_abund = mean(change_abund/n16S),
+            n16S = mean(n16S),
+            genome_size = mean(genome_size)) %>% 
+  ungroup()
+
+gr_cluster_summary
+```
+
+### Cluster characteristics
+
+Each point in the following graphs correspond to the mean of an inoculant
+
+```{r}
+# k
+gr_cluster_summary %>% 
+  ggplot(aes(x=cluster, y=k, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# start_day
+gr_cluster_summary %>% 
+  ggplot(aes(x=cluster, y=start_day, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# end_day
+gr_cluster_summary %>% 
+  ggplot(aes(x=cluster, y=start_day, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# start abundance
+gr_cluster_summary %>% 
+  ggplot(aes(x=cluster, y=log(start_abund), color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# End abundance
+gr_cluster_summary %>% 
+  ggplot(aes(x=cluster, y=log(end_abund), color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# Change abundance
+gr_cluster_summary %>% 
+  ggplot(aes(x=cluster, y=log(change_abund), color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# n16S
+gr_cluster_summary %>% 
+  ggplot(aes(x=cluster, y=n16S, color=DOC)) +
+  geom_point() +
+  theme_test()
+
+# Genome size
+gr_cluster_summary %>% 
+  ggplot(aes(x=cluster, y=genome_size, color=DOC)) +
+  geom_point() +
+  theme_test()
+```
+
+Proportion of estimates each cluster contributes in each innoculant:
+
+```{r}
+# Total number of estimates per inoculant
+gr_inoc_totals <- gr_cluster_summary %>% 
+  group_by(DOC, Inoculant) %>% 
+  summarize(total=sum(total_asvs)) %>% 
+  ungroup() %>% 
+  mutate(label = paste0(DOC, Inoculant))
+
+# Total estimates per cluster
+gr_cluster_totals <- gr_cluster_summary %>% 
+  group_by(DOC, Inoculant, cluster) %>% 
+  summarize(estimates=sum(total_asvs)) %>%
+  ungroup() %>% 
+  mutate(label = paste0(DOC, Inoculant))
+
+# Cluster proportion of estimates in each inoc
+gr_cluster_prop <- gr_cluster_totals %>% 
+  mutate(prop = 0) # dummy variable
+
+for (l in unique(gr_inoc_totals$label)) {
+  total_est <- filter(gr_inoc_totals, label==l) %>% .$total
+  gr_cluster_prop <- gr_cluster_prop %>% 
+    mutate(prop = if_else(label==l, estimates/total_est, prop))
+}
+```
+
+Plot:
+
+```{r}
+# Plot
+gr_cluster_prop %>% 
+  ggplot(aes(x=DOC, y=prop, color=DOC)) +
+  geom_point(alpha=0.75) +
+  facet_wrap(~cluster) +
+  labs(title="Growth clusters", y="Proportion of total estimates") +
+  theme_test()
+```
+
+Not seeing differences.
 
 # Death
 
@@ -150,12 +278,18 @@ death_corr <- cor(death_prep[,unlist(lapply(death_prep, is.numeric))])
 death_corr
 ```
 
-Lots of highly correlated parameters. End day nad start day is 0.8, start abundance and change abundance is 0.99. I think I'll remove start day and start abundance.
+Lots of highly correlated parameters. End day andd start day is 0.8, start abundance and change abundance is 0.99. I think I'll remove start day and start abundance.
 
 ```{r}
 # Remove unneeded parameters, reformat
 death_prep <- death_prep %>% 
   select(-c(start_day, start_abund))
+```
+
+Redo correlation matrix:
+
+```{r}
+cor(death_prep[,unlist(lapply(death_prep, is.numeric))]) 
 ```
 
 Normalize:
@@ -171,13 +305,13 @@ death_summary <- death_prep %>%
             change_abund_mean = mean(change_abund), change_abund_sd = sd(change_abund))
 
 # Normalize all values
-death_norm <- death_prep %>% 
+death_zscore <- death_prep %>% 
   mutate(k = (k - death_summary$k_mean)/death_summary$k_sd,
          end_day = (end_day - death_summary$end_day_mean)/death_summary$end_day_sd,
          end_abund = (end_abund - death_summary$end_abund_mean)/death_summary$end_abund_sd,
          change_abund = (change_abund - death_summary$change_abund_mean)/death_summary$change_abund_sd)
 
-death_norm
+death_zscore
 ```
 
 ### Principle components analysis
@@ -186,21 +320,61 @@ I want to check visually for clusters.
 
 ```{r}
 # Calculate principle components
-death_pca <- prcomp(death_norm)
+death_pca <- prcomp(death_zscore)
 summary(death_pca)
 
 # Plot
-autoplot(death_pca, data=death_norm)
+autoplot(death_pca, data=death_zscore,
+         loadings=TRUE, loadings.label = TRUE, loadings.label.size = 5         )
 ```
 
 That line is weird. Maybe autocorrelation is still a problem or something?
 
+Removing more correlated variables made pattern more pronounced, so that's not it. Maybe the normalization method isn't appropriate?
+
+Try min-max normalization:
+
+(x - min(x)) / (max(x) - min(x))
+
+```{r}
+death_summary_minmax <- death_prep %>% 
+  summarize(k_max = max(k), k_min = min(k),
+            end_day_max = max(end_day), end_day_min = min(end_day),
+            end_abund_max = max(end_abund), end_abund_min = min(end_abund),
+            change_abund_max = max(change_abund), change_abund_min = min(change_abund))
+
+# Normalize
+death_minmax <- death_prep %>% 
+  mutate(k = (k - death_summary_minmax$k_min)/(death_summary_minmax$k_max - death_summary_minmax$k_min),
+         end_day = (end_day - death_summary_minmax$end_day_min)/(death_summary_minmax$end_day_max - death_summary_minmax$end_day_min),
+         end_abund = (end_abund - death_summary_minmax$end_abund_min)/(death_summary_minmax$end_abund_max - death_summary_minmax$end_abund_min),
+         change_abund = (change_abund - death_summary_minmax$change_abund_min)/(death_summary_minmax$change_abund_max - death_summary_minmax$change_abund_min))
+
+death_minmax
+```
+
+PCA: 
+
+```{r}
+# Calculate principle components
+death_minmax_pca <- prcomp(death_minmax)
+summary(death_minmax_pca)
+
+# Plot
+autoplot(death_minmax_pca, data=death_minmax,
+         loadings=TRUE, loadings.label = TRUE, loadings.label.size = 5)
+```
+
+Same weird pattern but altered loadings.
+
 ### K means clustering
+
+* Using z score standardized data to match growth
 
 Determine appropriate number of clusters:
 
 ```{r}
-fviz_nbclust(death_norm, kmeans, method="wss") # Using within cluster sum of squares
+fviz_nbclust(death_zscore, kmeans, method="wss") # Using within cluster sum of squares
 ```
 
 Not much of an elbow. I would say 4 is where the drop in WSS starts to slow down.

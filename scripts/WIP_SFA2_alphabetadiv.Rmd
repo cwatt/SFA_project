@@ -19,6 +19,7 @@ library("tidyverse")
 library("vegan")
 library("ape")
 library("phyloseq")
+library("reticulate")
 
 sessionInfo()
 ```
@@ -365,7 +366,7 @@ wunifrac_meta %>%
 
 The variation seems greater than the difference between high and low treatments. Not seeing support for prediction.
 
-# Growth vs headspace communities
+# Growth vs headspace
 
 Isolate final time point:
 
@@ -443,11 +444,11 @@ plot_ordination(physeq_rare_hilow, ord_wunifrac, color="Type") +
         axis.text = element_text(size=14))
 
 # High only
-physeq_hilow_high <- subset_samples(physeq_rare_hilow, DOC=="high")
-high_dist <- distance(physeq_hilow_high, method="wunifrac")
-high_ord <- ordinate(physeq_hilow_high, distance=high_dist, method="NMDS")
+physeq_end_high <- subset_samples(physeq_rare_hilow, DOC=="high")
+high_dist <- distance(physeq_end_high, method="wunifrac")
+high_ord <- ordinate(physeq_end_high, distance=high_dist, method="NMDS")
 
-plot_ordination(physeq_hilow_high, high_ord, color="Type") +
+plot_ordination(physeq_end_high, high_ord, color="Type") +
   stat_ellipse(type="t") +
   labs(title="High DOC") +
   theme_test() +
@@ -456,11 +457,11 @@ plot_ordination(physeq_hilow_high, high_ord, color="Type") +
         axis.text = element_text(size=14))
   
 # Low only
-physeq_hilow_low <- subset_samples(physeq_rare_hilow, DOC=="low")
-low_dist <- distance(physeq_hilow_low, method="wunifrac")
-low_ord <- ordinate(physeq_hilow_low, distance=low_dist, method="NMDS")
+physeq_end_low <- subset_samples(physeq_rare_hilow, DOC=="low")
+low_dist <- distance(physeq_end_low, method="wunifrac")
+low_ord <- ordinate(physeq_end_low, distance=low_dist, method="NMDS")
 
-plot_ordination(physeq_hilow_low, low_ord, color="Type") +
+plot_ordination(physeq_end_low, low_ord, color="Type") +
   stat_ellipse(type="t") +
   labs(title="Low DOC") +
   theme_test() +
@@ -490,6 +491,7 @@ High and low:
 ```{r}
 # Convert counts to relative abundances
 physeq_end_relabund <- transform_sample_counts(physeq_rare_end, function(x) x/sum(x))
+#physeq_relabund_hilow <- subset_samples(physeq_end_relabund, DOC != "control")
 
 # Export from phyloseq
 meta_relabund <- data.frame(sample_data(physeq_end_relabund)) %>% 
@@ -508,40 +510,10 @@ tax_relabund <- as.data.frame(tax_table(physeq_end_relabund)) %>%
   rownames_to_column(var="ASV")
   
 relabund <- count_relabund %>% 
-  group_by(DOC, Type, Inoculant, ASV) %>% # average across technical replicates
+  group_by(DOC, Type, Inoculant, ASV) %>% # average across replicates
   summarize(relabund = mean(relabund)) %>% 
   ungroup() %>% 
   inner_join(tax_relabund)
-```
-
-Controls:
-
-```{r}
-# Isolate controls and calculate relative abundance
-physeq_control <- subset_samples(physeq_rare_end, is.na(DOC))
-physeq_control_relabund <- transform_sample_counts(physeq_control, function(x) x/sum(x))
-
-# Export from phyloseq
-meta_ctrl <- data.frame(sample_data(physeq_control_relabund)) %>% 
-  rownames_to_column(var="merge") %>% 
-  select(merge, Sample, Type, Inoculant, DOC, Replicate)
-
-count_ctrl <- as.matrix(otu_table(physeq_control_relabund)) %>% 
-  t() %>% 
-  as.data.frame() %>%
-  rownames_to_column(var="merge") %>% 
-  inner_join(meta_ctrl) %>% 
-  pivot_longer(c(everything(), -c(merge, Sample, Type, Inoculant, DOC, Replicate)),
-               names_to="ASV", values_to="relabund")
-
-tax_ctrl <- as.data.frame(tax_table(physeq_end_relabund)) %>% 
-  rownames_to_column(var="ASV")
-  
-relabund_ctrl <- count_ctrl %>% 
-  group_by(DOC, Type, Inoculant, ASV) %>% # average across technical replicates
-  summarize(relabund = mean(relabund)) %>% 
-  ungroup() %>% 
-  inner_join(tax_ctrl)
 ```
 
 Plot:
@@ -566,11 +538,161 @@ relabund %>%
   theme_test()
 
 # Control
-relabund_ctrl %>% 
+relabund %>% 
+  filter(DOC=="control") %>% 
   ggplot(aes(x=Inoculant, y=relabund, fill=reorder(Phylum, -relabund))) +
   geom_col() +
   labs(title="Control") +
   theme_test()
 ```
+
+### Number of cross-contam ASVs
+
+How many cross-contaminants are in each treatment?
+
+NOTE: I want the number of control ASVs in each sample of the high and low treatments
+
+```{r}
+ctrl_df <- count_relabund %>% 
+  filter(DOC=="control") %>% 
+  select(DOC, Sample, Inoculant, ASV, relabund) %>% 
+  mutate(across(relabund, ~ if_else(.x > 0, 1, 0))) %>%  # convert to presence/absence
+  filter(relabund > 0) %>% 
+  select(DOC, Sample, Inoculant, ASV)
+
+# Sample totals
+ctrl_sam_totals <- ctrl_df %>% 
+  group_by(DOC, Sample) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
+
+# High overlap
+high_df <- count_relabund %>% 
+  filter(DOC=="high" & Type=="Headspace") %>% 
+  mutate(across(relabund, ~ if_else(.x > 0, 1, 0))) %>%  # convert to presence/absence
+  filter(relabund > 0) %>% 
+  select(DOC, Sample, Inoculant, ASV) %>% 
+  semi_join(ctrl_df, by="ASV") # keep only potential contaminants
+
+# Sample totals 
+high_sam_totals <- high_df %>% 
+  group_by(DOC, Sample) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
+
+# Low overlap
+low_df <- count_relabund %>% 
+  filter(DOC=="low" & Type=="Headspace") %>% 
+  mutate(across(relabund, ~ if_else(.x > 0, 1, 0))) %>%  # convert to presence/absence
+  filter(relabund > 0) %>% 
+  select(DOC, Sample, Inoculant, ASV) %>% 
+  semi_join(ctrl_df, by="ASV") # keep only potential contaminants
+
+# Sample totals 
+low_sam_totals <- low_df %>% 
+  group_by(DOC, Sample) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
+```
+
+Plot:
+
+```{r}
+# Combine
+sam_totals <- bind_rows(ctrl_sam_totals, high_sam_totals) %>% 
+  bind_rows(low_sam_totals)
+
+sam_totals %>% 
+  ggplot(aes(x=DOC, y=total)) +
+  geom_jitter(alpha=0.5) +
+  geom_boxplot() +
+  labs(title="Potential cross-contaminants on day 30", y="total ASVs overlapping in controls") +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+totals_lm <- lm(total ~ DOC, data=filter(sam_totals, DOC != "control"))
+hist(resid(totals_lm))
+plot(predict(totals_lm), resid(totals_lm))
+summary(totals_lm)
+```
+
+Significantly less total cross-contaminants in low DOC treatment.
+
+### Abundance of potential cross-contams
+
+Using un-rarefied internal-standard normalized counts.
+
+Prepare data:
+
+```{r}
+# Import normalized count data and metadata
+count_norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds")
+
+meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv") %>% 
+  filter(Type=="Headspace" | DOC=="control") %>% 
+  select(SampleID, Sample, Type, DOC, Inoculant, Day) %>% 
+  mutate(SampleID = as.character(SampleID),
+         SampleID = gsub("^", "sa", SampleID)) # convert to match SampleID in count_norm
+
+# Join
+norm <- inner_join(meta, count_norm) %>% 
+  pivot_longer(-c(SampleID, Sample, Type, DOC, Inoculant, Day), names_to = "ASV", values_to="norm_abund")
+```
+
+Isolate potential cross-contaminants from controls:
+
+```{r}
+# Create list of ASVs present in controls
+norm_ctrl_asvs <- norm %>% 
+  filter(DOC=="control" & norm_abund > 0) %>%
+  .$ASV %>% 
+  unique(.)
+```
+
+Calculate total "biomass" of cross-contaminants in high and low:
+
+```{r}
+norm_contam <- norm %>% 
+  filter((DOC=="low" | DOC=="high") & ASV %in% norm_ctrl_asvs & norm_abund > 0)
+
+norm_contam_total <- norm_contam %>% 
+  group_by(Sample, DOC, Inoculant, Day) %>% 
+  summarize(total_abund = sum(norm_abund))
+```
+
+Plot:
+
+```{r}
+norm_contam_total %>%  
+  ggplot(aes(x=DOC, y=total_abund, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot() +
+  labs(title="Potential contaminants at day 30", y="total norm. abund.") +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+contam_abund_lm <- lm(log(total_abund) ~ DOC, norm_contam_total)
+hist(resid(contam_abund_lm)) # log transform helps normality
+plot(predict(contam_abund_lm), resid(contam_abund_lm)) # log transform helps heteroskedasticity
+summary(contam_abund_lm)
+```
+
+Not a significant difference in total biomass at the end time point.
+
+Even though the number of cross-contaminants may have been lower in low DOC phenotype, the biomass was comparable, so they grew more compared to in high? Could explain DOC outcome?
+
+
+
+
+
+
+
+
 
 

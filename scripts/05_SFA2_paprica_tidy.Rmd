@@ -1,6 +1,8 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "SFA2 - add paprica predictions"
+author: "Cassandra Wattenburger"
+date: "2/22/2022"
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
