@@ -1,0 +1,325 @@
+---
+title: "SFA2 growth cluster exloration"
+author: "Cassandra Wattenburger"
+date: "2/28/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("ape")
+library("phyloseq")
+library("tidyverse")
+library("lmerTest")
+library("emmeans")
+
+sessionInfo()
+```
+
+# Import data
+
+* clustered growth data
+* phylogenetic tree
+* paprica predictions
+
+```{r}
+# growth clusters
+growth_clusters <- readRDS("../data_intermediate/SFA2_growthclusters.Rmd") %>% 
+  filter(cluster != 1) %>% # remove cluster 1 because it consists of a single outlier
+  mutate(change_abund = change_abund/n16S, # correct abundance values by 16S copy number
+         start_abund = start_abund/n16S,
+         end_abund = end_abund/n16S,
+         cluster = as.character(cluster)) # change clusters to character 
+
+# Tree
+tree <- read_tree("../data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+
+# Paprica predictions
+```
+
+# Cluster composition
+
+```{r}
+# Total number of estimates per inoculant
+inoc_ests <- growth_clusters %>%
+  group_by(Inoculant) %>% 
+  summarize(inoc_total=n()) %>% 
+  ungroup()
+
+# Total estimates per cluster per inoc
+cluster_prop <- growth_clusters %>% 
+  group_by(Inoculant, cluster) %>% 
+  summarize(cluster_total=n()) %>% 
+  ungroup() %>% 
+  full_join(inoc_ests) %>% 
+  mutate(prop = cluster_total/inoc_total)
+
+# Overall proportion means of each cluster
+cluster_summary %>% 
+  group_by(cluster) %>% 
+  summarize(prop_mean = mean(prop), prop_sd = sd(prop))
+```
+
+Plot:
+
+```{r}
+cluster_prop %>% 
+  ggplot(aes(x=Inoculant, y=prop, fill=cluster)) +
+  geom_col() +
+  labs(y="Proportion of estimates") +
+  theme_test()
+
+cluster_prop %>% 
+  ggplot(aes(x=cluster, y=prop)) +
+  geom_point() +
+  labs(y="Proportion of estimates in inoculant") +
+  theme_test()
+```
+
+### Statistics
+
+```{r}
+cluster_lm <- lm(prop ~ cluster, data=cluster_prop)
+hist(resid(cluster_lm))
+plot(predict(cluster_lm), resid(cluster_lm))
+summary(cluster_lm)
+```
+
+
+# Phylogenetic composition
+
+### Proportions
+
+Summarize Phyla proportions in each cluster:
+
+```{r}
+# Total number of estimates per inoculant
+inoc_totals <- growth_clusters %>%
+  group_by(Inoculant, cluster) %>% 
+  summarize(inoc_total=n()) %>% 
+  ungroup()
+
+# Total estimates per cluster per inoc
+phyla_prop <- growth_clusters %>% 
+  group_by(Phylum, Inoculant, cluster) %>% 
+  summarize(phy_total=n()) %>% 
+  ungroup() %>% 
+  full_join(inoc_totals) %>% 
+  mutate(prop = phy_total/inoc_total)
+  
+# Incoulant means
+phyla_prop %>% 
+  group_by(cluster, Phylum) %>% 
+  summarize(prop_mean = mean(prop), prop_sd = sd(prop))
+```
+
+Plot:
+
+```{r}
+phyla_prop %>% 
+  ggplot(aes(x=cluster, y=prop, fill=Phylum)) +
+  geom_col() +
+  facet_wrap(~Inoculant) +
+  labs(y="Proportion of estimates", title="Inoculants") +
+  theme_test()
+```
+
+Looks like Firmicutes may dominate cluster 4 reliably. Otherwise, I can't spot clear trends.
+
+### Ordination
+
+Reformat data:
+
+Making each cluster and innoculant combo into its own "sample".
+
+```{r}
+# Create metadata
+meta <- growth_clusters %>% 
+  select(Inoculant, cluster) %>% 
+  unique() %>% 
+  bind_cols(data.frame(Sample=paste0("sa", 1:nrow(.)))) %>% # Create sample IDs
+  select(Sample, Inoculant, cluster)
+
+# Create ASV table (relative abundances)
+asv_table <- growth_clusters %>%
+  full_join(meta) %>%  # add sample IDs
+  select(Sample, ASV) %>% 
+  mutate(count = 1) %>% 
+  pivot_wider(names_from = Sample, values_from=count) %>% 
+  column_to_rownames(var="ASV") %>% 
+  mutate(across(everything(), ~ if_else(is.na(.x), 0, .x)))
+  
+# Create taxonomy
+tax <- growth_clusters %>%
+  select(ASV, Domain:Species) %>%
+  unique() %>% 
+  remove_rownames() %>% 
+  column_to_rownames(var="ASV") %>% 
+  as.matrix()
+  
+# Create phyloseq object
+physeq_clusters <- phyloseq(sample_data(meta),
+                            otu_table(asv_table, taxa_are_rows = TRUE),
+                            tax_table(tax),
+                            tree)
+```
+
+Relative abundance:
+
+```{r}
+physeq_relabund <- transform_sample_counts(physeq_clusters, function(x) x/sum(x))
+```
+
+Ordinate:
+
+```{r}
+dist_wunifrac <- distance(physeq_relabund, method="wunifrac") 
+nmds_wunifrac <- ordinate(physeq_relabund, distance=dist_wunifrac, method="NMDS")
+
+plot_ordination(physeq_relabund, nmds_wunifrac, color="cluster") +
+  stat_ellipse(type="t") +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+adonis(dist_wunifrac ~ cluster, data=meta, permutations=999)
+```
+
+# Growth parameters comparisons
+
+### Plots
+
+```{r}
+# k
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=k, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# lag time
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=start_day, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# start abundance
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=log(start_abund), color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# change abundance
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=log(change_abund), color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# End day
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=end_day, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# n16S
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=n16S, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# genome size
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=genome_size, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+```
+
+### Statistics
+
+Linear mixed effects models with cluster as a main effect and innoculant as a random effect.
+
+Specific growth rate (k):
+
+```{r}
+k_lmer <- lmer(k ~ cluster + (1|Inoculant), data=growth_clusters)
+hist(resid(k_lmer))
+plot(predict(k_lmer), resid(k_lmer))
+summary(k_lmer)
+```
+
+Lag time:
+
+Not sure how to approach the stats here with so many 0s.
+
+```{r}
+lag_lmer <- lmer(log(start_day+0.0001) ~ cluster + (1|Inoculant), data=growth_clusters)
+hist(resid(lag_lmer)) # hmmm...
+plot(predict(lag_lmer), resid(lag_lmer)) # log transform helped heteroskedasticity
+summary(lag_lmer)
+```
+
+Start abundance:
+
+```{r}
+strtabund_lmer <- lmer(log(start_abund) ~ cluster + (1|Inoculant), data=growth_clusters)
+hist(resid(strtabund_lmer)) # log transform helped normality
+plot(predict(strtabund_lmer), resid(strtabund_lmer)) # log transform helped heteroskedasticity
+summary(strtabund_lmer)
+```
+
+Change abundance:
+
+```{r}
+chgabund_lmer <- lmer(log(change_abund) ~ cluster + (1|Inoculant), data=growth_clusters)
+hist(resid(chgabund_lmer)) # log transform helped normality
+plot(predict(chgabund_lmer), resid(chgabund_lmer)) # log transform helped heteroskedasticity
+summary(chgabund_lmer)
+```
+
+End day:
+
+```{r}
+endday_lmer <- lmer(end_day ~ cluster + (1|Inoculant), data=growth_clusters)
+hist(resid(endday_lmer)) 
+plot(predict(endday_lmer), resid(endday_lmer))
+summary(endday_lmer)
+```
+
+n16S:
+
+```{r}
+n16S_lmer <- lmer(n16S ~ cluster + (1|Inoculant), data=growth_clusters)
+hist(resid(n16S_lmer)) 
+plot(predict(n16S_lmer), resid(n16S_lmer))
+summary(n16S_lmer)
+```
+
+Genome size:
+
+```{r}
+genome_lmer <- lmer(genome_size ~ cluster + (1|Inoculant), data=growth_clusters)
+hist(resid(genome_lmer)) 
+plot(predict(genome_lmer), resid(genome_lmer))
+summary(genome_lmer)
+```
+
+
+
+
+

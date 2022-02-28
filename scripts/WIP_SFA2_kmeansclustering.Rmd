@@ -49,10 +49,11 @@ Check for correlations among growth parameters:
 # Growth parameters only
 growth_prep <- growth %>% 
   column_to_rownames(var="label") %>% 
-  mutate(start_abund = start_abund/n16S,
+  mutate(start_abund = start_abund/n16S, # Correct for 16S copy number
          end_abund = end_abund/n16S,
-         change_abund =change_abund/n16S) %>%  # Correct for 16S copy number
-  select(k, start_day, end_day, start_abund, end_abund, change_abund)
+         change_abund =change_abund/n16S,
+         length = end_day - start_day) %>%  # add length parameter
+  select(k, start_day, end_day, length, start_abund, end_abund, change_abund)
   
 
 # Investigate correlations
@@ -60,12 +61,12 @@ growth_corr <- cor(growth_prep[,unlist(lapply(growth_prep, is.numeric))])
 growth_corr
 ```
 
-End abundance and change abundance are almost perfectly correlated (0.999), so I'll remove end_abund, since change in abundance is a particular parameter of interest.
+End abundance and change abundance are almost perfectly correlated (0.999), so I'll remove end_abund, since change in abundance is a particular parameter of interest. Length and end abundance are highly correlated, so I'll remove length.
 
 ```{r}
 # Remove unneeded parameters, reformat
 growth_prep <- growth_prep %>% 
-  select(-end_abund)
+  select(-end_abund, -length)
 ```
 
 Normalize:
@@ -142,6 +143,10 @@ for (i in 1:length(growth_km$cluster)) {
 growth_clusters <- inner_join(growth, growth_clusters)
 ```
 
+```{r, eval=FALSE}
+saveRDS(growth_clusters, "../data_intermediate/SFA2_growthclusters.Rmd")
+```
+
 Summarize cluster characteristics:
 
 ```{r}
@@ -163,7 +168,9 @@ gr_cluster_summary
 
 ### Cluster characteristics
 
-Each point in the following graphs correspond to the mean of an inoculant
+Growth parameters:
+
+Each point in the following graphs correspond to the mean of an inoculant.
 
 ```{r}
 # k
