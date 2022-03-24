@@ -74,7 +74,7 @@ Linear mixed effects model to allow inoculant to be random effect.
 
 ```{r}
 headspace.doc = filter(doc.meta, Group=="Headspace" & Type=="Sample")
-head.doc.lmer = lmer(doc ~ DOC_pheno + (1|Inoculant), data = headspace.doc) # linear mixed effects model, allow inoculant to vary independently
+head.doc.lmer = lmer(doc ~ DOC_pheno + (1 + DOC_pheno|Inoculant), data = headspace.doc) # linear mixed effects model, allow inoculant to vary independently
 hist(residuals(head.doc.lmer))
 plot(predict(head.doc.lmer), residuals(head.doc.lmer))
 anova(head.doc.lmer)
@@ -86,10 +86,19 @@ Linear mixed effects model to allow inoculant to be random effect.
 
 ```{r}
 growth.doc = filter(doc.meta, Group=="Growth" & Type=="Sample")
-grow.doc.lmer = lmer(log(doc) ~ DOC_pheno + (1|Inoculant), data = growth.doc) # linear mixed effects model, allow inoculant to vary independently
+grow.doc.lmer = lmer(log(doc) ~ DOC_pheno + (1 + DOC_pheno|Inoculant), data = growth.doc) # linear mixed effects model, allow inoculant to vary independently
 hist(residuals(grow.doc.lmer))
-plot(predict(grow.doc.lmer), residuals(grow.doc.lmer))
+plot(predict(grow.doc.lmer), residuals(grow.doc.lmer)) # Heteroskedastic
 anova(grow.doc.lmer)
+```
+
+# Full model
+
+```{r}
+full_lm <- lm(log(doc) ~ DOC_pheno*Group, data=filter(doc.meta, DOC_pheno!="control"))
+hist(resid(full_lm))
+plot(predict(full_lm), resid(full_lm))
+anova(full_lm)
 ```
 
 **Headspace vs growth**

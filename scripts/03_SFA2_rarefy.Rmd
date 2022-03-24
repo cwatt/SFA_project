@@ -1,0 +1,264 @@
+---
+title: "BetaNTI"
+author: "Cassandra Wattenburger"
+date: "3/21/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("ape")
+library("phyloseq")
+library("picante")
+
+sessionInfo()
+```
+
+# Import data
+
+```{r}
+# set seed for rarefying
+set.seed(10)
+
+# Phyloseq object with all growth samples
+physeq_all <- readRDS("../data_intermediate/SFA2_physeq_preproc.rds")
+```
+
+Extract from phyloseq:
+
+```{r}
+# Count table
+count_all <- data.frame(otu_table(physeq_all)) %>% 
+  rownames_to_column(var="ASV") %>%
+  gather(SampleID, count, -ASV) %>%
+  spread(ASV, count)
+
+# Taxonomy (saved in script 02)
+tax_all <- readRDS("../data_intermediate/SFA2_taxonomy_preproc.rds")
+
+# Metadata
+meta_all <- data.frame(sample_data(physeq_all)) %>% 
+  select(-SampleID) %>% 
+  rownames_to_column(var="SampleID")
+```
+
+Calculate read depths:
+
+```{r}
+# Calculate read depth per sample
+read_depth <- count_all %>%
+  mutate(total_reads = rowSums(.[-1])) %>%
+  select(SampleID, total_reads) %>%
+  inner_join(meta_all) %>% 
+  mutate(Attempt = as_factor(Attempt)) %>% 
+  as_tibble()
+
+# Visualize all
+read_depth %>%
+  mutate(Replicate = as_factor(Replicate)) %>%
+  ggplot(aes(x=reorder(Sample, -total_reads), y=total_reads, fill=Replicate)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test()
+```
+
+# Notes
+
+Assembly contrasts:
+
+* Day 0/3 to 10 (early assembly)
+* Day 10 to 20 (mid assembly)
+* Day 20 to 27/30 (late assembly)
+
+# Rarefy
+
+Plan is to rarefy each subset of data separately based on contrasts of interest. This is to retain as much count data as possible with extreme sequencing depth differences.
+
+### Day 0 (or 3) and 10:
+
+Day 0 had very low biomass so sequencing depth may be too low, in which case day 3 can substitute.
+
+```{r}
+physeq_day0310 <- subset_samples(physeq_all, Day %in% c(0,3,10)) 
+physeq_day0310
+```
+
+Compare read depths:
+
+```{r}
+# Visualize
+read_depth %>% 
+  filter(Day %in% c(0, 3, 10)) %>% # isolate days of interest
+  mutate(Day = as.factor(Day)) %>% # factors make it easier to interpret colors
+  ggplot(aes(x=reorder(Sample, -total_reads), y=total_reads, fill=Day)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test()
+```
+
+Day 0 actually seems to be doing better on read depth than day 3 overall. We'll compare day 0 and 10 for the first contrast.
+
+```{r}
+# Visualize
+read_depth %>% 
+  filter(Day %in% c(0, 10)) %>% # isolate days of interest
+  mutate(Day = as.factor(Day)) %>% # factors make it easier to interpret colors
+  ggplot(aes(x=reorder(Sample, -total_reads), y=total_reads, fill=Day)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test() +
+  geom_hline(yintercept=1500) # potential rarefication depth
+```
+
+Which samples would be excluded?
+
+```{r}
+read_depth %>% 
+  filter(Day %in% c(0, 10) & total_reads < 1500)
+```
+
+I'll rarefy to 1500 reads, losing 8 samples, 6 of which are day 0.
+
+```{r}
+physeq_day010 <- subset_samples(physeq_all, Day %in% c(0, 10))
+physeq_day010_rare <- rarefy_even_depth(physeq_day010, sample.size=1500)
+physeq_day010_rare
+```
+
+### Day 10 and day 21
+
+Compare read depths:
+
+```{r}
+# Visualize
+read_depth %>% 
+  filter(Day %in% c(10, 21)) %>% # isolate days of interest
+  mutate(Day = as.factor(Day)) %>% # factors make it easier to interpret colors
+  ggplot(aes(x=reorder(Sample, -total_reads), y=total_reads, fill=Day)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test() +
+  geom_hline(yintercept=1500) # potential rarefication depth
+```
+
+Which samples would be excluded?
+
+```{r}
+read_depth %>% 
+  filter(Day %in% c(10, 21) & total_reads < 1500)
+```
+
+I'll rarefy to 1500 reads, losing 2 samples, both day 10. This will also keep the depth consistent with the previous contrast.
+
+```{r}
+physeq_day1021 <- subset_samples(physeq_all, Day %in% c(10,21))
+physeq_day1021_rare <- rarefy_even_depth(physeq_day1021, sample.size=1500)
+physeq_day1021_rare
+```
+
+### Day 21 and 30
+
+Compare read depths:
+
+```{r}
+# Visualize
+read_depth %>% 
+  filter(Day %in% c(21, 30)) %>% # isolate days of interest
+  mutate(Day = as.factor(Day)) %>% # factors make it easier to interpret colors
+  ggplot(aes(x=reorder(Sample, -total_reads), y=total_reads, fill=Day)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test() +
+  geom_hline(yintercept=1500) # potential rarefication depth
+```
+
+Which samples would be excluded?
+
+```{r}
+read_depth %>% 
+  filter(Day %in% c(21, 30) & total_reads < 1500)
+```
+
+I'll rarefy to 1500 reads, losing 1 sample. Depth is consistent with previous contrasts.
+
+```{r}
+physeq_day2130 <- subset_samples(physeq_all, Day %in% c(21,30))
+physeq_day2130_rare <- rarefy_even_depth(physeq_day2130, sample.size=1500)
+physeq_day2130_rare
+```
+
+# BetaNTI
+
+Based on this code: https://github.com/stegen/Stegen_etal_ISME_2013/blob/master/bNTI_Local_Machine.r
+
+### Day 0 vs 10
+
+Extract data from phyloseq:
+
+* Count table
+* Tree
+
+```{r}
+# Count table
+count_day010 <- data.frame(otu_table(physeq_day010_rare))
+head(count_day010)
+
+# Tree
+tree_day010 <- phy_tree(physeq_day010_rare)
+tree_day010
+
+# Order names on phylogeny based on count table
+match_day010 <- match.phylo.data(tree_day010, count_day010)
+str(match_day010)
+```
+
+Calculate betaNTI:
+
+```{r}
+# Calculate empirical betaMNTD
+bMNTD_day010 <-  as.matrix(comdistnt(t(match_day010$data), cophenetic(match_day010$phy), abundance.weighted=T))
+dim(bMNTD_day010)
+
+# Double check data compatibility, both should be TRUE
+identical(colnames(match_day010$data),colnames(bMNTD_day010))
+identical(colnames(match_day010$data),rownames(bMNTD_day010))
+
+# Calculate randomized betaMNTD (999 randomizations)
+reps <- 9 # testing
+
+rand_bMNTD_day010 <- array(c(-9), dim=c(ncol(match_day010$data), ncol(match_day010$data), reps))
+dim(rand_bMNTD_day010)
+
+for (rep in 1:reps) {
+  rand_bMNTD_day010[,,rep] = as.matrix(comdistnt(t(match_day010$data), taxaShuffle(cophenetic(match_day010$phy)), abundance.weighted=T, exclude.conspecifics=F))
+  print(c(date(), rep))
+}
+
+# Calculate betaNTI
+bNTI_day010 = matrix(c(NA), nrow=ncol(match_day010$data), ncol=ncol(match_day010$data)) # create matrix of same size with NAs
+dim(bNTI_day010)
+
+for (column in 1:(ncol(match_day010$data) - 1)) {
+  for (row in (columns + 1):ncol(match_day010$data)) {
+    rand_vals = rand_bMNTD_day010[row, column,]
+    bNTI_day010[row, column] = (bMNTD_day010[row, column] - mean(rand_vals)) / sd(rand_vals)
+    rm("rand_vals")
+  }
+}
+
+rownames(bNTI_day010) = colnames(match_day010$data);
+colnames(bNTI_day010) = colnames(match_day010$data);
+
+# Visualize
+hist(bNTI_day010)
+```
+

@@ -29,7 +29,7 @@ sessionInfo()
 
 ```{r}
 # Growth
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap2.rds")
 
 # Normalized abundance data
 norm <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
@@ -64,7 +64,7 @@ num_grow %>%
   theme_test()
 ```
 
-Statistics
+Statistics:
 
 ```{r}
 # Linear model
@@ -555,7 +555,7 @@ growth %>% ggplot(aes(x=DOC, y=k, color=Inoculant)) +
   theme_test()
 
 # Lag time
-growth %>% ggplot(aes(x=DOC, y=start_day, color=Innoculant)) +
+growth %>% ggplot(aes(x=DOC, y=start_day, color=Inoculant)) +
   geom_boxplot() +
   geom_jitter() +
   theme_test()
@@ -567,7 +567,7 @@ growth %>% ggplot(aes(x=DOC, y=change_abund, color=Inoculant)) +
   theme_test()
 
 # Change in abundance
-growth %>% ggplot(aes(x=DOC, y=n16S, color=Innoculant)) +
+growth %>% ggplot(aes(x=DOC, y=n16S, color=Inoculant)) +
   geom_boxplot() +
   geom_jitter() +
   theme_test()

@@ -795,6 +795,16 @@ growth_tidy <- growth_final %>%
 saveRDS(growth_tidy, file="../data_intermediate/SFA2_growth_estimates.rds")
 ```
 
+# Number of estimates per inoculant
+
+```{r}
+growth_tidy %>% 
+  group_by(Inoculant) %>% 
+  summarize(total = n()) %>% 
+  ungroup() %>% 
+  summarize(total_mean = mean(total), total_sd = mean(total))
+```
+
 # Create list of ASVs for PAPRICA
 
 ```{r, eval=FALSE}

@@ -1,0 +1,535 @@
+---
+title: "SFA2 growth cluster exloration"
+author: "Cassandra Wattenburger"
+date: "2/28/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("ape")
+library("phyloseq")
+library("tidyverse")
+library("lmerTest")
+library("emmeans")
+
+sessionInfo()
+```
+
+# Import data
+
+* clustered growth data
+* phylogenetic tree
+* paprica predictions
+
+```{r}
+# growth clusters
+growth_clusters <- readRDS("../data_intermediate/SFA2_growthclusters.Rmd") %>% 
+  filter(cluster != 1) %>% # remove cluster 1 because it consists of a single outlier
+  mutate(change_abund = change_abund/n16S, # correct abundance values by 16S copy number
+         start_abund = start_abund/n16S,
+         end_abund = end_abund/n16S,
+         cluster = as.character(cluster)) # change clusters to character 
+
+# Tree
+tree <- read_tree("../data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+```
+
+# Cluster composition
+
+```{r}
+# Total number of estimates per inoculant
+inoc_ests <- growth_clusters %>%
+  group_by(Inoculant) %>% 
+  summarize(inoc_total=n()) %>% 
+  ungroup()
+
+# Total estimates per cluster per inoc
+cluster_prop <- growth_clusters %>% 
+  group_by(Inoculant, cluster) %>% 
+  summarize(cluster_total=n()) %>% 
+  ungroup() %>% 
+  full_join(inoc_ests) %>% 
+  mutate(prop = cluster_total/inoc_total)
+
+# Overall proportion means of each cluster
+cluster_prop %>% 
+  group_by(cluster) %>% 
+  summarize(prop_mean = mean(prop), prop_sd = sd(prop))
+```
+
+Plot:
+
+```{r}
+cluster_prop %>% 
+  ggplot(aes(x=Inoculant, y=prop, fill=cluster)) +
+  geom_col() +
+  labs(y="Proportion of estimates") +
+  theme_test()
+
+cluster_prop %>% 
+  ggplot(aes(x=cluster, y=prop)) +
+  geom_point() +
+  labs(y="Proportion of estimates in each inoculant") +
+  theme_test()
+```
+
+### Statistics
+
+```{r}
+cluster_lm <- lm(prop ~ cluster, data=cluster_prop)
+hist(resid(cluster_lm))
+plot(predict(cluster_lm), resid(cluster_lm))
+anova(cluster_lm)
+```
+
+# Phylogenetic composition
+
+### Proportions
+
+Summarize Phyla proportions in each cluster:
+
+```{r}
+# Total number of estimates per inoculant
+inoc_totals <- growth_clusters %>%
+  group_by(Inoculant, cluster) %>% 
+  summarize(inoc_total=n()) %>% 
+  ungroup()
+
+# Total estimates per cluster per inoc
+phyla_prop <- growth_clusters %>% 
+  group_by(Phylum, Inoculant, cluster) %>% 
+  summarize(phy_total=n()) %>% 
+  ungroup() %>% 
+  full_join(inoc_totals) %>% 
+  mutate(prop = phy_total/inoc_total)
+  
+# Incoulant means
+phyla_prop %>% 
+  group_by(cluster, Phylum) %>% 
+  summarize(prop_mean = mean(prop), prop_sd = sd(prop))
+```
+
+Plot:
+
+```{r}
+phyla_prop %>% 
+  ggplot(aes(x=cluster, y=prop, fill=Phylum)) +
+  geom_col() +
+  facet_wrap(~Inoculant) +
+  labs(y="Proportion of estimates", title="Inoculants") +
+  theme_test()
+
+phyla_prop
+```
+
+Looks like Firmicutes may dominate cluster 4 reliably. Otherwise, I can't spot clear trends.
+
+### Ordination
+
+Reformat data:
+
+Making each cluster and innoculant combo into its own "sample".
+
+```{r}
+# Create metadata
+meta <- growth_clusters %>% 
+  select(Inoculant, cluster) %>% 
+  unique() %>% 
+  bind_cols(data.frame(Sample=paste0("sa", 1:nrow(.)))) %>% # Create sample IDs
+  select(Sample, Inoculant, cluster)
+
+# Create ASV table (relative abundances)
+asv_table <- growth_clusters %>%
+  full_join(meta) %>%  # add sample IDs
+  select(Sample, ASV) %>% 
+  mutate(count = 1) %>% 
+  pivot_wider(names_from = Sample, values_from=count) %>% 
+  column_to_rownames(var="ASV") %>% 
+  mutate(across(everything(), ~ if_else(is.na(.x), 0, .x)))
+  
+# Create taxonomy
+tax <- growth_clusters %>%
+  select(ASV, Domain:Species) %>%
+  unique() %>% 
+  remove_rownames() %>% 
+  column_to_rownames(var="ASV") %>% 
+  as.matrix()
+  
+# Create phyloseq object
+physeq_clusters <- phyloseq(sample_data(meta),
+                            otu_table(asv_table, taxa_are_rows = TRUE),
+                            tax_table(tax),
+                            tree)
+```
+
+Relative abundance:
+
+```{r}
+physeq_relabund <- transform_sample_counts(physeq_clusters, function(x) x/sum(x))
+```
+
+Ordinate:
+
+```{r}
+# Weighted unifrac
+dist_wunifrac <- distance(physeq_relabund, method="wunifrac") 
+nmds_wunifrac <- ordinate(physeq_relabund, distance=dist_wunifrac, method="NMDS")
+
+plot_ordination(physeq_relabund, nmds_wunifrac, color="cluster") +
+  stat_ellipse(type="t") +
+  labs(title="Weighted Unifrac") +
+  theme_test()
+
+# Unqeighted unifrac
+dist_unifrac <- distance(physeq_relabund, method="unifrac") 
+nmds_unifrac <- ordinate(physeq_relabund, distance=dist_unifrac, method="NMDS")
+
+plot_ordination(physeq_relabund, nmds_unifrac, color="cluster") +
+  stat_ellipse(type="t") +
+  labs(title="Unweighted Unifrac") +
+  theme_test()
+```
+
+Statistics:
+
+Permutational multivariate ANOVA
+
+```{r}
+adonis(dist_wunifrac ~ cluster, data=meta, permutations=999)
+
+adonis(dist_unifrac ~ cluster, data=meta, permutations=999)
+```
+
+# Growth parameters comparisons
+
+### Plots
+
+```{r}
+# k
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=k, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# lag time
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=start_day)) +
+  #geom_violin()+
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# start abundance
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=log(start_abund), color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# change abundance
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=log(change_abund), color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# End day
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=end_day, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+```
+
+### Statistics
+
+Linear mixed effects models with cluster as a main effect and innoculant as a random effect, allowing differing intercepts and slopes.
+
+Specific growth rate (k):
+
+```{r}
+k_lmer <- lmer(k ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(k_lmer))
+plot(predict(k_lmer), resid(k_lmer))
+anova(k_lmer)
+summary(k_lmer)
+```
+
+Lag time:
+
+Not sure how to approach the stats here with so many 0s.
+
+```{r}
+lag_lmer <- lmer(start_day ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(lag_lmer))
+plot(predict(lag_lmer), resid(lag_lmer)) # Heteroskedastic
+
+# Can't use mixed model appraoch due to heteroskedasticity
+
+# Average to esatblish sample independence
+lag_avg <- growth_clusters %>% 
+  group_by(Inoculant, cluster) %>% 
+  summarize(lag = mean(start_day)) %>% 
+  ungroup()
+
+# Try linear model
+lag_lm <- lm(lag ~ cluster, data=lag_avg)
+hist(resid(lag_lm))
+plot(predict(lag_lm), resid(lag_lm)) # heteroskedastic
+
+# Welch ANOVA
+oneway.test(lag ~ cluster, data=lag_avg)
+```
+
+I'm not sure how to interpret this or if I trust it. Needs more thought.
+
+Start abundance:
+
+```{r}
+strtabund_lmer <- lmer(log(start_abund) ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(strtabund_lmer)) # log transform helped normality a lot
+plot(predict(strtabund_lmer), resid(strtabund_lmer)) # log transform helped heteroskedasticity a lot
+anova(strtabund_lmer)
+step(strtabund_lmer)
+```
+
+Change abundance:
+
+```{r}
+chgabund_lmer <- lmer(log(change_abund) ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(chgabund_lmer)) # log transform helped normality
+plot(predict(chgabund_lmer), resid(chgabund_lmer)) # log transform helped heteroskedasticity
+anova(chgabund_lmer)
+summary(chgabund_lmer)
+```
+
+End day:
+
+```{r}
+endday_lmer <- lmer(end_day ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(endday_lmer)) 
+plot(predict(endday_lmer), resid(endday_lmer))
+anova(endday_lmer)
+summary(endday_lmer)
+```
+
+# PAPRICA prediction comparisons
+
+### Plots
+
+```{r}
+# n16S
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=log(n16S), color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# genome size
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=genome_size, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# Phi - genome plasticity
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=phi, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# Number of pathways
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=npaths_actual, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# Number of enzymes
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=nec_actual, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+
+# Branch length
+# I'm wondering if certain growth characteristics are less closely related to known genomes that were likely cultivated
+growth_clusters %>% 
+  ggplot(aes(x=cluster, y=branch_length, color=Inoculant)) +
+  geom_jitter() +
+  geom_boxplot(aes(group=cluster), alpha=0.5) +
+  theme_test()
+```
+
+### Statistics
+
+Linear mixed effect model with Inoculant as random effect allowing random intercept and slope.
+
+n16S:
+
+```{r}
+n16S_lmer <- lmer(log(n16S) ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(n16S_lmer)) # log transform helps
+plot(predict(n16S_lmer), resid(n16S_lmer))
+anova(n16S_lmer)
+summary(n16S_lmer)
+```
+
+Genome size:
+
+```{r}
+genome_lmer <- lmer(genome_size ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(genome_lmer)) # non normal, log transform doesn't help
+plot(predict(genome_lmer), resid(genome_lmer))
+
+# Can't use mixed model because data is non-normal
+
+# Average to establish sample independence
+genome_avg <- growth_clusters %>% 
+  group_by(Inoculant, cluster) %>% 
+  summarize(genome = mean(genome_size)) %>% 
+  ungroup()
+
+# Linear model
+genome_lm <- lm(genome ~ cluster, data=genome_avg)
+hist(resid(genome_lm))
+plot(predict(genome_lm), resid(genome_lm)) # heteroskedastic, log transform doesn't help
+
+# Welch ANOVA
+oneway.test(genome ~ cluster, data=genome_avg)
+```
+
+Phi:
+
+```{r}
+phi_lmer <- lmer(phi ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(phi_lmer)) # slightly non-normal
+plot(predict(phi_lmer), resid(phi_lmer)) # VERY heteroskedastic, will need to use another approach
+
+# Can't use mixed model 
+
+# Average to establish sample independence
+phi_avg <- growth_clusters %>% 
+  group_by(Inoculant, cluster) %>% 
+  summarize(phi = mean(genome_size)) %>% 
+  ungroup()
+
+# Try linear model
+phi_lm <- lm(phi ~ cluster, data=phi_avg)
+hist(resid(phi_lm))
+plot(predict(phi_lm), resid(phi_lm)) # heteroskedastic
+
+# Welch ANOVA
+oneway.test(phi ~ cluster, data=phi_avg)
+```
+
+Number of pathways:
+
+```{r}
+npaths_actual_lmer <- lmer(npaths_actual ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(npaths_actual_lmer)) # non normal, log transform doesn't help
+plot(predict(npaths_actual_lmer), resid(npaths_actual_lmer))
+
+# can't use mixed model
+
+# Average to establish sample independence
+npaths_avg <- growth_clusters %>% 
+  group_by(Inoculant, cluster) %>% 
+  summarize(npaths = mean(npaths_actual, na.rm=TRUE)) %>% 
+  ungroup()
+
+# Try linear model
+npaths_lm <- lm(npaths ~ cluster, data=npaths_avg)
+hist(resid(npaths_lm))
+plot(predict(npaths_lm), resid(npaths_lm)) # heteroskedastic
+
+# Welch ANOVA
+oneway.test(npaths ~ cluster, data=npaths_avg)
+```
+
+Number of enzymes:
+
+```{r}
+nec_actual_lmer <- lmer(log(nec_actual) ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(nec_actual_lmer)) 
+plot(predict(nec_actual_lmer), resid(nec_actual_lmer))
+anova(nec_actual_lmer)
+summary(nec_actual_lmer)
+```
+
+Branch length:
+
+```{r}
+branch_length_lmer <- lmer(branch_length ~ cluster + (1 + cluster |Inoculant), data=growth_clusters)
+hist(resid(branch_length_lmer)) # non normal even with log transform
+plot(predict(branch_length_lmer), resid(branch_length_lmer))
+
+# can't use mixed effects due to non-normality
+
+# Average to establish sample indepence
+branch_avg <- growth_clusters %>% 
+  group_by(Inoculant, cluster) %>% 
+  summarise(branch = mean(branch_length, na.rm=TRUE)) %>% 
+  ungroup()
+
+# Try linear model
+branch_lm <- lm(branch ~ cluster, data=branch_avg)
+hist(resid(branch_lm)) # non-normal even w/log transform
+
+# Kruskal Wallis test
+kruskal.test(branch ~ cluster, data=branch_avg)
+```
+
+### Replot based on statistics
+
+Had to average some values to hypothesis test.
+
+```{r}
+# k 
+growth_clusters %>%
+  group_by(Inoculant, cluster) %>% 
+  summarize(k = mean(k)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=cluster, y=k)) +
+  geom_point() +
+  geom_boxplot(alpha=0.5) +
+  labs(y="Specific growth rate (day-1)") +
+  theme_test()
+
+# Genome size
+genome_avg %>% 
+  ggplot(aes(x=cluster, y=genome)) +
+  geom_point() +
+  geom_boxplot(alpha=0.5) +
+  labs(y="Genome size (bp)") +
+  theme_test()
+
+# Pathways
+npaths_avg %>% 
+  ggplot(aes(x=cluster, y=npaths)) +
+  geom_point() +
+  geom_boxplot(alpha=0.5) +
+  labs(y="Number of pathways") +
+  theme_test()
+
+# Branch length
+branch_avg %>% 
+  ggplot(aes(x=cluster, y=branch)) +
+  geom_point() +
+  geom_boxplot(alpha=0.5) +
+  labs(y="Branch length to nearest sequenced genome") +
+  theme_test()
+```
+
+This makes the trends that my tests are picking up on much more obvious. 

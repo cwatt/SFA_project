@@ -1,0 +1,120 @@
+---
+title: "SFA2 betaNTI"
+author: "Cassandra Wattenburger"
+date: "3/23/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("ape")
+library("phyloseq")
+library("picante")
+
+sessionInfo()
+```
+
+# Import data
+
+```{r}
+# Phyloseq object with all growth samples
+physeq <- readRDS("../data_intermediate/SFA2_physeq_rare.rds")
+```
+
+Extract from phyloseq:
+
+Interested in days 0, 10, 21, and 30.
+
+```{r}
+# Subset samples of interest
+physeq_subset <- subset_samples(physeq, Day %in% c(0, 10, 21, 30))
+
+# Count table
+count <- data.frame(otu_table(physeq_subset))
+
+# Tree
+tree <- phy_tree(physeq_subset)
+
+# Metadata
+meta <- data.frame(sample_data(physeq_subset)) %>% 
+  select(-SampleID) %>% 
+  rownames_to_column(var="SampleID")
+```
+
+Prepare data:
+
+```{r}
+# Order names on phylogeny based on count table
+matched <- match.phylo.data(tree, count)
+str(matched)
+```
+
+# Calculate betaNTI
+
+SLOW STEP
+
+```{r, eval=FALSE}
+# Calculate empirical betaMNTD
+bMNTD <-  as.matrix(comdistnt(t(matched$data), cophenetic(matched$phy), abundance.weighted=T))
+dim(bMNTD)
+
+# Double check data compatibility, both should be TRUE
+identical(colnames(matched$data), colnames(bMNTD))
+identical(colnames(matched$data), rownames(bMNTD))
+
+# Calculate randomized betaMNTD (999 randomizations)
+reps <- 999
+
+rand_bMNTD <- array(c(-999), dim=c(ncol(matched$data), ncol(matched$data), reps))
+dim(rand_bMNTD)
+
+for (rep in 1:reps) {
+  rand_bMNTD[,,rep] = as.matrix(comdistnt(t(matched$data), taxaShuffle(cophenetic(matched$phy)), abundance.weighted=T, exclude.conspecifics=F))
+  print(c(date(), rep))
+}
+
+# Calculate betaNTI
+bNTI = matrix(c(NA), nrow=ncol(matched$data), ncol=ncol(matched$data)) # create empty matrix of same size
+dim(bNTI)
+
+for (column in 1:(ncol(matched$data) - 1)) {
+  for (row in (column + 1):ncol(matched$data)) {
+    rand_vals = rand_bMNTD[row, column,]
+    bNTI[row, column] = (bMNTD[row, column] - mean(rand_vals)) / sd(rand_vals)
+    #rm("rand_vals")
+  }
+}
+
+rownames(bNTI) = colnames(matched$data);
+colnames(bNTI) = colnames(matched$data);
+
+# Visualize
+hist(bNTI)
+
+# Save output
+saveRDS(bNTI, file="../data_intermediate/SFA2_bNTI.rds")
+```
+
+# Evaluation
+
+Evaluating each inoculant separately. Interested in stochasticity/determinism over time and between communities.
+
+### Day 0
+
+### Day 10
+
+### Day 21
+
+### Day 30
+
+
+

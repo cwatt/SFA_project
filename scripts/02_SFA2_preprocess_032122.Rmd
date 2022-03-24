@@ -1,0 +1,408 @@
+---
+title: "SFA2 - prerocessing"
+author: "Cassandra Wattenburger"
+date: "9/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("ape")
+library("phyloseq")
+
+sessionInfo()
+```
+
+### Import data
+
+```{r}
+# Rep 1
+count_rep1 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.counts-final.tsv")
+tax_rep1 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep1/final/SFA2_rep1.taxonomy-final.tsv")
+
+# Rep 2
+count_rep2 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.counts-final.tsv")
+tax_rep2 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep2/final/SFA2_rep2.taxonomy-final.tsv")
+
+# Rep 3
+count_rep3 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.counts-final.tsv")
+tax_rep3 <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/rep3/final/SFA2_rep3.taxonomy-final.tsv")
+
+# Redos
+count_redos <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/redos/final/SFA2_redos.counts-final.tsv")
+tax_redos <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/redos/final/SFA2_redos.taxonomy-final.tsv")
+
+# Tree
+tree <- read.tree(file="~/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+
+# Metadata
+meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+```
+
+Combine replicates and redos:
+
+```{r}
+# Count data combine
+count <- full_join(count_rep1, count_rep2, by="ASV") %>%
+  full_join(count_rep3, by="ASV") %>% 
+  full_join(count_redos, by="ASV") %>%
+  mutate(across(-ASV, ~ if_else(is.na(.x), 0, .x))) # turn coerced NAs into 0s
+
+# Taxonomy table combine
+tax <- full_join(tax_rep1, tax_rep2) %>%
+  full_join(tax_rep3) %>% 
+  full_join(tax_redos)
+```
+
+### Import into phyloseq
+
+```{r}
+# Reformat and import count table
+count_matrix <- count %>%
+  column_to_rownames(var="ASV") %>%
+  rename_with(~ gsub("(.+)", "sa\\1", .x)) %>%
+  as.matrix()
+
+phy_count <- otu_table(count_matrix, taxa_are_rows=TRUE)
+
+# Reformat and import taxonomy table
+tax_matrix <- tax %>% 
+  column_to_rownames(var="ASV") %>% 
+  as.matrix()
+
+phy_tax <- tax_table(tax_matrix)
+
+# Metadata import
+meta_fix <- meta %>% 
+  mutate(Inoculant = as.character(Inoculant))
+phy_meta <- sample_data(meta_fix)
+
+# Create phyloseq object
+physeq <- phyloseq(phy_count, phy_tax, phy_meta, tree)
+
+physeq
+```
+
+### Remove non-prokaryotic ASVs
+
+Mitochondrial, chloroplast, protist, and unknown domain/phylum sequences.
+
+* Decided to remove unknown phyla because I am concerned these are plant DNA sequences
+* When BLASTed many of these sequences match to mitochondria from plants or fungi
+* Many tend to be high abundance and highly variable, consistent with DNA extraction from plant/fungus tissue
+
+```{r}
+# Remove non-prokaryotic ASVs
+physeq2 <- subset_taxa(physeq, !(Order=="Chloroplast" | Family=="Mitochondria" | Domain=="Unassigned" | 
+                                   Domain=="putative Unassigned" | Domain=="putative Bacteria" | Phylum == "unclassified Bacteria"))
+physeq2
+```
+
+### Sparcity filters
+
+Keep only ASVs that occur in at least three samples.
+
+```{r}
+# Convert counts to 0 or 1 based on presence in sample
+physeq_presabs <- transform_sample_counts(physeq2, function(x) ifelse(x > 0, 1, 0))
+  
+# Prune taxa that occur in less than three samples
+physeq_presabs2 <- prune_taxa(taxa_sums(physeq_presabs) > 2, physeq_presabs) 
+
+sparse_pass_asvs <- taxa_names(physeq_presabs2)
+
+physeq3 <- prune_taxa(sparse_pass_asvs, physeq2)
+physeq3
+```
+
+### Redo samples comparison
+
+Compare sequence depth, Aquifex spike-in proportion, ASV richness.
+
+Calculate read depth:
+
+```{r}
+# Extract count and metadata from processed phyloseq object
+count_processed <- data.frame(otu_table(physeq3))
+tax_processed <- data.frame(tax_table(physeq3))
+meta_processed <- data.frame(sample_data(physeq3)) %>%
+  select(-SampleID) %>%
+  rownames_to_column(var="SampleID")
+
+# Calculate read depth per sample
+read_depth <- count_processed %>%
+  rownames_to_column(var="ASV") %>%
+  gather(SampleID, count, -ASV) %>%
+  spread(ASV, count) %>%
+  mutate(total_reads = rowSums(.[-1])) %>%
+  select(SampleID, total_reads) %>%
+  inner_join(meta_processed) %>% 
+  mutate(Attempt = as_factor(Attempt)) %>% 
+  as_tibble()
+  
+# Visualize
+read_depth %>%
+  mutate(Replicate = as_factor(Replicate)) %>%
+  filter(Type != "pcr_control") %>%
+  ggplot(aes(x=reorder(Sample, -total_reads), y=total_reads, fill=Replicate)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test()
+```
+
+Calculate internal std reads, sample richness:
+
+```{r}
+# Isolate resequenced samples and their original counterparts
+reseq_sams <- filter(read_depth, Attempt==2) %>% 
+  .$Sample
+read_depth_reseq <- filter(read_depth, Sample %in% reseq_sams)
+
+# Isolate Aquifex ASV
+aquifex <- tax_processed %>%
+  filter(Genus == "Aquifex") %>%
+  rownames_to_column(var="ASV") %>%
+  select(ASV) %>%
+  .$ASV
+
+# Spike-in read counts
+spike_counts <- count_processed %>%
+  rownames_to_column(var="ASV") %>% 
+  filter(ASV == "445e8681c3c1a735760e6c394f5f4d0a") %>% 
+  select(-ASV) %>%
+  gather(variable, value) %>% 
+  select(SampleID = variable, std_count = value)
+
+# ASV richness
+richness <- count_processed %>% 
+  mutate(across(everything(), ~ if_else(.x > 0, 1, 0), {.cols})) %>%
+  colSums() %>%
+  data.frame() %>% 
+  rownames_to_column(var="SampleID")
+
+# Combine
+reseq_compare <- inner_join(read_depth_reseq, spike_counts) %>% 
+  inner_join(richness) %>% 
+  select(c(SampleID, Sample, Attempt:PCR_plate, total_reads, std_count, richness=`.`)) %>% 
+  mutate(Replicate = as_factor(Replicate))
+```
+
+Visualize:
+
+```{r}
+# Read depth
+reseq_compare %>% 
+  filter(Type != 'PCR control') %>% 
+  ggplot(aes(x=Sample, y=total_reads, fill=Attempt, color=Attempt)) +
+  geom_col(position = "dodge") +
+  theme_test()
+
+# Spike-in counts
+reseq_compare %>% 
+  filter(Type != 'PCR control') %>% 
+  ggplot(aes(x=Sample, y=std_count, fill=Attempt, color=Attempt)) +
+  geom_col(position = "dodge") +
+  theme_test()
+
+reseq_compare %>% 
+  mutate(std_prop = std_count/(total_reads + std_count)) %>% 
+  filter(Type != 'PCR control') %>% 
+  ggplot(aes(x=Sample, y=std_prop, fill=Attempt, color=Attempt)) +
+  geom_col(position = "dodge") +
+  theme_test()
+
+# Richness
+reseq_compare %>% 
+  filter(Type != 'PCR control') %>% 
+  ggplot(aes(x=Sample, y=richness, fill=Attempt, color=Attempt)) +
+  geom_col(position = "dodge") +
+  theme_test()
+```
+
+Attempt 2 seems to be improvement in most cases.
+
+Isolate cases in which original has higher read depth, richness, std count, but equal or lower std proportion:
+
+```{r}
+# Reformat
+reseq_compare_wide <- reseq_compare %>% 
+  select(-c(SampleID, PCR_plate, Library)) %>% 
+  mutate(std_prop = std_count/(total_reads+std_count)) %>% 
+  pivot_wider(names_from = Attempt, names_glue = "{.value}_{Attempt}", values_from = c(total_reads, richness, std_count, std_prop))
+
+# Comparison
+reseq_compare_wide %>% 
+  mutate(keep = if_else(total_reads_1 > total_reads_2 & richness_1 > richness_2 & std_count_1 > std_count_2 & std_prop_1 <= std_prop_2, 1, 2))
+```
+
+Replace originals with redos in dataset:
+
+```{r}
+# Isolate original samples
+rm_samIDs <- filter(reseq_compare, Attempt==1) %>%
+  .$SampleID %>% 
+  gsub("sa([0-9]+)", "\\1", .)
+  
+# Create "not in" operator
+`%!in%` <- Negate(`%in%`)
+
+# Remove from phyloseq object
+physeq4 <- subset_samples(physeq3, SampleID %!in% rm_samIDs)
+physeq4
+```
+
+Save preprocessed taxonomy:
+
+```{r, eval=FALSE}
+tax <- as.data.frame(tax_table(physeq4))
+saveRDS(tax, file="../data_intermediate/SFA2_taxonomy.rds")
+```
+
+# Rarefy
+
+Sequencing depth by sample:
+
+```{r}
+# Set seed
+set.seed(360)
+
+# Remove non-growth samples
+physeq5 <- subset_samples(physeq4, Type=="Growth")
+
+# Remove aquifex ASVs from phlyoseq object
+physeq6 <- subset_taxa(physeq5, Phylum!="Aquificota")
+
+# Extract counts
+count_all <- data.frame(otu_table(physeq6)) %>% 
+  rownames_to_column(var="ASV") %>%
+  gather(SampleID, count, -ASV) %>%
+  spread(ASV, count)
+
+# Metadata
+meta_all <- data.frame(sample_data(physeq6)) %>% 
+  select(-SampleID) %>% 
+  rownames_to_column(var="SampleID")
+
+# Calculate read depths
+read_depth <- count_all %>%
+  mutate(total_reads = rowSums(.[-1])) %>%
+  select(SampleID, total_reads) %>%
+  inner_join(meta_all) %>% 
+  as_tibble()
+
+# Visualize
+read_depth %>%
+  mutate(Replicate = as_factor(Replicate)) %>%
+  ggplot(aes(x=reorder(Sample, -total_reads), y=total_reads, fill=Day)) +
+  geom_col() +
+  labs(x="Sample", y="Reads") +
+  theme_test()
+
+# zoom in
+read_depth %>%
+  mutate(Replicate = as_factor(Replicate)) %>%
+  ggplot(aes(x=reorder(Sample, -total_reads), y=total_reads, fill=Day)) +
+  geom_col() +
+  geom_hline(yintercept = 1000) +
+  labs(x="Sample", y="Reads") +
+  coord_cartesian(ylim=c(0, 1500)) +
+  theme_test()
+```
+
+How many samples would be lost at X rarefication depth?
+
+# BOOKMARK
+
+```{r}
+# 1500
+read_depth %>% 
+  filter(total_reads < 1500)
+
+# 1000
+read_depth %>% 
+  filter(total_reads < 1000)
+
+# 500
+read_depth %>% 
+  filter(total_reads < 500)
+```
+
+From 1500 to 1000 to 500 reads, lose 56, 38, and 22 samples respectively.
+
+However, I am most interested in days 0, 10, 21, and 30 (early, mid, and late succession) and I am not losing many of those samples at higher depth.
+
+I'll rarefy to 1500 reads.
+
+```{r}
+physeq_rare <- rarefy_even_depth(physeq5, sample.size=1500)
+physeq_rare
+```
+
+# Save preprocessed count data
+
+Rarefied and unrarefied versions.
+
+```{r, eval=FALSE}
+# Rarefied
+saveRDS(physeq_rare, file="../data_intermediate/SFA2_physeq_rare.rds")
+
+# Not rarefied
+saveRDS(physeq5, file="../data_intermediate/SFA2_physeq_unrare.rds")
+```
+
+### Normalize to the internal standard
+
+This will be used for estimating growth and death.
+
+Correct samples with extra internal standard added:
+
+```{r}
+# Create vector of samples that had additional spike-in added when resequenced
+extra_samids <- c(47, 94, 177, 224, 324, 330, 336, 337, 340, 348, 371, 387, 107, 
+                70, 99, 178, 200, 219, 229, 245, 257, 332, 333, 338, 368, 370, 
+                374, 375, 383, 384, 385)
+
+# Extract count from phyloseq object
+count_reseq <- data.frame(otu_table(physeq5)) # with non-growth samples removed
+
+# Divide internal std counts in half
+count_stdcorrected <- count_reseq %>% 
+  rownames_to_column(var="ASV") %>% 
+  pivot_longer(-ASV, names_to = "SampleID", values_to = "count") %>% 
+  mutate(count_correct = if_else(SampleID %in% extra_samids & ASV %in% aquifex, count/2, count)) %>% 
+  select(-count)
+
+# Combine int std ASVs into one ASV
+count_stdsummed <- count_stdcorrected %>% 
+  mutate(ASV = if_else(ASV %in% aquifex, "aquifex_asv", ASV)) %>%
+  group_by(SampleID, ASV) %>% 
+  summarize(count_sum = sum(count_correct)) %>% 
+  ungroup()
+```
+
+Divide each taxon count by Aquifex ASV total in sample:
+
+```{r}
+# Divide taxa counts by internal std counts in each sample
+count_norm <- count_stdsummed %>% 
+  pivot_wider(SampleID, names_from = ASV, values_from = count_sum) %>%
+  mutate(across(-SampleID, ~ .x/aquifex_asv, {.col})) %>%
+  select(-aquifex_asv) # remove Aquifex ASVs
+```
+
+# Save normalized data
+
+```{r, eval=FALSE}
+# Save normalized abundances
+saveRDS(count_norm, file="../data_intermediate/SFA2_count_normalized.rds")
+```
+

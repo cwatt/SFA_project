@@ -32,8 +32,12 @@ Phyloseq object produced in 02_SFA2_preprocess_redos.Rmd. This data has been:
 * Original samples that were resequenced replaced
 
 ```{r}
+# Phyloseq object
 physeq <- readRDS("../data_intermediate/SFA2_physeq_counts.rds")
 physeq
+
+# Growth estimates
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap2.rds")
 ```
 
 # All time points
@@ -177,6 +181,62 @@ alpha_overall <- alpha_df %>%
   mutate(rich_cv = rich_sd/rich_mean, even_cv = even_sd/even_mean)
 ```
 
+Richness at final time point:
+
+```{r}
+alpha_tp30 <- alpha_df %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(rich_mean = mean(richness), rich_sd = sd(richness), even_mean = mean(evenness), even_sd = sd(evenness)) %>% 
+  ungroup() %>% 
+  filter(Day==30)
+
+alpha_df %>% 
+  filter(Day==30) %>% 
+  summarize(rich_mean = mean(richness), rich_sd = sd(richness), even_mean = mean(evenness), even_sd = sd(evenness))
+```
+
+Proportion of diversity estimated from final tp:
+
+```{r}
+# Find overlapping asvs
+
+# Community counts
+physeq_grtp30 <- subset_samples(physeq_rare, Day==30 & Type=="Growth")
+
+meta_grtp30 <- data.frame(sample_data(physeq_grtp30)) %>% 
+  select(SampleID, Inoculant) %>% 
+  rownames_to_column(var="Sample")
+
+asvs_grtp30 <- data.frame(otu_table(physeq_grtp30)) %>% 
+  rownames_to_column(var="ASV") %>% 
+  pivot_longer(-ASV, names_to="Sample", values_to="count") %>% 
+  filter(count > 0) %>% # remove ASVs not present in these samples
+  inner_join(meta_grtp30)
+
+# Growth estimates
+growth_overlap <- growth %>% 
+  select(Inoculant, ASV) %>% 
+  inner_join(asvs_grtp30) %>% 
+  select(Sample, SampleID, Inoculant, ASV, count)
+
+# Total ASVs in final community vs overlapping
+overlap_totals <- growth_overlap %>% 
+  group_by(Inoculant) %>% 
+  summarize(overlap = n()) %>% 
+  ungroup()
+
+comm_totals <- asvs_grtp30 %>% 
+  group_by(Inoculant) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
+
+overlap_prop <- full_join(overlap_totals, comm_totals) %>% 
+  mutate(prop = overlap/total)
+
+mean(overlap_prop$prop)
+sd(overlap_prop$prop)
+```
+
 Plot:
 
 ```{r}
@@ -226,7 +286,7 @@ alpha_df %>%
   ggplot(aes(x=DOC, y=evenness, color=Inoculant)) +
   geom_boxplot() +
   facet_wrap(~Day) +
-  labs(x="DOC \"phentoype\"", y="Evenness final tp") +
+  labs(x="DOC \"phentoype\"", y="Evenness") +
   theme_test() +
   theme(title = element_text(size=18),
         axis.title = element_text(size=16),
