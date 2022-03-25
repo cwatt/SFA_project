@@ -35,7 +35,7 @@ norm_prepped <- readRDS("../data_intermediate/SFA2_norm_prepped.rds")
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Metadata
-meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
 ```
 
 # Estimate death - from start of incubation
@@ -180,7 +180,7 @@ Histogram of quality filtered p-values from actual estimates:
 hist(death_estimates$pval, xlab="P-values", main="Histogram of quality filtered p-values")
 ```
 
-This p-value distribution is anti-conservative based on the trailing right tail (this is a good thing). However, it appears that there must be some proportion of false positives based on how high that right tail is compared to the initial spike at the beginning of the distribution. We must do some form of multiple comparison control.
+This doesn't look great.
 
 See: http://varianceexplained.org/statistics/interpreting-pvalue-histogram/
 
@@ -193,7 +193,7 @@ Completely random data designed to reflect actual data, if we detect "significan
 Import previously generated simulated time series, see 03_SFA2_deathestimation.Rmd
 
 ```{r}
-sim_data <- readRDS("../data_intermediate/SFA2_simulated_data.rds")
+sim_data <- readRDS("../data_intermediate/SFA2_simulated.rds")
 ```
 
 ### Estimate "death" on simulated data
@@ -418,7 +418,7 @@ est_labels <- as.character(death_estimates$label)
 norm_tidy <- norm_prepped %>% 
   filter(label %in% est_labels) %>% 
   select(label, everything(), ln_norm_abund_avg=abund, Day=time) %>% 
-  select(label, Inoculant, DOC, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
+  select(label, Inoculant, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
 ```
 
 ```{r, eval=FALSE}
@@ -431,9 +431,9 @@ Death estimates:
 # Add back metadata
 death_tidy <- death_final %>% 
   mutate(DOC = if_else(grepl("high", label), "high", "low"),
-         Inoculant = gsub("[a-z]+([0-9]+)_.+", "\\1", label),
-         ASV = gsub("[a-z]+[0-9]+_(.+)", "\\1", label)) %>% 
-  select(label, DOC, Inoculant, ASV, k:change_abund)
+         Inoculant = gsub("([0-9]+)_.+", "\\1", label),
+         ASV = gsub("[0-9]+_(.+)", "\\1", label)) %>% 
+  select(label, Inoculant, ASV, k:change_abund)
 ```
 
 ```{r, eval=FALSE}

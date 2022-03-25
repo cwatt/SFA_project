@@ -27,8 +27,6 @@ sessionInfo()
 * Taxonomy table
 * Metadata
 
-See 02.5_SFA2_preprocess_redos.Rmd.
-
 ```{r}
 # Count data
 norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
@@ -39,7 +37,7 @@ norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>%
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Metadata
-meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
 
 # Merge
 norm_prep <- inner_join(norm, tax, by="ASV") %>% 
@@ -64,20 +62,11 @@ norm_prep <- norm_prep[!is.infinite(norm_prep$norm_abund),]
 dim(norm_prep)
 ```
 
-Remove samples that were not part of the growth rate measurement:
-
-```{r}
-norm_prep <- filter(norm_prep, Type=="Growth")
-
-dim(norm_prep)
-```
-
 Remove non-present taxa:
 
 ```{r}
 norm_prep <- filter(norm_prep, norm_abund != 0) 
   
-
 dim(norm_prep)
 ```
 
@@ -125,7 +114,7 @@ Create unique label for each ASV and time series:
 
 ```{r}
 norm_prep <- norm_prep %>%
-  mutate(label = paste0(DOC, Inoculant, "_", ASV))
+  mutate(label = paste0(Inoculant, "_", ASV))
 
 dim(norm_prep)
 ```
@@ -138,17 +127,13 @@ All ASVS:
 # Slow
 # Opens in browser
 norm_prep %>% 
-  filter(Type=="Growth") %>% 
   ggplot(aes(x=Day, y=ln_norm_abund_avg, color=Inoculant)) +
-  facet_wrap(~DOC) +
   geom_point() +
   geom_line() +
   facet_trelliscope(~ASV, scales="free_y", path="rmarkdown_files", self_contained=TRUE, height = 400, width = 1600) +
   labs(y="ln ARNIS ratio", x="Day") +
   theme_test()
 ```
-
-517 total.
 
 # Estimate growth
 
@@ -159,7 +144,7 @@ Prepare data:
 norm_prepped <- norm_prep %>% 
   select(-Type, -c(Domain:Species), norm_abund_avg, time=Day,
          abund=ln_norm_abund_avg, label, Inoculant, DOC, ASV) %>% 
-  select(Inoculant, DOC, ASV, label, time, abund, norm_abund_avg)
+  select(Inoculant, ASV, label, time, abund, norm_abund_avg)
 ```
 
 ```{r}
@@ -315,6 +300,7 @@ I'm choosing to use a permutation approach where I use my growth estimating algo
 Completely random data designed to reflect actual data, if we detect "significant" growth rate estimates from this, we must control for that, because the same thing can happen in our actual data.
 
 Information about real dataset to use for simulating random data:
+
 * number of time points
 * min and max of abundance
 
@@ -404,7 +390,7 @@ Save simulated data:
 * for reproducibility
 
 ```{r, eval=FALSE}
-saveRDS(sim_data, file="../data_intermediate/SFA2_simulated_data.rds")
+saveRDS(sim_data, file="../data_intermediate/SFA2_simulated.rds")
 ```
 
 I'm pretty happy with this. The randomly generated data seems to roughly share characteristics with the actual data.
@@ -624,7 +610,7 @@ growth_falsepos1 <- subset(growth_estimates, pval <= false1_pval)
 nrow(growth_falsepos1)
 ```
 
-Visualize
+# Choose FPR
 
 10% false positive rate:
 
@@ -699,6 +685,7 @@ for (n in 1:10) {
 }
     
 ```
+
 Look similarly trustworthy. I'll go with 10% false positive rate because it retains more estimates.
 
 # Calculate growth metrics
@@ -773,7 +760,7 @@ est_labels <- as.character(growth_estimates$label)
 norm_tidy <- norm_prepped %>% 
   filter(label %in% est_labels) %>% 
   select(label, everything(), norm_abund_avg, ln_norm_abund_avg=abund, Day=time) %>% 
-  select(label, Inoculant, DOC, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
+  select(label, Inoculant, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
 ```
 
 ```{r, eval=FALSE}
@@ -785,10 +772,9 @@ Growth estimates:
 ```{r}
 # Add back metadata
 growth_tidy <- growth_final %>% 
-  mutate(DOC = if_else(grepl("high", label), "high", "low"),
-         Inoculant = gsub("[a-z]+([0-9]+)_.+", "\\1", label),
-         ASV = gsub("[a-z]+[0-9]+_(.+)", "\\1", label)) %>% 
-  select(label, DOC, Inoculant, ASV, k:change_abund)
+  mutate(Inoculant = gsub("([0-9]+)_.+", "\\1", label),
+         ASV = gsub("[0-9]+_(.+)", "\\1", label)) %>% 
+  select(label, Inoculant, ASV, k:change_abund)
 ```
 
 ```{r, eval=FALSE}
@@ -801,8 +787,7 @@ saveRDS(growth_tidy, file="../data_intermediate/SFA2_growth_estimates.rds")
 growth_tidy %>% 
   group_by(Inoculant) %>% 
   summarize(total = n()) %>% 
-  ungroup() %>% 
-  summarize(total_mean = mean(total), total_sd = mean(total))
+  ungroup()
 ```
 
 # Create list of ASVs for PAPRICA

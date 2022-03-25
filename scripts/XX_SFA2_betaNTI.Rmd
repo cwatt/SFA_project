@@ -32,20 +32,16 @@ physeq <- readRDS("../data_intermediate/SFA2_physeq_rare.rds")
 
 Extract from phyloseq:
 
-Interested in days 0, 10, 21, and 30.
 
 ```{r}
-# Subset samples of interest
-physeq_subset <- subset_samples(physeq, Day %in% c(0, 10, 21, 30))
-
 # Count table
-count <- data.frame(otu_table(physeq_subset))
+count <- data.frame(otu_table(physeq))
 
 # Tree
-tree <- phy_tree(physeq_subset)
+tree <- phy_tree(physeq)
 
 # Metadata
-meta <- data.frame(sample_data(physeq_subset)) %>% 
+meta <- data.frame(sample_data(physeq)) %>% 
   select(-SampleID) %>% 
   rownames_to_column(var="SampleID")
 ```
@@ -55,7 +51,6 @@ Prepare data:
 ```{r}
 # Order names on phylogeny based on count table
 matched <- match.phylo.data(tree, count)
-str(matched)
 ```
 
 # Calculate betaNTI
@@ -101,20 +96,111 @@ colnames(bNTI) = colnames(matched$data);
 hist(bNTI)
 
 # Save output
-saveRDS(bNTI, file="../data_intermediate/SFA2_bNTI.rds")
+saveRDS(bNTI, file="../data_intermediate/SFA2_bNTI_all.rds")
 ```
 
 # Evaluation
 
 Evaluating each inoculant separately. Interested in stochasticity/determinism over time and between communities.
 
-### Day 0
+```{r}
+# Load data
+bNTI <- readRDS("../data_intermediate/SFA2_bNTI_all.rds") %>% 
+  as.data.frame()
 
-### Day 10
+dim(bNTI)
+```
 
-### Day 21
+# Subset contrasts of interest
 
-### Day 30
+```{r}
+bNTI_contrasts <- data.frame()
+
+bNTI_list <- list()
+for (inoc in unique(meta$Inoculant)) {
+  for (day in unique(meta$Day)) {
+    meta_subset <- filter(meta, Day==day & Inoculant==inoc)
+    samids <- meta_subset$SampleID
+    bNTI_list <- bNTI[, (colnames(bNTI) %in% samids)] %>% # get columns with samples of interest
+      rownames_to_column(var="SampleID") %>% 
+      filter(SampleID %in% samids) %>% # get rows with samples of interest
+      column_to_rownames(var="SampleID") %>% 
+      as.matrix() %>% 
+      as.list() %>% 
+      unlist() %>% # flatten the dataframe into a list
+      .[!is.na(.)] # remove NAs
+    bNTI_mean <- mean(bNTI_list)
+    this_row <- data.frame(Inoculant=inoc, Day=day, bNTI_mean)
+    bNTI_contrasts <- bind_rows(bNTI_contrasts, this_row)
+  }
+}
+
+bNTI_contrasts <- arrange(bNTI_contrasts, Day)
+```
+
+# Visualize
+
+```{r}
+bNTI_contrasts %>% 
+  ggplot(aes(x=Day, y=bNTI_mean, color=Inoculant)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = c(2, -2), linetype=2) +
+  geom_hline(yintercept = 0) +
+  theme_test()
+
+bNTI_contrasts %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~ Inoculant) +
+  geom_hline(yintercept = c(2, -2), linetype=2) +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 10, linetype=3) +
+  theme_test()
+```
+
+Between -2 and 2 is stochastic, below -2 is homogenizing selection, above 2 is variable selection.
 
 
+# Average across inoculants
 
+```{r}
+bNTI_contrasts %>% 
+  group_by(Day) %>% 
+  summarize(bNTI_mean = mean(bNTI_mean)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = c(-2), linetype=2) +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 3.5, linetype=3) +
+  geom_vline(xintercept = 9, linetype=3) +
+  geom_vline(xintercept = 24, linetype=3) +
+  labs() +
+  theme_test()
+```
+
+Turning points seem to be at ~ days 3.5, 9, and 24.
+
+Q: I wonder if ~ day 3.5 the effects of the taxa that started growing on day 0 are being "seen" and having a randomzing effect ie luck of the draw for who wins? Day 3.5 is also when a lot of the death estimates that didn't begin on day 0 start showing up.
+
+# Beta diversity
+
+```{r}
+# Calculate wunifrac distance
+wuni_dist <- distance(physeq, method="wunifrac")
+
+# Ordinate 
+# Using pcoa because no convergence with nmds
+ord_pcoa<- ordinate(physeq, method="PCoA", distance=wuni_dist)
+
+# Visualize
+plot_ordination(physeq, ord_pcoa, color="Inoculant") +
+  stat_ellipse(type="t") +
+  facet_wrap(~Day) +
+  theme_test()
+```
+
+Q: When is beta diversity among replicates greatest in each inoculant? make graph similar to bNTI but for beta div

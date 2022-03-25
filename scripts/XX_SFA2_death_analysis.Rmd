@@ -1,0 +1,173 @@
+---
+title: "Untitled"
+author: "Cassandra Wattenburger"
+date: "3/25/2022"
+output: html_document
+---
+
+---
+title: "Untitled"
+author: "Cassandra Wattenburger"
+date: "3/25/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Notes
+
+* Death parameters
+  * specific death rate (k)
+  * start day
+  * end day
+  * length of death
+  * start abundance
+  * end abundance
+  * change in abundance
+* Other
+  * 16S copy number
+  * genome size
+  * phi (genome plasticity)
+  * number of pathways
+  * number of catalogued enzymes
+  
+* abundance data has already been corrected for via n16S prediction
+
+# Import data
+
+* death estimates w/paprica predictions
+* normalized abundance data for time series with estimated death
+
+```{r}
+# death
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
+
+# Normalized abundance data
+norm <- readRDS("../data_intermediate/SFA2_norm_deestimated.rds")
+
+# Taxonomic information
+tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
+```
+
+# Phylogenetic membership
+
+Overall:
+
+```{r}
+# Merge death estimates with taxonomy
+death_tax <- inner_join(death, tax) 
+
+# Graph phylogenetic membership
+death_tax %>% 
+  group_by(Phylum, Inoculant) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(Phylum) %>% 
+  summarize(count_mean = mean(count), count_sd = sd(count)) %>% 
+  ungroup() %>% 
+  arrange(count_mean)
+```
+
+# Inoculant overviews
+
+Plots:
+
+```{r}
+# specific death rate (k)
+death %>% 
+  ggplot(aes(x=Inoculant, y=k)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# start abundance
+death %>% 
+  ggplot(aes(x=Inoculant, y=log(start_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test() 
+
+# end abundance
+death %>% 
+  ggplot(aes(x=Inoculant, y=log(end_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# change abundance
+death %>% 
+  ggplot(aes(x=Inoculant, y=log(abs(change_abund)))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# lag
+death %>% 
+  ggplot(aes(x=Inoculant, y=start_day)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# end day
+death %>% 
+  ggplot(aes(x=Inoculant, y=end_day)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# length
+death %>% 
+  mutate(length = end_day - start_day) %>% 
+  ggplot(aes(x=Inoculant, y=length)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# n16S
+death %>% 
+  ggplot(aes(x=Inoculant, y=n16S)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# phi
+death %>% 
+  ggplot(aes(x=Inoculant, y=phi)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# pathways
+death %>% 
+  ggplot(aes(x=Inoculant, y=npaths_actual)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# enzymes
+death %>% 
+  ggplot(aes(x=Inoculant, y=nec_actual)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+```
+
+
+
+
+
+
+

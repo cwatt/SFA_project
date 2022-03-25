@@ -22,7 +22,12 @@ library("phyloseq")
 sessionInfo()
 ```
 
-### Import data
+# Notes
+
+* SampleID refers to the sequencing ID, these are unique to each sequenced sample, even for redos
+* Sample refers to the name of microcosm during the experiment, these are redundant for resequenced samples
+
+# Import data
 
 ```{r}
 # Rep 1
@@ -45,7 +50,7 @@ tax_redos <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/redos/final/SFA2_redos
 tree <- read.tree(file="~/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
 
 # Metadata
-meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
 ```
 
 Combine replicates and redos:
@@ -63,7 +68,13 @@ tax <- full_join(tax_rep1, tax_rep2) %>%
   full_join(tax_redos)
 ```
 
-### Import into phyloseq
+Save taxonomy:
+
+```{r, eval=FALSE}
+saveRDS(tax, file="../data_intermediate/SFA2_taxonomy.rds")
+```
+
+# Import into phyloseq
 
 ```{r}
 # Reformat and import count table
@@ -83,7 +94,9 @@ phy_tax <- tax_table(tax_matrix)
 
 # Metadata import
 meta_fix <- meta %>% 
-  mutate(Inoculant = as.character(Inoculant))
+  mutate(Inoculant = as.character(Inoculant),
+         SeqID = gsub("(.+)", "sa\\1", SampleID)) %>% 
+  column_to_rownames(var="SeqID")
 phy_meta <- sample_data(meta_fix)
 
 # Create phyloseq object
@@ -92,7 +105,7 @@ physeq <- phyloseq(phy_count, phy_tax, phy_meta, tree)
 physeq
 ```
 
-### Remove non-prokaryotic ASVs
+# Remove non-prokaryotic ASVs
 
 Mitochondrial, chloroplast, protist, and unknown domain/phylum sequences.
 
@@ -107,7 +120,7 @@ physeq2 <- subset_taxa(physeq, !(Order=="Chloroplast" | Family=="Mitochondria" |
 physeq2
 ```
 
-### Sparcity filters
+# Sparcity filter
 
 Keep only ASVs that occur in at least three samples.
 
@@ -124,7 +137,7 @@ physeq3 <- prune_taxa(sparse_pass_asvs, physeq2)
 physeq3
 ```
 
-### Redo samples comparison
+# Resequenced samples comparison
 
 Compare sequence depth, Aquifex spike-in proportion, ASV richness.
 
@@ -133,7 +146,6 @@ Calculate read depth:
 ```{r}
 # Extract count and metadata from processed phyloseq object
 count_processed <- data.frame(otu_table(physeq3))
-tax_processed <- data.frame(tax_table(physeq3))
 meta_processed <- data.frame(sample_data(physeq3)) %>%
   select(-SampleID) %>%
   rownames_to_column(var="SampleID")
@@ -168,9 +180,8 @@ reseq_sams <- filter(read_depth, Attempt==2) %>%
 read_depth_reseq <- filter(read_depth, Sample %in% reseq_sams)
 
 # Isolate Aquifex ASV
-aquifex <- tax_processed %>%
+aquifex <- tax %>%
   filter(Genus == "Aquifex") %>%
-  rownames_to_column(var="ASV") %>%
   select(ASV) %>%
   .$ASV
 
@@ -250,7 +261,7 @@ Replace originals with redos in dataset:
 # Isolate original samples
 rm_samIDs <- filter(reseq_compare, Attempt==1) %>%
   .$SampleID %>% 
-  gsub("sa([0-9]+)", "\\1", .)
+  gsub("sa([0-9]+)", "\\1", .) # remove "sa" to match SampleID column in phyloseq sam_data
   
 # Create "not in" operator
 `%!in%` <- Negate(`%in%`)
@@ -258,13 +269,6 @@ rm_samIDs <- filter(reseq_compare, Attempt==1) %>%
 # Remove from phyloseq object
 physeq4 <- subset_samples(physeq3, SampleID %!in% rm_samIDs)
 physeq4
-```
-
-Save preprocessed taxonomy:
-
-```{r, eval=FALSE}
-tax <- as.data.frame(tax_table(physeq4))
-saveRDS(tax, file="../data_intermediate/SFA2_taxonomy.rds")
 ```
 
 # Rarefy
@@ -320,25 +324,21 @@ read_depth %>%
 
 How many samples would be lost at X rarefication depth?
 
-# BOOKMARK
-
 ```{r}
 # 1500
 read_depth %>% 
-  filter(total_reads < 1500)
+  filter(total_reads < 1500 & Day)
 
 # 1000
 read_depth %>% 
-  filter(total_reads < 1000)
+  filter(total_reads < 1000 & Day)
 
 # 500
 read_depth %>% 
-  filter(total_reads < 500)
+  filter(total_reads < 500 & Day)
 ```
 
-From 1500 to 1000 to 500 reads, lose 56, 38, and 22 samples respectively.
-
-However, I am most interested in days 0, 10, 21, and 30 (early, mid, and late succession) and I am not losing many of those samples at higher depth.
+I am most interested in days 0, 10, 21, and 30.
 
 I'll rarefy to 1500 reads.
 
@@ -359,26 +359,30 @@ saveRDS(physeq_rare, file="../data_intermediate/SFA2_physeq_rare.rds")
 saveRDS(physeq5, file="../data_intermediate/SFA2_physeq_unrare.rds")
 ```
 
-### Normalize to the internal standard
+# Normalize to the internal standard
 
 This will be used for estimating growth and death.
 
 Correct samples with extra internal standard added:
 
 ```{r}
-# Create vector of samples that had additional spike-in added when resequenced
-extra_samids <- c(47, 94, 177, 224, 324, 330, 336, 337, 340, 348, 371, 387, 107, 
-                70, 99, 178, 200, 219, 229, 245, 257, 332, 333, 338, 368, 370, 
-                374, 375, 383, 384, 385)
+# Samples that had additional spike-in added when resequenced
+spike_add_sams <- c(205, 289, 313, 140, 206, 263, 290, 338, 374, 36, 207, 216, 225,
+                   228, 131, 237, 252, 261, 318, 324, 327, 336, 360, 363, 366, 375)
+
+# Get SampleIDs
+spike_add_samids <- meta %>% 
+  filter(Attempt==2 & Sample %in% spike_add_sams) %>% 
+  .$SampleID
 
 # Extract count from phyloseq object
 count_reseq <- data.frame(otu_table(physeq5)) # with non-growth samples removed
 
-# Divide internal std counts in half
+# Divide internal std counts in half for samples that had extra added (had twice as much std as other samples)
 count_stdcorrected <- count_reseq %>% 
   rownames_to_column(var="ASV") %>% 
   pivot_longer(-ASV, names_to = "SampleID", values_to = "count") %>% 
-  mutate(count_correct = if_else(SampleID %in% extra_samids & ASV %in% aquifex, count/2, count)) %>% 
+  mutate(count_correct = if_else(SampleID %in% spike_add_samids & ASV %in% aquifex, count/2, count)) %>% 
   select(-count)
 
 # Combine int std ASVs into one ASV
@@ -389,7 +393,9 @@ count_stdsummed <- count_stdcorrected %>%
   ungroup()
 ```
 
-Divide each taxon count by Aquifex ASV total in sample:
+Normalize to the internal standard:
+
+* taxon counts/Aquifex counts in the sample
 
 ```{r}
 # Divide taxa counts by internal std counts in each sample

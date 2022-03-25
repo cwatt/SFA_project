@@ -40,7 +40,7 @@ count_redos <- read_tsv(file="../data_amplicon/SFA2_full/redos/final/SFA2_redos.
 tax_redos <- read_tsv(file="../data_amplicon/SFA2_full/redos/final/SFA2_redos.taxonomy-final.tsv")
 
 # Metadata
-meta <- read_tsv(file = "../data_amplicon/SFA2_full/SFA2_full_metadata.tsv")
+meta <- read_tsv(file = "../data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
 ```
 
 ### Isolate Aquifex ASVs

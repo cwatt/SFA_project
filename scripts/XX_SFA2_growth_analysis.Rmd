@@ -1,0 +1,172 @@
+---
+title: "Untitled"
+author: "Cassandra Wattenburger"
+date: "3/25/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Notes
+
+
+* Growth parameters
+  * specific growth rate (k)
+  * start day
+  * end day
+  * length of growth
+  * start abundance
+  * end abundance
+  * change in abundance
+* Other
+  * 16S copy number
+  * genome size
+  * phi (genome plasticity)
+  * number of pathways
+  * number of catalogued enzymes
+  
+* abundance data has already been corrected for via n16S prediction
+
+# Import data
+
+* growth estimates w/paprica predictions
+* normalized abundance data for time series with estimated growth
+
+```{r}
+# Growth
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+
+# Normalized abundance data
+norm <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+
+# Taxonomic information
+tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
+```
+
+# Phylogenetic membership
+
+Overall:
+
+```{r}
+# Merge growth estimates with taxonomy
+growth_tax <- inner_join(growth, tax) 
+
+# Graph phylogenetic membership
+growth_tax %>% 
+  group_by(Phylum, Inoculant) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  group_by(Phylum) %>% 
+  summarize(count_mean = mean(count), count_sd = sd(count)) %>% 
+  ungroup() %>% 
+  arrange(count_mean)
+```
+
+# Inoculant overviews
+
+Plots:
+
+```{r}
+# specific growth rate (k)
+growth %>% 
+  ggplot(aes(x=Inoculant, y=k)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# start abundance
+growth %>% 
+  ggplot(aes(x=Inoculant, y=log(start_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test() 
+
+# end abundance
+growth %>% 
+  ggplot(aes(x=Inoculant, y=log(end_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# change abundance
+growth %>% 
+  ggplot(aes(x=Inoculant, y=log(change_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# lag
+growth %>% 
+  ggplot(aes(x=Inoculant, y=start_day)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# end day
+growth %>% 
+  ggplot(aes(x=Inoculant, y=end_day)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# length
+growth %>% 
+  mutate(length = end_day - start_day) %>% 
+  ggplot(aes(x=Inoculant, y=length)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# n16S
+growth %>% 
+  ggplot(aes(x=Inoculant, y=n16S)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# phi
+growth %>% 
+  ggplot(aes(x=Inoculant, y=phi)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# pathways
+growth %>% 
+  ggplot(aes(x=Inoculant, y=npaths_actual)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# enzymes
+growth %>% 
+  ggplot(aes(x=Inoculant, y=nec_actual)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+```
+
+For start day there is a batch that starts growing on day 0, a prominent gap, and then another batch that starts growing at varying points afterwards. Is this a wave? It seems to correspond to the shift towards homogenizing selection?
+
+"succession is a result of waves of births and deaths"
+
+what is the difference between assembly and succession?
+
+
+
+
+
+
