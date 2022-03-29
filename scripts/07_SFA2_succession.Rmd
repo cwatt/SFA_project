@@ -23,23 +23,25 @@ sessionInfo()
 
 # Notes
 
-* See bNTI results and inoculant growth overviews for how "early" and "late" succession were devided
-* Early = started growing on day 1
-* Late = started frowing after day 1
-* Need to think more about what information about death is most important
-
 # Import data
 
-* growth estimates w/PAPRICA predictions
+* growth and death estimates w/PAPRICA predictions
 * normalized abundances
 * taxonomy table
+* phylogenetic tree
 
 ```{r}
 # Growth
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 
+# Death
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
+
 # Normalized abundance data for growth estimates
 grnorm <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+
+# Normalized abundance data for growth estimates
+denorm <- readRDS("../data_intermediate/SFA2_norm_deestimated.rds")
 
 # Taxonomy
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
@@ -48,39 +50,52 @@ tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 tree <- read_tree("../data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
 ```
 
-# Distinguish early vs late growers
+# Distinguish early, mid, and late growers
+
+Early = started on day 1
+Mid = started between days 1 and 10
+Late = started on or after day 10
 
 ```{r}
 # Growth estimates
-growth_earlylate <- growth %>% 
+growth_succ <- growth %>% 
   mutate(Succession = if_else(start_day == 0, "early", if_else(start_day > 0 & start_day < 10, "mid", "late"))) %>% 
   mutate(Succession = as_factor(Succession))
 
-growers <- select(growth_earlylate, label, Succession)
+growers <- select(growth_succ, label, Succession)
 ```
 
-# [rethink] 
-proportions instead likely better
+# Isolate death after growth
+
+More interested in growth and then death.
 
 ```{r}
-growth_earlylate %>% 
-  group_by(Inoculant, Succession) %>% 
+death_after <- death %>% 
+  inner_join(growers)
+```
+
+# Proportions of early, mid, late
+
+```{r}
+# Inoculant totals
+growth_totals <- growth %>% 
+  group_by(Inoculant) %>% 
   summarize(total = n()) %>% 
   ungroup()
 
-# " mean overall
-growth_earlylate %>% 
+# Succession totals
+growth_succ_props <- growth_succ %>% 
   group_by(Inoculant, Succession) %>% 
-  summarize(total = n()) %>% 
-  group_by(Succession) %>% 
-  summarize(mean_total = mean(total), sd_total = sd(total))
+  summarize(succ_total = n()) %>% 
+  ungroup() %>% 
+  full_join(growth_totals) %>% 
+  mutate(proportion = succ_total/total)
 
 # Visualize
-growth_earlylate %>% 
-  group_by(Inoculant, Succession) %>% 
-  summarize(total = n()) %>%
-  ggplot(aes(x=Succession, y=total, color=Succession)) +
+growth_succ_props %>%
+  ggplot(aes(x=Succession, y=proportion)) +
   geom_boxplot() +
+  labs(y="Proportion of estimates") +
   geom_jitter(alpha=0.5) +
   theme_test()
 
@@ -90,19 +105,19 @@ growth_earlylate %>%
 
 ```{r}
 # By proportion
-growth_earlylate_totals <- growth_earlylate %>% 
+growth_succ_totals <- growth_succ %>% 
   group_by(Inoculant, Succession) %>% 
   summarize(total = n()) %>% 
   ungroup() 
 
-growth_earlylate_prop <- growth_earlylate %>% 
+growth_succ_prop <- growth_succ %>% 
   group_by(Inoculant, Succession, Phylum) %>% 
   summarize(phy_total = n()) %>%
   ungroup() %>% 
-  full_join(growth_earlylate_totals) %>% 
+  full_join(growth_succ_totals) %>% 
   mutate(proportion = phy_total/total)
 
-growth_earlylate_prop %>% 
+growth_succ_prop %>% 
   ggplot(aes(x=proportion, y=Phylum, color=Phylum, shape=Inoculant)) +
   geom_jitter(size=2, height=0.1) +
   facet_wrap(~Succession) +
@@ -119,15 +134,15 @@ Actinobacteriota:
 
 ```{r}
 # By proportion, class level
-growth_earlylate_prop_actino <- growth_earlylate %>% 
+growth_succ_prop_actino <- growth_succ %>% 
   filter(Phylum == "Actinobacteriota") %>% 
   group_by(Inoculant, Succession, Phylum, Class) %>% 
   summarize(class_total = n()) %>%
   ungroup() %>% 
-  full_join(growth_earlylate_totals) %>% 
+  full_join(growth_succ_totals) %>% 
   mutate(proportion = class_total/total)
 
-growth_earlylate_prop_actino %>% 
+growth_succ_prop_actino %>% 
   ggplot(aes(x=proportion, y=Class, color=Class, shape=Inoculant)) +
   geom_jitter(size=2, height=0.1) +
   facet_wrap(~Succession) +
@@ -136,15 +151,15 @@ growth_earlylate_prop_actino %>%
   theme(panel.grid.major.y = element_line(colour="gray"))
 
 # By proportion, genus level
-growth_earlylate_prop_actino <- growth_earlylate %>% 
+growth_succ_prop_actino <- growth_succ %>% 
   filter(Phylum == "Actinobacteriota") %>% 
   group_by(Inoculant, Succession, Phylum, Genus) %>% 
   summarize(genus_total = n()) %>%
   ungroup() %>% 
-  full_join(growth_earlylate_totals) %>% 
+  full_join(growth_succ_totals) %>% 
   mutate(proportion = genus_total/total)
 
-growth_earlylate_prop_actino %>% 
+growth_succ_prop_actino %>% 
   ggplot(aes(x=proportion, y=Genus, color=Genus, shape=Inoculant)) +
   geom_jitter(size=2, height=0.1) +
   facet_wrap(~Succession) +
@@ -158,15 +173,15 @@ Firmcutes:
 
 ```{r}
 # By proportion, class level
-growth_earlylate_prop_firmi <- growth_earlylate %>% 
+growth_succ_prop_firmi <- growth_succ %>% 
   filter(Phylum == "Firmicutes") %>% 
   group_by(Inoculant, Succession, Phylum, Class) %>% 
   summarize(class_total = n()) %>%
   ungroup() %>% 
-  full_join(growth_earlylate_totals) %>% 
+  full_join(growth_succ_totals) %>% 
   mutate(proportion = class_total/total)
 
-growth_earlylate_prop_firmi %>% 
+growth_succ_prop_firmi %>% 
   ggplot(aes(x=proportion, y=Class, color=Class, shape=Inoculant)) +
   geom_jitter(size=2, height=0.1) +
   facet_wrap(~Succession) +
@@ -175,15 +190,15 @@ growth_earlylate_prop_firmi %>%
   theme(panel.grid.major.y = element_line(colour="gray"))
 
 # By proportion, genus level
-growth_earlylate_prop_firmi <- growth_earlylate %>% 
+growth_succ_prop_firmi <- growth_succ %>% 
   filter(Phylum == "Firmicutes") %>% 
   group_by(Inoculant, Succession, Phylum, Genus) %>% 
   summarize(genus_total = n()) %>%
   ungroup() %>% 
-  full_join(growth_earlylate_totals) %>% 
+  full_join(growth_succ_totals) %>% 
   mutate(proportion = genus_total/total)
 
-growth_earlylate_prop_firmi %>% 
+growth_succ_prop_firmi %>% 
   ggplot(aes(x=proportion, y=Genus, color=Genus, shape=Inoculant)) +
   geom_jitter(size=2, height=0.1) +
   facet_wrap(~Succession) +
@@ -197,15 +212,15 @@ Proteobacteria:
 
 ```{r}
 # By proportion, class level
-growth_earlylate_prop_proteo_class <- growth_earlylate %>% 
+growth_succ_prop_proteo_class <- growth_succ %>% 
   filter(Phylum == "Proteobacteria") %>% 
   group_by(Inoculant, Succession, Phylum, Class) %>% 
   summarize(class_total = n()) %>%
   ungroup() %>% 
-  full_join(growth_earlylate_totals) %>% 
+  full_join(growth_succ_totals) %>% 
   mutate(proportion = class_total/total)
 
-growth_earlylate_prop_proteo_class %>% 
+growth_succ_prop_proteo_class %>% 
   ggplot(aes(x=proportion, y=Class, color=Class, shape=Inoculant)) +
   geom_jitter(size=2, height=0.1) +
   facet_wrap(~Succession) +
@@ -214,15 +229,15 @@ growth_earlylate_prop_proteo_class %>%
   theme(panel.grid.major.y = element_line(colour="gray"))
 
 # By proportion, genus level
-growth_earlylate_prop_proteo_genus <- growth_earlylate %>% 
+growth_succ_prop_proteo_genus <- growth_succ %>% 
   filter(Phylum == "Proteobacteria") %>% 
   group_by(Inoculant, Succession, Phylum, Genus) %>% 
   summarize(genus_total = n()) %>%
   ungroup() %>% 
-  full_join(growth_earlylate_totals) %>% 
+  full_join(growth_succ_totals) %>% 
   mutate(proportion = genus_total/total)
 
-growth_earlylate_prop_proteo_genus %>% 
+growth_succ_prop_proteo_genus %>% 
   ggplot(aes(x=proportion, y=Genus, color=Genus, shape=Inoculant)) +
   geom_jitter(size=2, height=0.1) +
   facet_wrap(~Succession) +
@@ -240,33 +255,100 @@ Does Alphaproteobacteria have a higher relative abundance in late compared to ea
 
 ```{r}
 # Try linear model first
-alphapro_prop_lm <- lm(proportion ~ Succession, filter(growth_earlylate_prop_proteo_class, Class=="Alphaproteobacteria"))
+alphapro_prop_lm <- lm(proportion ~ Succession, filter(growth_succ_prop_proteo_class, Class=="Alphaproteobacteria"))
 hist(resid(alphapro_prop_lm)) # check normality of residuals
 plot(predict(alphapro_prop_lm), resid(alphapro_prop_lm)) # check for heteroskedasticity
 # Non-normal, use Kruskal-Wallis test
-kruskal.test(proportion ~ Succession, filter(growth_earlylate_prop_proteo_class, Class=="Alphaproteobacteria"))
-```
-
-Chloroflexi:
-
-Statistics:
-
-Does Chloroflexi relative abundance shift from early to late succession?
-
-```{r}
-# Try linear model first
-chloro_prop_lm <- lm(proportion ~ Succession, filter(growth_earlylate_prop, Phylum=="Chloroflexi"))
-hist(resid(chloro_prop_lm)) # check normality of residuals
-plot(predict(chloro_prop_lm), resid(chloro_prop_lm)) # check for heteroskedasticity
-# Heteroskedastic, use Welch's t-test
-t.test(proportion ~ Succession, filter(growth_earlylate_prop, Phylum=="Chloroflexi"), var.equal=FALSE)
+kruskal.test(proportion ~ Succession, filter(growth_succ_prop_proteo_class, Class=="Alphaproteobacteria"))
 ```
 
 # Growth characteristics
 
+### Overall
+
+```{r}
+# Average of each inoculant
+growth_succ_overall <- growth_succ %>% 
+  group_by(Inoculant, Succession) %>%
+  summarize(k = mean(k),
+            start_abund = mean(start_abund),
+            end_abund = mean(end_abund),
+            change_abund = mean(change_abund),
+            length = mean(end_day - start_day)) %>% 
+  ungroup()
+  
+# k 
+growth_succ_overall %>% 
+  ggplot(aes(x=Succession, y=k)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# start abundance
+growth_succ_overall %>% 
+  ggplot(aes(x=Succession, y=log(start_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# end abundance
+growth_succ_overall %>% 
+  ggplot(aes(x=Succession, y=log(end_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# change abundance
+growth_succ_overall %>% 
+  ggplot(aes(x=Succession, y=log(change_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# length of growth
+growth_succ_overall %>% 
+  ggplot(aes(x=Succession, y=length)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+```
+
+Statistics
+
+Specific growth rate (k):
+
+```{r}
+gr_k_lm <- lm(k ~ Succession, growth_succ_overall)
+hist(resid(gr_k_lm))
+plot(predict(gr_k_lm), resid(gr_k_lm))
+summary(gr_k_lm)
+```
+
+Change in abundance:
+
+```{r}
+gr_change_lm <- lm(log(change_abund) ~ Succession, growth_succ_overall)
+hist(resid(gr_change_lm))
+plot(predict(gr_change_lm), resid(gr_change_lm))
+summary(gr_change_lm)
+```
+
+Length:
+
+```{r}
+gr_length_lm <- lm(length ~ Succession, growth_succ_overall)
+hist(resid(gr_length_lm)) # non normal
+plot(predict(gr_length_lm), resid(gr_length_lm))
+
+# Use Kruskal Wallis test instead
+kruskal.test(length ~ Succession, growth_succ_overall)
+```
+
+### Individual inoculants
+
 ```{r}
 # k 
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=k)) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -274,7 +356,7 @@ growth_earlylate %>%
   theme_test()
 
 # start abundance
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=log(start_abund))) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -282,7 +364,7 @@ growth_earlylate %>%
   theme_test()
 
 # end abundance
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=log(end_abund))) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -290,7 +372,7 @@ growth_earlylate %>%
   theme_test()
 
 # change abundance
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=log(change_abund))) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -298,7 +380,7 @@ growth_earlylate %>%
   theme_test()
 
 # length of growth
-growth_earlylate %>% 
+growth_succ %>% 
   mutate(length=end_day-start_day) %>% 
   ggplot(aes(x=Succession, y=length)) +
   geom_boxplot() +
@@ -307,16 +389,219 @@ growth_earlylate %>%
   theme_test()
 ```
 
-# Death characteristics???
-* only after growth? should I recalculate death estimates in that case?
+# Death characteristics
+
+### Overall
+
+```{r}
+# Average of each inoculant
+death_after_overall <- growth_succ %>% 
+  group_by(Inoculant, Succession) %>%
+  summarize(k = mean(k),
+            start_abund = mean(start_abund),
+            end_abund = mean(end_abund),
+            change_abund = mean(change_abund),
+            length = mean(end_day - start_day)) %>% 
+  ungroup()
+  
+# k 
+death_after_overall %>% 
+  ggplot(aes(x=Succession, y=k)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# start abundance
+death_after_overall %>% 
+  ggplot(aes(x=Succession, y=log(start_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# end abundance
+death_after_overall %>% 
+  ggplot(aes(x=Succession, y=log(end_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# change abundance
+death_after_overall %>% 
+  ggplot(aes(x=Succession, y=log(change_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# length of growth
+death_after_overall %>% 
+  ggplot(aes(x=Succession, y=length)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+```
+
+Statistics:
+
+Specific death rate (k):
+
+```{r}
+gr_k_lm <- lm(k ~ Succession, death_after_overall)
+hist(resid(gr_k_lm))
+plot(predict(gr_k_lm), resid(gr_k_lm))
+summary(gr_k_lm)
+```
+
+Change in abundance:
+
+```{r}
+gr_change_lm <- lm(log(abs(change_abund)) ~ Succession, death_after_overall)
+hist(resid(gr_change_lm))
+plot(predict(gr_change_lm), resid(gr_change_lm))
+summary(gr_change_lm)
+```
+
+Length:
+
+```{r}
+gr_length_lm <- lm(length ~ Succession, death_after_overall)
+hist(resid(gr_length_lm)) # non normal
+plot(predict(gr_length_lm), resid(gr_length_lm))
+
+# Use Kruskal Wallis test instead
+kruskal.test(length ~ Succession, death_after_overall)
+```
+
+### Individual inoculants
+
+```{r}
+# death occurence (proportional)
+death_after %>% 
+  group_by(Inoculant, Succession) %>% 
+  summarize(deaths = n()) %>% 
+  ungroup() %>% 
+  inner_join(growth_succ_totals) %>% 
+  mutate(proportion = deaths/total) %>% 
+  ggplot(aes(x=Succession, y=proportion)) +
+  geom_jitter(width=0.1) +
+  labs(y="Proportion of estimates that died after growth") +
+  theme_test()
+
+# k death
+death_after %>% 
+  ggplot(aes(x=Succession, y=k)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# start abundance
+death_after %>% 
+  ggplot(aes(x=Succession, y=log(start_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# end abundance
+death_after %>% 
+  ggplot(aes(x=Succession, y=log(end_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# change abundance
+death_after %>% 
+  ggplot(aes(x=Succession, y=log(abs(change_abund)))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+```
+
+Not enough data.
 
 # Genomic characteristics
 
 As predicted by PAPRICA.
 
+### Overall
+
+```{r}
+# Average of each inoculant
+genome_overall <- growth_succ %>% 
+  group_by(Inoculant, Succession) %>%
+  summarize(n16S = mean(change_abund),
+            genome_size = mean(genome_size),
+            phi = mean(phi),
+            npaths_actual = mean(npaths_actual),
+            nec_actual = mean(nec_actual)) %>% 
+  ungroup()
+  
+# n16S
+genome_overall %>% 
+  ggplot(aes(x=Succession, y=n16S)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# Genome size
+genome_overall %>% 
+  ggplot(aes(x=Succession, y=genome_size)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# Genome plasticity
+genome_overall %>% 
+  ggplot(aes(x=Succession, y=phi)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# number of pathways
+genome_overall %>% 
+  ggplot(aes(x=Succession, y=npaths_actual)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+# number of enzymes
+genome_overall %>% 
+  ggplot(aes(x=Succession, y=nec_actual)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+```
+
+Statistics:
+
+n16S:
+
+```{r}
+n16S_lm <- lm(log(n16S) ~ Succession, genome_overall)
+hist(resid(n16S_lm))
+plot(predict(n16S_lm), resid(n16S_lm))
+summary(n16S_lm)
+```
+
+Genome size:
+
+```{r}
+genome_lm <- lm(genome_size ~ Succession, genome_overall)
+hist(resid(genome_lm))
+plot(predict(genome_lm), resid(genome_lm)) # heteroskedastic
+
+# Use Welch Anova
+oneway.test(genome_size ~ Succession, genome_overall)
+```
+
+
+### Individual inoculants
+
 ```{r}
 # n16S
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=n16S)) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -324,7 +609,7 @@ growth_earlylate %>%
   theme_test()
 
 # Genome size
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=genome_size)) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -332,7 +617,7 @@ growth_earlylate %>%
   theme_test()
 
 # Genome plasticity
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=phi)) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -340,7 +625,7 @@ growth_earlylate %>%
   theme_test()
 
 # number of pathways
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=npaths_actual)) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -348,7 +633,7 @@ growth_earlylate %>%
   theme_test()
 
 # number of enzymes
-growth_earlylate %>% 
+growth_succ %>% 
   ggplot(aes(x=Succession, y=nec_actual)) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
@@ -363,16 +648,16 @@ growth_earlylate %>%
 
 ```{r}
 # Label norm abundance data early/late
-grnorm_earlylate <- inner_join(grnorm, growers, by="label")
+grnorm_succ <- inner_join(grnorm, growers, by="label")
 
 # Total norm. abundance at each time point
-grnorm_totals <- grnorm_earlylate  %>% 
+grnorm_totals <- grnorm_succ  %>% 
   group_by(Inoculant, Day) %>%
   summarize(norm_abund_total = sum(norm_abund_avg)) %>% 
   ungroup()
   
 # Calculate proportion of total abundance at each tp
-grnorm_props <- grnorm_earlylate %>% 
+grnorm_props <- grnorm_succ %>% 
   group_by(Inoculant, Day, Succession) %>%
   summarize(succ_total = sum(norm_abund_avg)) %>% 
   ungroup() %>% 
@@ -424,7 +709,7 @@ Prep data:
 
 ```{r}
 # Create presence/absence matrix of growing taxa
-growth_presabs <- growth_earlylate %>% 
+growth_presabs <- growth_succ %>% 
   select(ASV, Inoculant, Succession) %>% 
   mutate(presence = 1) %>% # presence/absence
   pivot_wider(names_from="ASV", values_from="presence") %>% 
