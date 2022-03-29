@@ -62,6 +62,7 @@ save_fit <- function(label, start, end, df_sub, output) {
 Estimate death:
 
 * Same as algorhithm from 03_SFA2_deathestimation.Rmd but looking for negative slopes instead (indicate death)
+* Only estimating on data for taxa with estimated growth, 
 
 ```{r}
 ## Requires a dataframe with columns containing a unique label for each data point, abundance values, time points

@@ -1,0 +1,473 @@
+---
+title: "Early vs late succession"
+author: "Cassandra Wattenburger"
+date: "3/28/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("picante")
+
+sessionInfo()
+```
+
+# Notes
+
+* See bNTI results and inoculant growth overviews for how "early" and "late" succession were devided
+* Early = started growing on day 1
+* Late = started frowing after day 1
+* Need to think more about what information about death is most important
+
+# Import data
+
+* growth estimates w/PAPRICA predictions
+* normalized abundances
+* taxonomy table
+
+```{r}
+# Growth
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+
+# Normalized abundance data for growth estimates
+grnorm <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+
+# Taxonomy
+tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
+
+# Tree
+tree <- read_tree("../data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+```
+
+# Distinguish early vs late growers
+
+```{r}
+# Growth estimates
+growth_earlylate <- growth %>% 
+  mutate(Succession = if_else(start_day == 0, "early", if_else(start_day > 0 & start_day < 10, "mid", "late"))) %>% 
+  mutate(Succession = as_factor(Succession))
+
+growers <- select(growth_earlylate, label, Succession)
+```
+
+# [rethink] 
+proportions instead likely better
+
+```{r}
+growth_earlylate %>% 
+  group_by(Inoculant, Succession) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
+
+# " mean overall
+growth_earlylate %>% 
+  group_by(Inoculant, Succession) %>% 
+  summarize(total = n()) %>% 
+  group_by(Succession) %>% 
+  summarize(mean_total = mean(total), sd_total = sd(total))
+
+# Visualize
+growth_earlylate %>% 
+  group_by(Inoculant, Succession) %>% 
+  summarize(total = n()) %>%
+  ggplot(aes(x=Succession, y=total, color=Succession)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  theme_test()
+
+```
+
+# Taxonomy of growers
+
+```{r}
+# By proportion
+growth_earlylate_totals <- growth_earlylate %>% 
+  group_by(Inoculant, Succession) %>% 
+  summarize(total = n()) %>% 
+  ungroup() 
+
+growth_earlylate_prop <- growth_earlylate %>% 
+  group_by(Inoculant, Succession, Phylum) %>% 
+  summarize(phy_total = n()) %>%
+  ungroup() %>% 
+  full_join(growth_earlylate_totals) %>% 
+  mutate(proportion = phy_total/total)
+
+growth_earlylate_prop %>% 
+  ggplot(aes(x=proportion, y=Phylum, color=Phylum, shape=Inoculant)) +
+  geom_jitter(size=2, height=0.1) +
+  facet_wrap(~Succession) +
+  labs(x="Proportion of growth estimates") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"))
+```
+
+Seems as though Proteobacteria, Chloroflexi may have become more prominent in late succession. Bacteroidota and Myxococcota only present in early succession. Firmicutes, Actinobacteriota prominent in both early and late succession. Shifts could be happening at higher taxonomic resolution, however. Late seem to be made up of most speciose groups (more likely to pick up).
+
+### Zoom in
+
+Actinobacteriota:
+
+```{r}
+# By proportion, class level
+growth_earlylate_prop_actino <- growth_earlylate %>% 
+  filter(Phylum == "Actinobacteriota") %>% 
+  group_by(Inoculant, Succession, Phylum, Class) %>% 
+  summarize(class_total = n()) %>%
+  ungroup() %>% 
+  full_join(growth_earlylate_totals) %>% 
+  mutate(proportion = class_total/total)
+
+growth_earlylate_prop_actino %>% 
+  ggplot(aes(x=proportion, y=Class, color=Class, shape=Inoculant)) +
+  geom_jitter(size=2, height=0.1) +
+  facet_wrap(~Succession) +
+  labs(title="Actinobacteriota") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"))
+
+# By proportion, genus level
+growth_earlylate_prop_actino <- growth_earlylate %>% 
+  filter(Phylum == "Actinobacteriota") %>% 
+  group_by(Inoculant, Succession, Phylum, Genus) %>% 
+  summarize(genus_total = n()) %>%
+  ungroup() %>% 
+  full_join(growth_earlylate_totals) %>% 
+  mutate(proportion = genus_total/total)
+
+growth_earlylate_prop_actino %>% 
+  ggplot(aes(x=proportion, y=Genus, color=Genus, shape=Inoculant)) +
+  geom_jitter(size=2, height=0.1) +
+  facet_wrap(~Succession) +
+  labs(title="Actinobacteriota") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"),
+        legend.position = "none")
+```
+
+Firmcutes:
+
+```{r}
+# By proportion, class level
+growth_earlylate_prop_firmi <- growth_earlylate %>% 
+  filter(Phylum == "Firmicutes") %>% 
+  group_by(Inoculant, Succession, Phylum, Class) %>% 
+  summarize(class_total = n()) %>%
+  ungroup() %>% 
+  full_join(growth_earlylate_totals) %>% 
+  mutate(proportion = class_total/total)
+
+growth_earlylate_prop_firmi %>% 
+  ggplot(aes(x=proportion, y=Class, color=Class, shape=Inoculant)) +
+  geom_jitter(size=2, height=0.1) +
+  facet_wrap(~Succession) +
+  labs(title="Firmicutes") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"))
+
+# By proportion, genus level
+growth_earlylate_prop_firmi <- growth_earlylate %>% 
+  filter(Phylum == "Firmicutes") %>% 
+  group_by(Inoculant, Succession, Phylum, Genus) %>% 
+  summarize(genus_total = n()) %>%
+  ungroup() %>% 
+  full_join(growth_earlylate_totals) %>% 
+  mutate(proportion = genus_total/total)
+
+growth_earlylate_prop_firmi %>% 
+  ggplot(aes(x=proportion, y=Genus, color=Genus, shape=Inoculant)) +
+  geom_jitter(size=2, height=0.1) +
+  facet_wrap(~Succession) +
+  labs(title="Firmicutes") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"),
+        legend.position = "none")
+```
+
+Proteobacteria:
+
+```{r}
+# By proportion, class level
+growth_earlylate_prop_proteo_class <- growth_earlylate %>% 
+  filter(Phylum == "Proteobacteria") %>% 
+  group_by(Inoculant, Succession, Phylum, Class) %>% 
+  summarize(class_total = n()) %>%
+  ungroup() %>% 
+  full_join(growth_earlylate_totals) %>% 
+  mutate(proportion = class_total/total)
+
+growth_earlylate_prop_proteo_class %>% 
+  ggplot(aes(x=proportion, y=Class, color=Class, shape=Inoculant)) +
+  geom_jitter(size=2, height=0.1) +
+  facet_wrap(~Succession) +
+  labs(title="Proteobacteria") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"))
+
+# By proportion, genus level
+growth_earlylate_prop_proteo_genus <- growth_earlylate %>% 
+  filter(Phylum == "Proteobacteria") %>% 
+  group_by(Inoculant, Succession, Phylum, Genus) %>% 
+  summarize(genus_total = n()) %>%
+  ungroup() %>% 
+  full_join(growth_earlylate_totals) %>% 
+  mutate(proportion = genus_total/total)
+
+growth_earlylate_prop_proteo_genus %>% 
+  ggplot(aes(x=proportion, y=Genus, color=Genus, shape=Inoculant)) +
+  geom_jitter(size=2, height=0.1) +
+  facet_wrap(~Succession) +
+  labs(title="Proteobacteria") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"),
+        legend.position = "none")
+```
+
+Looks like the majority are Alphaproteobacteria, and they seem to be more dominant in later succession?
+
+Statistics: 
+
+Does Alphaproteobacteria have a higher relative abundance in late compared to early succession?
+
+```{r}
+# Try linear model first
+alphapro_prop_lm <- lm(proportion ~ Succession, filter(growth_earlylate_prop_proteo_class, Class=="Alphaproteobacteria"))
+hist(resid(alphapro_prop_lm)) # check normality of residuals
+plot(predict(alphapro_prop_lm), resid(alphapro_prop_lm)) # check for heteroskedasticity
+# Non-normal, use Kruskal-Wallis test
+kruskal.test(proportion ~ Succession, filter(growth_earlylate_prop_proteo_class, Class=="Alphaproteobacteria"))
+```
+
+Chloroflexi:
+
+Statistics:
+
+Does Chloroflexi relative abundance shift from early to late succession?
+
+```{r}
+# Try linear model first
+chloro_prop_lm <- lm(proportion ~ Succession, filter(growth_earlylate_prop, Phylum=="Chloroflexi"))
+hist(resid(chloro_prop_lm)) # check normality of residuals
+plot(predict(chloro_prop_lm), resid(chloro_prop_lm)) # check for heteroskedasticity
+# Heteroskedastic, use Welch's t-test
+t.test(proportion ~ Succession, filter(growth_earlylate_prop, Phylum=="Chloroflexi"), var.equal=FALSE)
+```
+
+# Growth characteristics
+
+```{r}
+# k 
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=k)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# start abundance
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=log(start_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# end abundance
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=log(end_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# change abundance
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=log(change_abund))) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# length of growth
+growth_earlylate %>% 
+  mutate(length=end_day-start_day) %>% 
+  ggplot(aes(x=Succession, y=length)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+```
+
+# Death characteristics???
+* only after growth? should I recalculate death estimates in that case?
+
+# Genomic characteristics
+
+As predicted by PAPRICA.
+
+```{r}
+# n16S
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=n16S)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# Genome size
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=genome_size)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# Genome plasticity
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=phi)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# number of pathways
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=npaths_actual)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# number of enzymes
+growth_earlylate %>% 
+  ggplot(aes(x=Succession, y=nec_actual)) +
+  geom_boxplot() +
+  geom_jitter(alpha=0.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+```
+
+# Dominance through time
+
+* Using the normalized abundances for each taxon at each time point
+* Creating proportions to control for unequal numbers of estimates
+
+```{r}
+# Label norm abundance data early/late
+grnorm_earlylate <- inner_join(grnorm, growers, by="label")
+
+# Total norm. abundance at each time point
+grnorm_totals <- grnorm_earlylate  %>% 
+  group_by(Inoculant, Day) %>%
+  summarize(norm_abund_total = sum(norm_abund_avg)) %>% 
+  ungroup()
+  
+# Calculate proportion of total abundance at each tp
+grnorm_props <- grnorm_earlylate %>% 
+  group_by(Inoculant, Day, Succession) %>%
+  summarize(succ_total = sum(norm_abund_avg)) %>% 
+  ungroup() %>% 
+  inner_join(grnorm_totals) %>% 
+  mutate(proportion = succ_total/norm_abund_total)
+
+# Visualize
+grnorm_props %>% 
+  mutate(fade = if_else(Succession == "early", "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=proportion, color=Succession, alpha=fade)) +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 3.5, linetype=3) +
+  geom_vline(xintercept = 9, linetype=3) +
+  geom_vline(xintercept = 18, linetype=3) +
+  geom_vline(xintercept = 24, linetype=3) +
+  facet_wrap(~Inoculant) +
+  labs(y="Proportion of total abundance") +
+  theme_test()
+
+# Calculate overall
+grnorm_props_overall <- grnorm_props %>% 
+  group_by(Day, Succession) %>% 
+  summarize(prop_mean = mean(proportion)) %>% 
+  ungroup() %>% 
+  mutate(fade = if_else(Succession == "early", "yes", "no"))
+
+# Visualize
+grnorm_props_overall %>% 
+  mutate(fade = if_else(Succession == "early", "yes", "no")) %>%
+  ggplot(aes(x=Day, y=prop_mean, color=Succession, alpha=fade)) +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 3.5, linetype=3) +
+  geom_vline(xintercept = 9, linetype=3) +
+  geom_vline(xintercept = 18, linetype=3) +
+  geom_vline(xintercept = 24, linetype=3) +
+  labs(y="Proportion of total abundance (avg over inocs)") +
+  theme_test()
+```
+
+# Phylogenetic conservation
+
+Are groups that start growing "together" more phylogenetically conserved?
+
+Prediction: conservation stronger at beginning growers than later (due to filter at beginning and common traits for rapid initial growth)
+
+Prep data:
+
+```{r}
+# Create presence/absence matrix of growing taxa
+growth_presabs <- growth_earlylate %>% 
+  select(ASV, Inoculant, Succession) %>% 
+  mutate(presence = 1) %>% # presence/absence
+  pivot_wider(names_from="ASV", values_from="presence") %>% 
+  mutate(across(-c("Inoculant", "Succession"), ~ if_else(is.na(.x), 0, .x))) %>% # replace coerced NAs with 0s
+  rownames_to_column(var="Sample") # dummy sample names for reference
+
+# Save metadata information
+meta <- growth_presabs %>% select(Sample, Inoculant, Succession)
+```
+
+Calculate mean phylogenetic distance:
+
+```{r}
+# Calculate mpd for each inoculant group
+mpd_inoc <- data.frame()
+
+for (i in unique(growth_presabs$Inoculant)) {
+  for (s in as.character(unique(growth_presabs[growth_presabs$Inoculant==i,]$Succession))) {
+    # Subset
+    data_sub <- filter(growth_presabs, Inoculant==i & Succession==s) %>% 
+      select(-c(Sample, Inoculant, Succession)) %>% 
+      as.matrix()
+    # Prune tree
+    tree_prune <- prune.sample(data_sub, tree)
+    # Calculate MPD
+    mpd_sub <- mpd(data_sub, cophenetic(tree_prune)) # broken here
+    # Save result
+    this_row <- bind_cols(Inoculant=i, Succession=s, mpd=mpd_sub)
+    mpd_inoc <- bind_rows(mpd_inoc, this_row)
+  }
+}
+```
+
+Visualize:
+
+```{r}
+mpd_inoc %>% 
+  mutate(Succession = as_factor(Succession)) %>% 
+  ggplot(aes(x=Succession, y=mpd)) +
+  geom_jitter(width=0.1) +
+  labs(y="Mean pairwise phylogenetic distance", x="Start of growth stage") +
+  theme_test()
+```
+
+
+

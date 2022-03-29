@@ -22,6 +22,7 @@ sessionInfo()
 
 # Notes
 
+* Defining "early", "mid", and "late" growers during succession as starting on day 0, day 3+, and day 10+ respectively. Based on bNTI and start of growth results.
 
 * Growth parameters
   * specific growth rate (k)
@@ -110,7 +111,7 @@ growth %>%
 
 # lag
 growth %>% 
-  ggplot(aes(x=Inoculant, y=start_day)) +
+  ggplot(aes(x=Inoculant, y=start_day, color=Inoculant)) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
   theme_test()
@@ -159,11 +160,7 @@ growth %>%
   theme_test()
 ```
 
-For start day there is a batch that starts growing on day 0, a prominent gap, and then another batch that starts growing at varying points afterwards. Is this a wave? It seems to correspond to the shift towards homogenizing selection?
 
-"succession is a result of waves of births and deaths"
-
-what is the difference between assembly and succession?
 
 
 

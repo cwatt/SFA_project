@@ -32,7 +32,7 @@ Resources used:
 
 ```{r}
 # Growth estimates/traits
-growth <- readRDS("../data_intermediate/SFA2_growthclusters.Rmd") %>% 
+growth <- readRDS("../../data_intermediate/archive_032122/SFA2_growthclusters.Rmd") %>% 
   filter(cluster != 1) %>% # remove cluster 1 because it consists of a single outlier
   mutate(change_abund = change_abund/n16S, # correct abundance values by 16S copy number
          start_abund = start_abund/n16S,
