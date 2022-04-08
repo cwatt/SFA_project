@@ -31,6 +31,9 @@ sessionInfo()
 * phylogenetic tree
 
 ```{r}
+# Metadata
+meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
+
 # Growth
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 
@@ -43,11 +46,15 @@ grnorm <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
 # Normalized abundance data for growth estimates
 denorm <- readRDS("../data_intermediate/SFA2_norm_deestimated.rds")
 
+# Normalized abundance data (all)
+norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds")
+
 # Taxonomy
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Tree
 tree <- read_tree("../data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
+
 ```
 
 # Distinguish early, mid, and late growers
@@ -59,7 +66,7 @@ Late = started on or after day 10
 ```{r}
 # Growth estimates
 growth_succ <- growth %>% 
-  mutate(Succession = if_else(start_day == 0, "early", if_else(start_day > 0 & start_day < 10, "mid", "late"))) %>% 
+  mutate(Succession = if_else(start_day == 0, "early", "later")) %>% 
   mutate(Succession = as_factor(Succession))
 
 growers <- select(growth_succ, label, Succession)
@@ -74,7 +81,7 @@ death_after <- death %>%
   inner_join(growers)
 ```
 
-# Proportions of early, mid, late
+# Proportions of early and later
 
 ```{r}
 # Inoculant totals
@@ -99,6 +106,11 @@ growth_succ_props %>%
   geom_jitter(alpha=0.5) +
   theme_test()
 
+# Summary
+growth_succ_props %>% 
+  group_by(Succession) %>% 
+  summarize(prop_mean = mean(proportion), prop_sd = sd(proportion)) %>% 
+  ungroup()
 ```
 
 # Taxonomy of growers
@@ -327,10 +339,12 @@ summary(gr_k_lm)
 Change in abundance:
 
 ```{r}
-gr_change_lm <- lm(log(change_abund) ~ Succession, growth_succ_overall)
-hist(resid(gr_change_lm))
+gr_change_lm <- lm(change_abund ~ Succession, growth_succ_overall)
+hist(resid(gr_change_lm)) # not normal
 plot(predict(gr_change_lm), resid(gr_change_lm))
-summary(gr_change_lm)
+
+# Kruskal Wallis
+kruskal.test(change_abund ~ Succession, growth_succ_overall)
 ```
 
 Length:
@@ -395,7 +409,7 @@ growth_succ %>%
 
 ```{r}
 # Average of each inoculant
-death_after_overall <- growth_succ %>% 
+death_after_overall <- death_after %>% 
   group_by(Inoculant, Succession) %>%
   summarize(k = mean(k),
             start_abund = mean(start_abund),
@@ -427,7 +441,7 @@ death_after_overall %>%
 
 # change abundance
 death_after_overall %>% 
-  ggplot(aes(x=Succession, y=log(change_abund))) +
+  ggplot(aes(x=Succession, y=log(abs(change_abund)))) +
   geom_boxplot() +
   geom_jitter(alpha=0.5) +
   theme_test()
@@ -446,26 +460,30 @@ Specific death rate (k):
 
 ```{r}
 gr_k_lm <- lm(k ~ Succession, death_after_overall)
-hist(resid(gr_k_lm))
+hist(resid(gr_k_lm)) # non normal
 plot(predict(gr_k_lm), resid(gr_k_lm))
-summary(gr_k_lm)
+
+# Krukal Wallis test
+kruskal.test(k ~ Succession, death_after_overall)
 ```
 
 Change in abundance:
 
 ```{r}
-gr_change_lm <- lm(log(abs(change_abund)) ~ Succession, death_after_overall)
-hist(resid(gr_change_lm))
-plot(predict(gr_change_lm), resid(gr_change_lm))
-summary(gr_change_lm)
+de_change_lm <- lm(change_abund ~ Succession, death_after_overall)
+hist(resid(de_change_lm)) # non-normal
+plot(predict(de_change_lm), resid(de_change_lm)) # Heteroskedastic
+
+# Kruskal Wallis
+kruskal.test(change_abund ~ Succession, death_after_overall)
 ```
 
 Length:
 
 ```{r}
-gr_length_lm <- lm(length ~ Succession, death_after_overall)
-hist(resid(gr_length_lm)) # non normal
-plot(predict(gr_length_lm), resid(gr_length_lm))
+de_length_lm <- lm(length ~ Succession, death_after_overall)
+hist(resid(de_length_lm)) # non normal
+plot(predict(de_length_lm), resid(de_length_lm))
 
 # Use Kruskal Wallis test instead
 kruskal.test(length ~ Succession, death_after_overall)
@@ -580,9 +598,11 @@ n16S:
 
 ```{r}
 n16S_lm <- lm(log(n16S) ~ Succession, genome_overall)
-hist(resid(n16S_lm))
+hist(resid(n16S_lm)) # non-normal
 plot(predict(n16S_lm), resid(n16S_lm))
-summary(n16S_lm)
+
+# Kruskal Wallis
+kruskal.test(log(n16S) ~ Succession, genome_overall)
 ```
 
 Genome size:
@@ -590,10 +610,8 @@ Genome size:
 ```{r}
 genome_lm <- lm(genome_size ~ Succession, genome_overall)
 hist(resid(genome_lm))
-plot(predict(genome_lm), resid(genome_lm)) # heteroskedastic
-
-# Use Welch Anova
-oneway.test(genome_size ~ Succession, genome_overall)
+plot(predict(genome_lm), resid(genome_lm))
+summary(genome_lm)
 ```
 
 
@@ -715,9 +733,6 @@ growth_presabs <- growth_succ %>%
   pivot_wider(names_from="ASV", values_from="presence") %>% 
   mutate(across(-c("Inoculant", "Succession"), ~ if_else(is.na(.x), 0, .x))) %>% # replace coerced NAs with 0s
   rownames_to_column(var="Sample") # dummy sample names for reference
-
-# Save metadata information
-meta <- growth_presabs %>% select(Sample, Inoculant, Succession)
 ```
 
 Calculate mean phylogenetic distance:
@@ -754,5 +769,83 @@ mpd_inoc %>%
   theme_test()
 ```
 
+# Batch dynamics
+
+Whole communities:
+
+```{r}
+# Reformat
+meta2 <- meta %>%
+  mutate(SampleID = gsub("([0-9]+)", "sa\\1", SampleID)) %>% 
+  select(SampleID, Sample, Inoculant, Day, Replicate)
+
+norm_meta <- norm %>% 
+  pivot_longer(-SampleID, values_to="norm_abund", names_to="ASV") %>% 
+  inner_join(meta2)
+
+# Average ASV abundance across replicates
+norm_avg <- norm_meta %>% 
+  group_by(Inoculant, Day, ASV) %>% 
+  summarize(norm_abund = mean(norm_abund)) %>% 
+  ungroup()
+
+# Sum each day for each inoculant
+norm_sum <- norm_avg %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(norm_abund = sum(norm_abund)) %>% 
+  ungroup() %>% 
+  mutate(Inoculant = as.character(Inoculant))
+
+# Visualize
+norm_sum %>% 
+  ggplot(aes(x=Day, y=log(norm_abund), color=Inoculant)) +
+  geom_point() +
+  geom_line() +
+  #facet_wrap(~Inoculant) +
+  labs(title="Total community normalized abundance") +
+  theme_test()
+```
+
+Growers only:
+
+```{r}
+growth_asvs <- growth$ASV %>% as.character()
+
+grnorm_totals <- grnorm %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(total_abund = sum(norm_abund_avg)) %>% 
+  ungroup()
+
+grnorm_totals %>% 
+  ggplot(aes(x=Day, y=log(total_abund), color=Inoculant)) +
+  geom_point() +
+  geom_line() + 
+  labs(title="Growing taxa total normalized abundance") +
+  theme_test()
+```
+
+Together:
+
+```{r}
+# Combine whole community and growing community normalized abundance totals
+norm_wholegr <- norm_sum %>% 
+  inner_join(grnorm_totals) %>% 
+  rename(whole=norm_abund, growth=total_abund) %>% 
+  pivot_longer(-c(Inoculant, Day), names_to="type", values_to="norm_abund")
+
+# Visualize
+norm_wholegr %>% 
+  ggplot(aes(x=Day, y=log(norm_abund), alpha=type)) + 
+  geom_point() +
+  geom_line() +
+  facet_wrap(~Inoculant) +
+  theme_test()
+```
+
+Why do some time points have higher growth abundance than whole community abundance? That shouldn't be possible.
+
+Most abundance is made up of taxa with growth estimates after day 3 or 4, indicating we did a pretty good job of capturing the growers/major players in the bottles.
+
+But then why do betaNTI results for whole community vs growing taxa differ?
 
 

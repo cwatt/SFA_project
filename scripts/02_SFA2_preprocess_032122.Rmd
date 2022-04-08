@@ -65,7 +65,10 @@ count <- full_join(count_rep1, count_rep2, by="ASV") %>%
 # Taxonomy table combine
 tax <- full_join(tax_rep1, tax_rep2) %>%
   full_join(tax_rep3) %>% 
-  full_join(tax_redos)
+  full_join(tax_redos) %>%
+  mutate(rownames = ASV) %>% # Add an ASV column
+  column_to_rownames(var="rownames") %>% # restore rownames
+  select(Domain:Species, ASV)
 ```
 
 Save taxonomy:
@@ -86,8 +89,7 @@ count_matrix <- count %>%
 phy_count <- otu_table(count_matrix, taxa_are_rows=TRUE)
 
 # Reformat and import taxonomy table
-tax_matrix <- tax %>% 
-  column_to_rownames(var="ASV") %>% 
+tax_matrix <- tax %>%
   as.matrix()
 
 phy_tax <- tax_table(tax_matrix)
@@ -395,7 +397,7 @@ count_stdsummed <- count_stdcorrected %>%
 
 Normalize to the internal standard:
 
-* taxon counts/Aquifex counts in the sample
+taxon counts / Aquifex counts in each sample
 
 ```{r}
 # Divide taxa counts by internal std counts in each sample

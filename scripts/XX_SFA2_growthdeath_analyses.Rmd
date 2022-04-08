@@ -1,0 +1,90 @@
+---
+title: "Untitled"
+author: "Cassandra Wattenburger"
+date: "4/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Notes
+
+# Import data
+
+* growth and death estimates w/PAPRICA predictions
+
+```{r}
+# Growth
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+
+# Death
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
+```
+
+# Growth vs growth
+
+k vs lag time:
+
+```{r}
+growth %>% 
+  ggplot(aes(x=start_day, y=k)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  facet_wrap(~Inoculant) +
+  theme_test() 
+```
+
+k vs change in abundance:
+
+```{r}
+growth %>% 
+  ggplot(aes(x=log(change_abund), y=k)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  facet_wrap(~Inoculant) +
+  theme_test() 
+```
+
+k vs length:
+
+```{r}
+growth %>% 
+  mutate(length=end_day - start_day) %>% 
+  ggplot(aes(x=length, y=k)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  facet_wrap(~Inoculant) +
+  theme_test() 
+```
+
+Length vs change in abundance:
+
+```{r}
+growth %>% 
+  mutate(length=end_day - start_day) %>% 
+  ggplot(aes(x=length, y=log(change_abund))) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  facet_wrap(~Inoculant) +
+  theme_test() 
+```
+
+Does combo of positive relationship between k and change in abundance with negative relationship between k and length of growth indicate increasing efficiency with increasing growth rate?
+
+Faster growth rate <-> shorter period of growth & greater change in abundance
+
+Would need CO2 respiration and C consumption data for individual taxa to further validate.
+

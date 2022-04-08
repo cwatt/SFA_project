@@ -1,0 +1,173 @@
+---
+title: "WIP/Idea exploration"
+author: "Cassandra Wattenburger"
+date: "4/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Import data
+
+* growth and death estimates
+* DOC measurements
+
+```{r}
+# growth
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+
+# death
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
+
+# DOC
+doc <- readRDS("../data_DOC/SFA2/SFA2_doc.rds") %>% 
+  mutate(Sample = sample_id)
+
+# metadata
+meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv") %>% 
+  mutate(Sample = as.character(Sample))
+
+# Add metadata to doc
+doc <- inner_join(meta, doc) %>% 
+  select(SampleID, Sample, Type, Inoculant, Replicate, doc_ppm=mean)
+```
+
+# Kernel density
+
+### Growth
+
+Observe growth characteristics of each inoculant on a per-ASV level (rather than avgs).
+
+```{r}
+# k 
+growth %>%
+  ggplot(aes(x=k, color=Inoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="specific growth rate", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+growth %>%
+  ggplot(aes(x=log(change_abund), color=Inoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln change in abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+growth %>%
+  ggplot(aes(x=start_day, color=Inoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="lag", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+### Death
+
+Observe growth characteristics of each inoculant on a per-ASV level (rather than avgs).
+
+```{r}
+# k 
+death %>%
+  ggplot(aes(x=k, color=Inoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="specific death rate", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+death %>%
+  ggplot(aes(x=log(abs(change_abund)), color=Inoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="ln change in abundance", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+death %>%
+  ggplot(aes(x=start_day, color=Inoculant)) +
+  geom_density(alpha=0.5) +
+  labs(x="lag", y="Kernel Density") +
+  theme_test() +
+  theme(#legend.position="none",
+        title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+```
+
+# Waves of growth and death
+
+Is there a pattern?
+
+```{r}
+# Isolate growth and death lag
+growth_start <- select(growth, Inoculant, ASV, growth=start_day)
+death_start <- select(death, Inoculant, ASV, death=start_day)
+
+# Combine
+grde_lag <- inner_join(growth_start, death_start)  %>% 
+  pivot_longer(-c(Inoculant, ASV), names_to="type", values_to="lag")
+
+# Visualize
+grde_lag %>% 
+  ggplot(aes(x=lag, color=type)) +
+  geom_density(alpha=0.5) +
+  facet_wrap(~Inoculant, scales = "free") +
+  labs(x="lag", y="Kernel Density") +
+  theme_test() +
+  theme(title=element_text(size=12),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+```
+
+# DOC
+
+By inoculant.
+
+```{r}
+# Avg each incoulant DOC measurement
+doc_mean <- doc %>% 
+  group_by(Inoculant, Type) %>% 
+  summarize(doc_ppm = mean(doc_ppm)) %>% 
+  ungroup() %>% 
+  filter(Type=="Growth")
+
+doc %>% 
+  filter(Type=="Growth") %>% 
+  ggplot(aes(x=Inoculant, y=doc_ppm)) +
+  geom_point(alpha=0.5) +
+  theme_test()
+```
+
+# Clustering?
+
+
+
+
