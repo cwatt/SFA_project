@@ -419,8 +419,6 @@ norm_meta <- count_norm %>%
   inner_join(tax, by="ASV") %>% 
   inner_join(meta, by="SampleID") %>% 
   select(c(SampleID, Sample, Type:Replicate, norm_abund, ASV, Domain:Species)) %>% 
-  mutate(Inoculant = as_factor(Inoculant),
-         Replicate = as_factor(Replicate)) %>% 
   mutate(across(Domain:Species, ~as.character(.x), {.col}))
 
 # Remove infinite values
