@@ -50,7 +50,14 @@ tax_redos <- read_tsv(file="~/SFA/data_amplicon/SFA2_full/redos/final/SFA2_redos
 tree <- read.tree(file="~/SFA/data_amplicon/SFA2_full/tree/SFA2_full.tree-final.nwk")
 
 # Metadata
-meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
+meta <- read_tsv(file = "~/SFA/data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv") %>%
+  mutate(Inoculant = as.character(Inoculant), # Tidy up
+         SampleID = gsub("([0-9]+)", "sa\\1", SampleID)) %>% 
+  select(SampleID, Sample, Type, Inoculant, Day, Replicate, Attempt, Library, PCR_plate, Primer_num) # keep relevant variables only
+```
+
+```{r, eval=FALSE}
+saveRDS(meta, file="../data_intermediate/SFA2_metadata.rds")
 ```
 
 Combine replicates and redos:
@@ -96,9 +103,10 @@ phy_tax <- tax_table(tax_matrix)
 
 # Metadata import
 meta_fix <- meta %>% 
-  mutate(Inoculant = as.character(Inoculant),
-         SeqID = gsub("(.+)", "sa\\1", SampleID)) %>% 
-  column_to_rownames(var="SeqID")
+  mutate(dummy=SampleID) %>% 
+  column_to_rownames(var="SampleID") %>% 
+  rename(SampleID=dummy) %>% 
+  select(SampleID, Sample:Primer_num)
 phy_meta <- sample_data(meta_fix)
 
 # Create phyloseq object
@@ -148,9 +156,8 @@ Calculate read depth:
 ```{r}
 # Extract count and metadata from processed phyloseq object
 count_processed <- data.frame(otu_table(physeq3))
-meta_processed <- data.frame(sample_data(physeq3)) %>%
-  select(-SampleID) %>%
-  rownames_to_column(var="SampleID")
+
+meta_processed <- data.frame(sample_data(physeq3))
 
 # Calculate read depth per sample
 read_depth <- count_processed %>%
@@ -205,7 +212,7 @@ richness <- count_processed %>%
 # Combine
 reseq_compare <- inner_join(read_depth_reseq, spike_counts) %>% 
   inner_join(richness) %>% 
-  select(c(SampleID, Sample, Attempt:PCR_plate, total_reads, std_count, richness=`.`)) %>% 
+  select(c(SampleID, Sample, Type:Primer_num, total_reads, std_count, richness=`.`)) %>% 
   mutate(Replicate = as_factor(Replicate))
 ```
 
@@ -405,12 +412,25 @@ count_norm <- count_stdsummed %>%
   pivot_wider(SampleID, names_from = ASV, values_from = count_sum) %>%
   mutate(across(-SampleID, ~ .x/aquifex_asv, {.col})) %>%
   select(-aquifex_asv) # remove Aquifex ASVs
+
+# Merge and reformat
+norm_meta <- count_norm %>% 
+  pivot_longer(-SampleID, names_to="ASV", values_to="norm_abund") %>% 
+  inner_join(tax, by="ASV") %>% 
+  inner_join(meta, by="SampleID") %>% 
+  select(c(SampleID, Sample, Type:Replicate, norm_abund, ASV, Domain:Species)) %>% 
+  mutate(Inoculant = as_factor(Inoculant),
+         Replicate = as_factor(Replicate)) %>% 
+  mutate(across(Domain:Species, ~as.character(.x), {.col}))
+
+# Remove infinite values
+norm_meta <- norm_meta[!is.infinite(norm_meta$norm_abund),]
 ```
 
 # Save normalized data
 
 ```{r, eval=FALSE}
 # Save normalized abundances
-saveRDS(count_norm, file="../data_intermediate/SFA2_count_normalized.rds")
+saveRDS(norm_meta, file="../data_intermediate/SFA2_normalized.rds")
 ```
 

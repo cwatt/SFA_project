@@ -35,7 +35,7 @@ norm_prepped <- readRDS("../data_intermediate/SFA2_norm_prepped.rds")
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Metadata
-meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
 ```
 
 # Estimate death - from start of incubation

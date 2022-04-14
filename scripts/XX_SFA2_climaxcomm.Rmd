@@ -1,0 +1,163 @@
+---
+title: "Climax community"
+author: "Cassandra Wattenburger"
+date: "4/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Notes
+
+# Import data
+
+* metadata
+* growth estimates
+* normalized abundances
+* rarefied phyloseq
+
+```{r}
+# Metadata
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
+
+# Growth estimates
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+
+# Normalized abundance data
+norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds")
+
+# Rarefied phyloseq
+physeq <- readRDS("../data_intermediate/SFA2_physeq_rare.rds")
+```
+
+# Idenitfy climax community
+
+Defining as when the total normalized abundance of each inoculant evens out, indicating balanced growth and death.
+
+### Total normalized abundances
+
+Whole communities:
+
+# TROUBLESHOOT MISSING DATA PTS rm infinite values
+
+```{r}
+# Add metadata and reformat
+meta <- meta %>%
+  select(SampleID, Sample, Inoculant, Day, Replicate)
+
+norm_meta <- norm %>% 
+  pivot_longer(-SampleID, values_to="norm_abund", names_to="ASV") %>% 
+  full_join(meta)
+
+# Calculate total normalized abundance through time
+norm_total <- norm_meta %>% 
+  group_by(Inoculant, Day, ASV) %>% 
+  summarize(norm_abund_avg = mean(norm_abund, na.rm=TRUE)) %>% # average across reps
+  ungroup() %>%
+  group_by(Inoculant, Day) %>%
+  summarize(whole = sum(norm_abund_avg)) %>% # calc total abund
+  ungroup()
+
+# Visualize
+norm_total %>% 
+  ggplot(aes(x=Day, y=log(whole), color=Inoculant)) +
+  geom_point() +
+  geom_line() +
+  labs(title="Total community normalized abundance") +
+  theme_test()
+```
+
+Missing data???
+
+
+Growers only:
+
+```{r}
+growth_asvs <- select(growth, Inoculant, ASV)
+
+# Calculate total normalized abundance through time
+grnorm_total <- norm_meta %>% 
+  inner_join(growth_asvs) %>% 
+  group_by(Inoculant, Day, ASV) %>% # average across replicates
+  summarize(norm_abund_avg = sum(norm_abund)) %>% 
+  ungroup() %>%
+  group_by(Inoculant, Day) %>% # total normalized abundance
+  summarize(growth = sum(norm_abund_avg)) %>%
+  ungroup() %>%
+  mutate(Inoculant = as.character(Inoculant))
+
+# Visualize
+grnorm_total %>% 
+  ggplot(aes(x=Day, y=log(growth), color=Inoculant)) +
+  geom_point() +
+  geom_line() + 
+  labs(title="Growing taxa total normalized abundance") +
+  theme_test()
+```
+
+Together:
+
+```{r}
+# Combine whole community and growing community normalized abundance totals
+norm_total_all <- norm_total %>% 
+  inner_join(grnorm_total) %>% 
+  pivot_longer(-c(Inoculant, Day), names_to="type", values_to="norm_abund")
+
+# Visualize
+norm_total_all %>% 
+  ggplot(aes(x=Day, y=log(norm_abund), alpha=type)) + 
+  geom_point() +
+  geom_line() +
+  facet_wrap(~Inoculant) +
+  theme_test()
+```
+
+Why do some time points have higher growth abundance than whole community abundance? That shouldn't be possible.
+
+Most abundance is made up of taxa with growth estimates after day 3 or 4, indicating we did a pretty good job of capturing the growers/major players in the bottles.
+
+But then why do betaNTI results for whole community vs growing taxa differ?
+
+Average total abundance across inoculants:
+
+```{r}
+norm_wholegr %>% 
+  group_by(Day, type) %>%
+  summarize(norm_abund = mean(norm_abund)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=Day, y=log(norm_abund))) +
+  geom_point(aes(shape=type)) +
+  geom_line(aes(linetype=type)) +
+  geom_vline(xintercept = 9, linetype=2) +
+  theme_test()
+```
+
+Day 9 seems to be where the total abundances start to "even out". We'll define this until the end of the incubation as the climax community.
+
+### Alpha diversity
+
+* at each tp, each inoc
+* richness, shannon, evenness
+
+```{r}
+
+  
+
+```
+
+### Beta diversity
+
+* weighted unifrac comparisons across time for each rep

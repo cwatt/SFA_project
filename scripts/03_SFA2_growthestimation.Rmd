@@ -29,38 +29,18 @@ sessionInfo()
 
 ```{r}
 # Count data
-norm <- readRDS("../data_intermediate/SFA2_count_normalized.rds") %>% 
-  pivot_longer(-SampleID, names_to="ASV", values_to="norm_abund") %>% 
-  mutate(SampleID = as.double(gsub("sa", "", SampleID)))
+norm <- readRDS("../data_intermediate/SFA2_normalized.rds")
 
 # Taxonomy
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Metadata
-meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
 
-# Merge
-norm_prep <- inner_join(norm, tax, by="ASV") %>% 
-  inner_join(meta, by="SampleID") %>% 
-  select(c(SampleID, Sample, Type:Replicate, Domain:Species, ASV, norm_abund)) %>% 
-  mutate(Inoculant = as_factor(Inoculant),
-         Replicate = as_factor(Replicate)) %>% 
-  mutate(across(Domain:Species, ~as.character(.x), {.col}))
-
-dim(norm_prep)
+dim(norm)
 ```
 
 # Prepare data
-
-Remove samples that did not contain internal standard
-
-* These are now Inf because previous script tried to divide by 0
-
-```{r}
-norm_prep <- norm_prep[!is.infinite(norm_prep$norm_abund),]
-
-dim(norm_prep)
-```
 
 Remove non-present taxa:
 

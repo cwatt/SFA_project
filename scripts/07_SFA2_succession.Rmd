@@ -32,7 +32,7 @@ sessionInfo()
 
 ```{r}
 # Metadata
-meta <- read_tsv("../data_amplicon/SFA2_full/SFA2_metadata_corrected.tsv")
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
 
 # Growth
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
@@ -776,7 +776,6 @@ Whole communities:
 ```{r}
 # Reformat
 meta2 <- meta %>%
-  mutate(SampleID = gsub("([0-9]+)", "sa\\1", SampleID)) %>% 
   select(SampleID, Sample, Inoculant, Day, Replicate)
 
 norm_meta <- norm %>% 
