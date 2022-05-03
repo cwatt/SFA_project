@@ -448,6 +448,20 @@ death_asvs <- select(death_tidy, ASV)
 write_tsv(death_asvs, file="../paprica_analysis/death_asvs.txt")
 ```
 
+# Summary of death
+
+Number of estimates per inoculant:
+
+```{r}
+death_summary <- death_tidy %>% 
+  group_by(Inoculant) %>% 
+  summarize(num = n())
+
+death_summary %>% 
+  group_by() %>% 
+  summarize(num_avg = mean(num), num_sd=sd(num))
+```
+
 # Plot death estimates
 
 ```{r}

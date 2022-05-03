@@ -27,12 +27,12 @@ Files produced by paprica v0.6.
 ```{r}
 # PAPRICA outputs
 # Bacteria
-pap_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath_rep-seqs.bacteria.edge_data.csv")
-place_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath_rep-seqs.bacteria.combined_16S.bacteria.tax.placements.csv")
+pap_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath.bacteria.edge_data.csv")
+place_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath.bacteria.combined_16S.bacteria.tax.placements.csv")
 
 # Archaea
-pap_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath_rep-seqs.archaea.edge_data.csv")
-place_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath_rep-seqs.archaea.combined_16S.archaea.tax.placements.csv")
+pap_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath.archaea.edge_data.csv")
+place_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath.archaea.combined_16S.archaea.tax.placements.csv")
 
 # Growth and death estimates
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
@@ -42,8 +42,8 @@ death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Pathways
-path_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath_rep-seqs.bacteria.pathways.csv")
-path_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath_rep-seqs.archaea.pathways.csv")
+path_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath.bacteria.pathways.csv")
+path_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath.archaea.pathways.csv")
 ```
 
 # PAPRICA predictions

@@ -190,6 +190,8 @@ matched_inoc41_growth <- match.phylo.data(tree, count_inoc41_growth)
 
 Calculate betaNTI:
 
+# BROKEN: Error in rand_bMNTD_inoc41_whole[row, column, ] : subscript out of bounds
+
 ```{r}
 # Calculate empirical betaMNTD
 bMNTD_inoc41_growth <-  as.matrix(comdistnt(t(matched_inoc41_growth$data), cophenetic(matched_inoc41_growth$phy), abundance.weighted=T))
@@ -207,7 +209,7 @@ dim(bNTI_inoc41_growth)
 
 for (column in 1:(ncol(matched_inoc41_growth$data) - 1)) {
   for (row in (column + 1):ncol(matched_inoc41_growth$data)) {
-    rand_vals2 <- rand_bMNTD_inoc41_whole[row, column,]
+    rand_vals2 <- rand_bMNTD_inoc41_whole[row, column,] # broken line, why did it break? other instances also broken
     bNTI_inoc41_growth[row, column] <- (bMNTD_inoc41_growth[row, column] - mean(rand_vals2)) / sd(rand_vals2)
     #rm("rand_vals")
   }

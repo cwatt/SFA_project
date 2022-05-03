@@ -34,9 +34,9 @@ https://www.statology.org/k-means-clustering-in-r/
 # Import data
 
 ```{r}
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap2.rds")
+growth <- readRDS("~/SFA/data_intermediate/SFA2_growth_estimates_pap.rds")
 
-death <- readRDS("../data_intermediate/SFA2_death_estimates_pap2.rds")
+death <- readRDS("~/SFA/data_intermediate/SFA2_death_estimates_pap.rds")
 ```
 
 # Growth 

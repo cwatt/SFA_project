@@ -45,7 +45,7 @@ dim(norm)
 Remove non-present taxa:
 
 ```{r}
-norm_prep <- filter(norm_prep, norm_abund != 0) 
+norm_prep <- filter(norm, norm_abund != 0) 
   
 dim(norm_prep)
 ```
@@ -57,7 +57,7 @@ Average across technical replicates:
 
 ```{r}
 norm_prep <- norm_prep %>% 
-  group_by(Type, Inoculant, DOC, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
+  group_by(Inoculant, Day, Domain, Phylum, Class, Order, Family, Genus, Species, ASV) %>% 
   summarize(norm_abund_avg = mean(norm_abund, na.rm = TRUE)) %>% 
   ungroup()
 
@@ -69,13 +69,13 @@ Remove taxa that didn't occur in at least four time points:
 ```{r}
 # Identify ASVs that appeared less than 4 times in time series
 occurences <- norm_prep %>% 
-  group_by(ASV, Type, Inoculant) %>% 
+  group_by(ASV, Inoculant) %>% 
   summarize(occurs = n()) %>% 
   filter(occurs > 3) %>% 
   ungroup()
 
 # Filter
-norm_prep <- inner_join(norm_prep, occurences, by=c("ASV", "Inoculant", "Type")) %>% 
+norm_prep <- inner_join(norm_prep, occurences, by=c("ASV", "Inoculant")) %>% 
   select(everything(), -occurs)
 
 dim(norm_prep)
@@ -122,8 +122,8 @@ Prepare data:
 ```{r}
 # Rename columns to match function reqiurements
 norm_prepped <- norm_prep %>% 
-  select(-Type, -c(Domain:Species), norm_abund_avg, time=Day,
-         abund=ln_norm_abund_avg, label, Inoculant, DOC, ASV) %>% 
+  select(-c(Domain:Species), norm_abund_avg, time=Day,
+         abund=ln_norm_abund_avg, label, Inoculant, ASV) %>% 
   select(Inoculant, ASV, label, time, abund, norm_abund_avg)
 ```
 
@@ -730,6 +730,8 @@ for (l in as.character(unique(growth_estimates$label))) {
 
 # Tidy up and save data
 
+# BOOKMARK
+
 Relational abundances:
 
 ```{r}
@@ -775,6 +777,20 @@ growth_tidy %>%
 ```{r, eval=FALSE}
 growth_asvs <- select(growth_tidy, ASV)
 write_tsv(growth_asvs, file="../paprica_analysis/growth_asvs.txt")
+```
+
+# Summary of growth
+
+Number of estimates per inoculant:
+
+```{r}
+growth_summary <- growth_tidy %>% 
+  group_by(Inoculant) %>% 
+  summarize(num = n())
+
+growth_summary %>% 
+  group_by() %>% 
+  summarize(num_avg = mean(num), num_sd=sd(num))
 ```
 
 # Plot growth estimates

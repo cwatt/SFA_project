@@ -269,8 +269,7 @@ Replace originals with redos in dataset:
 ```{r}
 # Isolate original samples
 rm_samIDs <- filter(reseq_compare, Attempt==1) %>%
-  .$SampleID %>% 
-  gsub("sa([0-9]+)", "\\1", .) # remove "sa" to match SampleID column in phyloseq sam_data
+  .$SampleID
   
 # Create "not in" operator
 `%!in%` <- Negate(`%in%`)
@@ -347,25 +346,38 @@ read_depth %>%
   filter(total_reads < 500 & Day)
 ```
 
-I am most interested in days 0, 10, 21, and 30.
+### For alpha and beta diversity
 
-I'll rarefy to 1500 reads.
+I'll rarefy to 1500 reads and lose 38 samples. Want to preserve more counts.
 
 ```{r}
-physeq_rare <- rarefy_even_depth(physeq5, sample.size=1500)
-physeq_rare
+set.seed(21)
+physeq_rare_div <- rarefy_even_depth(physeq6, sample.size=1500)
+physeq_rare_div
+```
+
+### For bNTI
+
+I'll rarefy to 500. This is the lowest rarefication rate I've seen used with this analysis and I'd like to preserve the greatest number of samples
+
+```{r}
+physeq_rare_bnti <- rarefy_even_depth(physeq6, sample.size = 500)
+physeq_rare_bnti
 ```
 
 # Save preprocessed count data
 
-Rarefied and unrarefied versions.
+Rarefied and unrarefied versions, without internal standard.
 
 ```{r, eval=FALSE}
-# Rarefied
-saveRDS(physeq_rare, file="../data_intermediate/SFA2_physeq_rare.rds")
+# Rarefied for diversity analysis
+saveRDS(physeq_rare_div, file="../data_intermediate/SFA2_physeq_rare.rds")
+
+# Rarefied for bNTI
+saveRDS(physeq_rare_bnti, file="../data_intermediate/SFA2_physeq_rare_bnti.rds")
 
 # Not rarefied
-saveRDS(physeq5, file="../data_intermediate/SFA2_physeq_unrare.rds")
+saveRDS(physeq6, file="../data_intermediate/SFA2_physeq_unrare.rds")
 ```
 
 # Normalize to the internal standard

@@ -1,0 +1,802 @@
+---
+title: "SFA2 betaNTI"
+author: "Cassandra Wattenburger"
+date: "3/23/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("ape")
+library("phyloseq")
+library("picante")
+
+sessionInfo()
+```
+
+# Notes
+
+# Import data
+
+* Rarefied phyloseq object
+* growth estimates
+
+```{r}
+# Phyloseq object with all growth samples
+physeq <- readRDS("../data_intermediate/SFA2_physeq_rare_bnti.rds")
+
+# Growth estimates
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+```
+
+Extract from phyloseq:
+
+```{r}
+# Count table
+count <- data.frame(otu_table(physeq))
+
+# Tree
+tree <- phy_tree(physeq)
+
+# Metadata
+meta <- data.frame(sample_data(physeq))
+```
+
+# Inoculant 41
+
+### Whole community
+
+Isolate inoculant data:
+
+```{r}
+# Inoculant 41 only
+meta_inoc41 <- meta %>% 
+  filter(Inoculant==41 & Type=="Growth") %>% 
+  select(SampleID, Sample, Inoculant, Day)
+
+count_inoc41 <- select(count, as.character(meta_inoc41$SampleID))
+```
+
+Prune tree:
+
+```{r}
+matched_inoc41_whole <- match.phylo.data(tree, count_inoc41)
+```
+
+Calculate betaNTI:
+
+SLOW STEP
+
+```{r}
+# Calculate empirical betaMNTD
+bMNTD_inoc41_whole <-  as.matrix(comdistnt(t(matched_inoc41_whole$data), cophenetic(matched_inoc41_whole$phy), abundance.weighted=T))
+
+# Double check data compatibility, both should be TRUE
+identical(colnames(matched_inoc41_whole$data), colnames(bMNTD_inoc41_whole))
+identical(colnames(matched_inoc41_whole$data), rownames(bMNTD_inoc41_whole))
+
+# Calculate randomized betaMNTD (999 randomizations)
+reps <- 999
+
+rand_bMNTD_inoc41_whole <- array(c(-999), dim=c(ncol(matched_inoc41_whole$data), ncol(matched_inoc41_whole$data), reps))
+dim(rand_bMNTD_inoc41_whole)
+
+for (rep in 1:reps) {
+  rand_bMNTD_inoc41_whole[,,rep] = as.matrix(comdistnt(t(matched_inoc41_whole$data), taxaShuffle(cophenetic(matched_inoc41_whole$phy)), abundance.weighted=T, exclude.conspecifics=F))
+  print(c(date(), rep))
+}
+
+# Calculate betaNTI
+bNTI_inoc41_whole = matrix(c(NA), nrow=ncol(matched_inoc41_whole$data), ncol=ncol(matched_inoc41_whole$data)) # create empty matrix of same size
+dim(bNTI_inoc41_whole)
+
+for (column in 1:(ncol(matched_inoc41_whole$data) - 1)) {
+  for (row in (column + 1):ncol(matched_inoc41_whole$data)) {
+    rand_vals = rand_bMNTD_inoc41_whole[row, column,]
+    bNTI_inoc41_whole[row, column] = (bMNTD_inoc41_whole[row, column] - mean(rand_vals)) / sd(rand_vals)
+    #rm("rand_vals")
+  }
+}
+
+rownames(bNTI_inoc41_whole) = colnames(matched_inoc41_whole$data);
+colnames(bNTI_inoc41_whole) = colnames(matched_inoc41_whole$data);
+
+# Visualize
+hist(bNTI_inoc41_whole)
+
+# Save output
+saveRDS(bNTI_inoc41_whole, file="../data_intermediate/SFA2_bNTI_inoc41_whole.rds")
+saveRDS(rand_bMNTD_inoc41_whole, file="../data_intermediate/SFA2_bMNTD_rand_inoc41_whole.rds")
+```
+
+```{r}
+# Load calculations
+
+# whole community bNTI
+bNTI_inoc41_whole <- readRDS("../data_intermediate/SFA2_bNTI_inoc41_whole.rds") %>% 
+  as.data.frame()
+
+# whole community permuted bMNTD
+rand_bMNTD_inoc41_whole <- readRDS("../data_intermediate/SFA2_bMNTD_rand_inoc41_whole.rds")
+```
+
+Subset contrasts of interest:
+
+```{r}
+bNTI_contrasts_inoc41_whole <- data.frame()
+
+for (day in unique(meta_inoc41$Day)) {
+  meta_subset <- filter(meta_inoc41, Day==day)
+  samids <- meta_subset$SampleID
+  bNTI_list_inoc41_whole <- bNTI_inoc41_whole %>% 
+    select(samids) %>% # get columns with samples of interest
+    rownames_to_column(var="SampleID") %>% 
+    filter(SampleID %in% samids) %>% # get rows with samples of interest
+    column_to_rownames(var="SampleID") %>% 
+    as.matrix() %>% 
+    as.list() %>% 
+    unlist() %>% # flatten the dataframe into a list
+    .[!is.na(.)] # remove NAs
+  bNTI_mean_inoc41_whole <- mean(bNTI_list_inoc41_whole, na.rm=TRUE)
+  this_row <- data.frame(Inoculant=41, Day=day, bNTI_mean=bNTI_mean_inoc41_whole)
+  bNTI_contrasts_inoc41_whole <- bind_rows(bNTI_contrasts_inoc41_whole, this_row)
+}
+
+bNTI_contrasts_inoc41_whole <- arrange(bNTI_contrasts_inoc41_whole, Day) %>% 
+  mutate(community = "whole")
+```
+
+Visualize:
+
+```{r}
+bNTI_contrasts_inoc41_whole %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = c(2, -2), linetype=2) +
+  geom_hline(yintercept = 0) +
+  theme_test()
+```
+
+# Inoculant 12
+
+### Whole community
+
+Isolate inoculant data:
+
+```{r}
+# Inoculant 12 only
+meta_inoc12 <- meta %>% 
+  filter(Inoculant==12 & Type=="Growth") %>% 
+  select(SampleID, Sample, Inoculant, Day)
+
+count_inoc12 <- select(count, as.character(meta_inoc12$SampleID))
+```
+
+Prune tree:
+
+```{r}
+matched_inoc12_whole <- match.phylo.data(tree, count_inoc12)
+```
+
+Calculate betaNTI:
+
+SLOW STEP
+
+```{r}
+# Calculate empirical betaMNTD
+bMNTD_inoc12_whole <-  as.matrix(comdistnt(t(matched_inoc12_whole$data), cophenetic(matched_inoc12_whole$phy), abundance.weighted=T))
+
+# Double check data compatibility, both should be TRUE
+identical(colnames(matched_inoc12_whole$data), colnames(bMNTD_inoc12_whole))
+identical(colnames(matched_inoc12_whole$data), rownames(bMNTD_inoc12_whole))
+
+# Calculate randomized betaMNTD (999 randomizations)
+reps <- 999
+
+rand_bMNTD_inoc12_whole <- array(c(-999), dim=c(ncol(matched_inoc12_whole$data), ncol(matched_inoc12_whole$data), reps))
+dim(rand_bMNTD_inoc12_whole)
+
+for (rep in 1:reps) {
+  rand_bMNTD_inoc12_whole[,,rep] = as.matrix(comdistnt(t(matched_inoc12_whole$data), taxaShuffle(cophenetic(matched_inoc12_whole$phy)), abundance.weighted=T, exclude.conspecifics=F))
+  print(c(date(), rep))
+}
+
+# Calculate betaNTI
+bNTI_inoc12_whole = matrix(c(NA), nrow=ncol(matched_inoc12_whole$data), ncol=ncol(matched_inoc12_whole$data)) # create empty matrix of same size
+dim(bNTI_inoc12_whole)
+
+for (column in 1:(ncol(matched_inoc12_whole$data) - 1)) {
+  for (row in (column + 1):ncol(matched_inoc12_whole$data)) {
+    rand_vals = rand_bMNTD_inoc12_whole[row, column,]
+    bNTI_inoc12_whole[row, column] = (bMNTD_inoc12_whole[row, column] - mean(rand_vals)) / sd(rand_vals)
+    #rm("rand_vals")
+  }
+}
+
+rownames(bNTI_inoc12_whole) = colnames(matched_inoc12_whole$data);
+colnames(bNTI_inoc12_whole) = colnames(matched_inoc12_whole$data);
+
+# Visualize
+hist(bNTI_inoc12_whole)
+
+# Save output
+saveRDS(bNTI_inoc12_whole, file="../data_intermediate/SFA2_bNTI_inoc12_whole.rds")
+saveRDS(rand_bMNTD_inoc12_whole, file="../data_intermediate/SFA2_bMNTD_rand_inoc12_whole.rds")
+```
+
+```{r}
+# Load calculations
+
+# whole community bNTI
+bNTI_inoc12_whole <- readRDS("../data_intermediate/SFA2_bNTI_inoc12_whole.rds") %>% 
+  as.data.frame()
+
+# whole community permuted bMNTD
+rand_bMNTD_inoc12_whole <- readRDS("../data_intermediate/SFA2_bMNTD_rand_inoc12_whole.rds")
+```
+
+Subset contrasts of interest:
+
+```{r}
+bNTI_contrasts_inoc12_whole <- data.frame()
+
+for (day in unique(meta_inoc12$Day)) {
+  meta_subset <- filter(meta_inoc12, Day==day)
+  samids <- meta_subset$SampleID
+  bNTI_list_inoc12_whole <- bNTI_inoc12_whole %>% 
+    select(samids) %>% # get columns with samples of interest
+    rownames_to_column(var="SampleID") %>% 
+    filter(SampleID %in% samids) %>% # get rows with samples of interest
+    column_to_rownames(var="SampleID") %>% 
+    as.matrix() %>% 
+    as.list() %>% 
+    unlist() %>% # flatten the dataframe into a list
+    .[!is.na(.)] # remove NAs
+  bNTI_mean_inoc12_whole <- mean(bNTI_list_inoc12_whole)
+  this_row <- data.frame(Inoculant=12, Day=day, bNTI_mean=bNTI_mean_inoc12_whole)
+  bNTI_contrasts_inoc12_whole <- bind_rows(bNTI_contrasts_inoc12_whole, this_row)
+}
+
+bNTI_contrasts_inoc12_whole <- arrange(bNTI_contrasts_inoc12_whole, Day) %>% 
+  mutate(community = "whole")
+```
+
+Visualize:
+
+```{r}
+bNTI_contrasts_inoc12_whole %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = c(2, -2), linetype=41) +
+  geom_hline(yintercept = 0) +
+  theme_test()
+```
+
+# Inoculant 2
+
+### Whole community
+
+Isolate inoculant data:
+
+```{r}
+# Inoculant 2 only
+meta_inoc2 <- meta %>% 
+  filter(Inoculant==2 & Type=="Growth") %>% 
+  select(SampleID, Sample, Inoculant, Day)
+
+count_inoc2 <- select(count, as.character(meta_inoc2$SampleID))
+```
+
+Prune tree:
+
+```{r}
+matched_inoc2_whole <- match.phylo.data(tree, count_inoc2)
+```
+
+Calculate betaNTI:
+
+SLOW STEP
+
+```{r}
+# Calculate empirical betaMNTD
+bMNTD_inoc2_whole <-  as.matrix(comdistnt(t(matched_inoc2_whole$data), cophenetic(matched_inoc2_whole$phy), abundance.weighted=T))
+
+# Double check data compatibility, both should be TRUE
+identical(colnames(matched_inoc2_whole$data), colnames(bMNTD_inoc2_whole))
+identical(colnames(matched_inoc2_whole$data), rownames(bMNTD_inoc2_whole))
+
+# Calculate randomized betaMNTD (999 randomizations)
+reps <- 999
+
+rand_bMNTD_inoc2_whole <- array(c(-999), dim=c(ncol(matched_inoc2_whole$data), ncol(matched_inoc2_whole$data), reps))
+dim(rand_bMNTD_inoc2_whole)
+
+for (rep in 1:reps) {
+  rand_bMNTD_inoc2_whole[,,rep] = as.matrix(comdistnt(t(matched_inoc2_whole$data), taxaShuffle(cophenetic(matched_inoc2_whole$phy)), abundance.weighted=T, exclude.conspecifics=F))
+  print(c(date(), rep))
+}
+
+# Calculate betaNTI
+bNTI_inoc2_whole = matrix(c(NA), nrow=ncol(matched_inoc2_whole$data), ncol=ncol(matched_inoc2_whole$data)) # create empty matrix of same size
+dim(bNTI_inoc2_whole)
+
+for (column in 1:(ncol(matched_inoc2_whole$data) - 1)) {
+  for (row in (column + 1):ncol(matched_inoc2_whole$data)) {
+    rand_vals = rand_bMNTD_inoc2_whole[row, column,]
+    bNTI_inoc2_whole[row, column] = (bMNTD_inoc2_whole[row, column] - mean(rand_vals)) / sd(rand_vals)
+    #rm("rand_vals")
+  }
+}
+
+rownames(bNTI_inoc2_whole) = colnames(matched_inoc2_whole$data);
+colnames(bNTI_inoc2_whole) = colnames(matched_inoc2_whole$data);
+
+# Visualize
+hist(bNTI_inoc2_whole)
+
+# Save output
+saveRDS(bNTI_inoc2_whole, file="../data_intermediate/SFA2_bNTI_inoc2_whole.rds")
+saveRDS(rand_bMNTD_inoc2_whole, file="../data_intermediate/SFA2_bMNTD_rand_inoc2_whole.rds")
+```
+
+```{r}
+# Load calculations
+
+# whole community bNTI
+bNTI_inoc2_whole <- readRDS("../data_intermediate/SFA2_bNTI_inoc2_whole.rds") %>% 
+  as.data.frame()
+
+# whole community permuted bMNTD
+rand_bMNTD_inoc2_whole <- readRDS("../data_intermediate/SFA2_bMNTD_rand_inoc2_whole.rds")
+```
+
+Subset contrasts of interest:
+
+```{r}
+bNTI_contrasts_inoc2_whole <- data.frame()
+
+for (day in unique(meta_inoc2$Day)) {
+  meta_subset <- filter(meta_inoc2, Day==day)
+  samids <- meta_subset$SampleID
+  bNTI_list_inoc2_whole <- bNTI_inoc2_whole %>% 
+    select(samids) %>% # get columns with samples of interest
+    rownames_to_column(var="SampleID") %>% 
+    filter(SampleID %in% samids) %>% # get rows with samples of interest
+    column_to_rownames(var="SampleID") %>% 
+    as.matrix() %>% 
+    as.list() %>% 
+    unlist() %>% # flatten the dataframe into a list
+    .[!is.na(.)] # remove NAs
+  bNTI_mean_inoc2_whole <- mean(bNTI_list_inoc2_whole)
+  this_row <- data.frame(Inoculant=2, Day=day, bNTI_mean=bNTI_mean_inoc2_whole)
+  bNTI_contrasts_inoc2_whole <- bind_rows(bNTI_contrasts_inoc2_whole, this_row)
+}
+
+bNTI_contrasts_inoc2_whole <- arrange(bNTI_contrasts_inoc2_whole, Day) %>% 
+  mutate(community="whole")
+```
+
+Visualize:
+
+```{r}
+bNTI_contrasts_inoc2_whole %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = c(2, -2), linetype=41) +
+  geom_hline(yintercept = 0) +
+  theme_test()
+```
+
+# Inoculant 10
+
+### Whole community
+
+Isolate inoculant data:
+
+```{r}
+# Inoculant 10 only
+meta_inoc10 <- meta %>% 
+  filter(Inoculant==10 & Type=="Growth") %>% 
+  select(SampleID, Sample, Inoculant, Day)
+
+count_inoc10 <- select(count, as.character(meta_inoc10$SampleID))
+```
+
+Prune tree:
+
+```{r}
+matched_inoc10_whole <- match.phylo.data(tree, count_inoc10)
+```
+
+Calculate betaNTI:
+
+SLOW STEP
+
+```{r}
+# Calculate empirical betaMNTD
+bMNTD_inoc10_whole <-  as.matrix(comdistnt(t(matched_inoc10_whole$data), cophenetic(matched_inoc10_whole$phy), abundance.weighted=T))
+
+# Double check data compatibility, both should be TRUE
+identical(colnames(matched_inoc10_whole$data), colnames(bMNTD_inoc10_whole))
+identical(colnames(matched_inoc10_whole$data), rownames(bMNTD_inoc10_whole))
+
+# Calculate randomized betaMNTD (999 randomizations)
+reps <- 999
+
+rand_bMNTD_inoc10_whole <- array(c(-999), dim=c(ncol(matched_inoc10_whole$data), ncol(matched_inoc10_whole$data), reps))
+dim(rand_bMNTD_inoc10_whole)
+
+for (rep in 1:reps) {
+  rand_bMNTD_inoc10_whole[,,rep] = as.matrix(comdistnt(t(matched_inoc10_whole$data), taxaShuffle(cophenetic(matched_inoc10_whole$phy)), abundance.weighted=T, exclude.conspecifics=F))
+  print(c(date(), rep))
+}
+
+# Calculate betaNTI
+bNTI_inoc10_whole = matrix(c(NA), nrow=ncol(matched_inoc10_whole$data), ncol=ncol(matched_inoc10_whole$data)) # create empty matrix of same size
+dim(bNTI_inoc10_whole)
+
+for (column in 1:(ncol(matched_inoc10_whole$data) - 1)) {
+  for (row in (column + 1):ncol(matched_inoc10_whole$data)) {
+    rand_vals = rand_bMNTD_inoc10_whole[row, column,]
+    bNTI_inoc10_whole[row, column] = (bMNTD_inoc10_whole[row, column] - mean(rand_vals)) / sd(rand_vals)
+    #rm("rand_vals")
+  }
+}
+
+rownames(bNTI_inoc10_whole) = colnames(matched_inoc10_whole$data);
+colnames(bNTI_inoc10_whole) = colnames(matched_inoc10_whole$data);
+
+# Visualize
+hist(bNTI_inoc10_whole)
+
+# Save output
+saveRDS(bNTI_inoc10_whole, file="../data_intermediate/SFA2_bNTI_inoc10_whole.rds")
+saveRDS(rand_bMNTD_inoc10_whole, file="../data_intermediate/SFA2_bMNTD_rand_inoc10_whole.rds")
+```
+
+```{r}
+# Load calculations
+
+# whole community bNTI
+bNTI_inoc10_whole <- readRDS("../data_intermediate/SFA2_bNTI_inoc10_whole.rds") %>% 
+  as.data.frame()
+
+# whole community permuted bMNTD
+rand_bMNTD_inoc10_whole <- readRDS("../data_intermediate/SFA2_bMNTD_rand_inoc10_whole.rds")
+```
+
+Subset contrasts of interest:
+
+```{r}
+bNTI_contrasts_inoc10_whole <- data.frame()
+
+for (day in unique(meta_inoc10$Day)) {
+  meta_subset <- filter(meta_inoc10, Day==day)
+  samids <- meta_subset$SampleID
+  bNTI_list_inoc10_whole <- bNTI_inoc10_whole %>% 
+    select(samids) %>% # get columns with samples of interest
+    rownames_to_column(var="SampleID") %>% 
+    filter(SampleID %in% samids) %>% # get rows with samples of interest
+    column_to_rownames(var="SampleID") %>% 
+    as.matrix() %>% 
+    as.list() %>% 
+    unlist() %>% # flatten the dataframe into a list
+    .[!is.na(.)] # remove NAs
+  bNTI_mean_inoc10_whole <- mean(bNTI_list_inoc10_whole)
+  this_row <- data.frame(Inoculant=10, Day=day, bNTI_mean=bNTI_mean_inoc10_whole)
+  bNTI_contrasts_inoc10_whole <- bind_rows(bNTI_contrasts_inoc10_whole, this_row)
+}
+
+bNTI_contrasts_inoc10_whole <- arrange(bNTI_contrasts_inoc10_whole, Day) %>% 
+  mutate(community="whole")
+```
+
+Visualize:
+
+```{r}
+bNTI_contrasts_inoc10_whole %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = c(2, -2), linetype=41) +
+  geom_hline(yintercept = 0) +
+  theme_test()
+```
+
+# Inoculant 19
+
+### Whole community
+
+Isolate inoculant data:
+
+```{r}
+# Inoculant 19 only
+meta_inoc19 <- meta %>% 
+  filter(Inoculant==19 & Type=="Growth") %>% 
+  select(SampleID, Sample, Inoculant, Day)
+
+count_inoc19 <- select(count, as.character(meta_inoc19$SampleID))
+```
+
+Prune tree:
+
+```{r}
+matched_inoc19_whole <- match.phylo.data(tree, count_inoc19)
+```
+
+Calculate betaNTI:
+
+SLOW STEP
+
+```{r}
+# Calculate empirical betaMNTD
+bMNTD_inoc19_whole <-  as.matrix(comdistnt(t(matched_inoc19_whole$data), cophenetic(matched_inoc19_whole$phy), abundance.weighted=T))
+
+# Double check data compatibility, both should be TRUE
+identical(colnames(matched_inoc19_whole$data), colnames(bMNTD_inoc19_whole))
+identical(colnames(matched_inoc19_whole$data), rownames(bMNTD_inoc19_whole))
+
+# Calculate randomized betaMNTD (999 randomizations)
+reps <- 999
+
+rand_bMNTD_inoc19_whole <- array(c(-999), dim=c(ncol(matched_inoc19_whole$data), ncol(matched_inoc19_whole$data), reps))
+dim(rand_bMNTD_inoc19_whole)
+
+for (rep in 1:reps) {
+  rand_bMNTD_inoc19_whole[,,rep] = as.matrix(comdistnt(t(matched_inoc19_whole$data), taxaShuffle(cophenetic(matched_inoc19_whole$phy)), abundance.weighted=T, exclude.conspecifics=F))
+  print(c(date(), rep))
+}
+
+# Calculate betaNTI
+bNTI_inoc19_whole = matrix(c(NA), nrow=ncol(matched_inoc19_whole$data), ncol=ncol(matched_inoc19_whole$data)) # create empty matrix of same size
+dim(bNTI_inoc19_whole)
+
+for (column in 1:(ncol(matched_inoc19_whole$data) - 1)) {
+  for (row in (column + 1):ncol(matched_inoc19_whole$data)) {
+    rand_vals = rand_bMNTD_inoc19_whole[row, column,]
+    bNTI_inoc19_whole[row, column] = (bMNTD_inoc19_whole[row, column] - mean(rand_vals)) / sd(rand_vals)
+    #rm("rand_vals")
+  }
+}
+
+rownames(bNTI_inoc19_whole) = colnames(matched_inoc19_whole$data);
+colnames(bNTI_inoc19_whole) = colnames(matched_inoc19_whole$data);
+
+# Visualize
+hist(bNTI_inoc19_whole)
+
+# Save output
+saveRDS(bNTI_inoc19_whole, file="../data_intermediate/SFA2_bNTI_inoc19_whole.rds")
+saveRDS(rand_bMNTD_inoc19_whole, file="../data_intermediate/SFA2_bMNTD_rand_inoc19_whole.rds")
+```
+
+```{r}
+# Load calculations
+
+# whole community bNTI
+bNTI_inoc19_whole <- readRDS("../data_intermediate/SFA2_bNTI_inoc19_whole.rds") %>% 
+  as.data.frame()
+
+# whole community permuted bMNTD
+rand_bMNTD_inoc19_whole <- readRDS("../data_intermediate/SFA2_bMNTD_rand_inoc19_whole.rds")
+```
+
+Subset contrasts of interest:
+
+```{r}
+bNTI_contrasts_inoc19_whole <- data.frame()
+
+for (day in unique(meta_inoc19$Day)) {
+  meta_subset <- filter(meta_inoc19, Day==day)
+  samids <- meta_subset$SampleID
+  bNTI_list_inoc19_whole <- bNTI_inoc19_whole %>% 
+    select(samids) %>% # get columns with samples of interest
+    rownames_to_column(var="SampleID") %>% 
+    filter(SampleID %in% samids) %>% # get rows with samples of interest
+    column_to_rownames(var="SampleID") %>% 
+    as.matrix() %>% 
+    as.list() %>% 
+    unlist() %>% # flatten the dataframe into a list
+    .[!is.na(.)] # remove NAs
+  bNTI_mean_inoc19_whole <- mean(bNTI_list_inoc19_whole)
+  this_row <- data.frame(Inoculant=19, Day=day, bNTI_mean=bNTI_mean_inoc19_whole)
+  bNTI_contrasts_inoc19_whole <- bind_rows(bNTI_contrasts_inoc19_whole, this_row)
+}
+
+bNTI_contrasts_inoc19_whole <- arrange(bNTI_contrasts_inoc19_whole, Day) %>% 
+  mutate(community="whole")
+```
+
+Visualize:
+
+```{r}
+bNTI_contrasts_inoc19_whole %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = c(2, -2), linetype=41) +
+  geom_hline(yintercept = 0) +
+  theme_test()
+```
+
+# Inoculant 47
+
+### Whole community
+
+Isolate inoculant data:
+
+```{r}
+# Inoculant 47 only
+meta_inoc47 <- meta %>% 
+  filter(Inoculant==47 & Type=="Growth") %>% 
+  select(SampleID, Sample, Inoculant, Day)
+
+count_inoc47 <- select(count, as.character(meta_inoc47$SampleID))
+```
+
+Prune tree:
+
+```{r}
+matched_inoc47_whole <- match.phylo.data(tree, count_inoc47)
+```
+
+Calculate betaNTI:
+
+SLOW STEP
+
+```{r}
+# Calculate empirical betaMNTD
+bMNTD_inoc47_whole <-  as.matrix(comdistnt(t(matched_inoc47_whole$data), cophenetic(matched_inoc47_whole$phy), abundance.weighted=T))
+
+# Double check data compatibility, both should be TRUE
+identical(colnames(matched_inoc47_whole$data), colnames(bMNTD_inoc47_whole))
+identical(colnames(matched_inoc47_whole$data), rownames(bMNTD_inoc47_whole))
+
+# Calculate randomized betaMNTD (999 randomizations)
+reps <- 999
+
+rand_bMNTD_inoc47_whole <- array(c(-999), dim=c(ncol(matched_inoc47_whole$data), ncol(matched_inoc47_whole$data), reps))
+dim(rand_bMNTD_inoc47_whole)
+
+for (rep in 1:reps) {
+  rand_bMNTD_inoc47_whole[,,rep] = as.matrix(comdistnt(t(matched_inoc47_whole$data), taxaShuffle(cophenetic(matched_inoc47_whole$phy)), abundance.weighted=T, exclude.conspecifics=F))
+  print(c(date(), rep))
+}
+
+# Calculate betaNTI
+bNTI_inoc47_whole = matrix(c(NA), nrow=ncol(matched_inoc47_whole$data), ncol=ncol(matched_inoc47_whole$data)) # create empty matrix of same size
+dim(bNTI_inoc47_whole)
+
+for (column in 1:(ncol(matched_inoc47_whole$data) - 1)) {
+  for (row in (column + 1):ncol(matched_inoc47_whole$data)) {
+    rand_vals = rand_bMNTD_inoc47_whole[row, column,]
+    bNTI_inoc47_whole[row, column] = (bMNTD_inoc47_whole[row, column] - mean(rand_vals)) / sd(rand_vals)
+    #rm("rand_vals")
+  }
+}
+
+rownames(bNTI_inoc47_whole) = colnames(matched_inoc47_whole$data);
+colnames(bNTI_inoc47_whole) = colnames(matched_inoc47_whole$data);
+
+# Visualize
+hist(bNTI_inoc47_whole)
+
+# Save output
+saveRDS(bNTI_inoc47_whole, file="../data_intermediate/SFA2_bNTI_inoc47_whole.rds")
+saveRDS(rand_bMNTD_inoc47_whole, file="../data_intermediate/SFA2_bMNTD_rand_inoc47_whole.rds")
+```
+
+```{r}
+# Load calculations
+
+# whole community bNTI
+bNTI_inoc47_whole <- readRDS("../data_intermediate/SFA2_bNTI_inoc47_whole.rds") %>% 
+  as.data.frame()
+
+# whole community permuted bMNTD
+rand_bMNTD_inoc47_whole <- readRDS("../data_intermediate/SFA2_bMNTD_rand_inoc47_whole.rds")
+```
+
+Subset contrasts of interest:
+
+```{r}
+bNTI_contrasts_inoc47_whole <- data.frame()
+
+for (day in unique(meta_inoc47$Day)) {
+  meta_subset <- filter(meta_inoc47, Day==day)
+  samids <- meta_subset$SampleID
+  bNTI_list_inoc47_whole <- bNTI_inoc47_whole %>% 
+    select(samids) %>% # get columns with samples of interest
+    rownames_to_column(var="SampleID") %>% 
+    filter(SampleID %in% samids) %>% # get rows with samples of interest
+    column_to_rownames(var="SampleID") %>% 
+    as.matrix() %>% 
+    as.list() %>% 
+    unlist() %>% # flatten the dataframe into a list
+    .[!is.na(.)] # remove NAs
+  bNTI_mean_inoc47_whole <- mean(bNTI_list_inoc47_whole)
+  this_row <- data.frame(Inoculant=47, Day=day, bNTI_mean=bNTI_mean_inoc47_whole)
+  bNTI_contrasts_inoc47_whole <- bind_rows(bNTI_contrasts_inoc47_whole, this_row)
+}
+
+bNTI_contrasts_inoc47_whole <- arrange(bNTI_contrasts_inoc47_whole, Day) %>% 
+  mutate(community="whole")
+```
+
+Visualize:
+
+```{r}
+bNTI_contrasts_inoc47_whole %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = c(2, -2), linetype=41) +
+  geom_hline(yintercept = 0) +
+  theme_test()
+```
+
+# Combine all
+
+```{r}
+bNTI_all <- bind_rows(bNTI_contrasts_inoc41_whole, 
+                      bNTI_contrasts_inoc12_whole, 
+                      bNTI_contrasts_inoc2_whole,
+                      bNTI_contrasts_inoc10_whole, 
+                      bNTI_contrasts_inoc19_whole, 
+                      bNTI_contrasts_inoc47_whole) %>% 
+  mutate(Inoculant = as.character(Inoculant))
+
+# Average across inoculants for whole and growth
+bNTI_overall <- bNTI_all %>% 
+  group_by(Day, community) %>% 
+  summarize(bNTI_mean = mean(bNTI_mean, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  mutate(Inoculant = "overall")
+
+# Combine
+bNTI_all <- bind_rows(bNTI_all, bNTI_overall)
+```
+
+Visualize:
+
+Whole community:
+
+```{r}
+bNTI_all %>% 
+  filter(community=="whole", Inoculant != "overall") %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point(aes(color=Inoculant)) +
+  geom_line(aes(color=Inoculant)) +
+  geom_hline(yintercept = c(2,-2), linetype=2) +
+  theme_test()
+
+bNTI_all %>% 
+  filter(community=="whole", Inoculant == "overall") %>% 
+  ggplot(aes(x=Day, y=bNTI_mean)) +
+  geom_point(aes(color=Inoculant)) +
+  geom_line(aes(color=Inoculant)) +
+  geom_hline(yintercept = c(2,-2), linetype=2) +
+  theme_test()
+
+bNTI_all %>% 
+  filter(community=="whole") %>% 
+  mutate(fade = if_else(Inoculant=="overall", "yes", "no")) %>% 
+  ggplot(aes(x=Day, y=bNTI_mean, alpha=fade)) +
+  geom_point(aes(color=Inoculant)) +
+  geom_line(aes(color=Inoculant)) +
+  geom_hline(yintercept = c(2,-2), linetype=2) +
+  geom_vline(xintercept = 9) +
+  theme_test()
+```
