@@ -730,8 +730,6 @@ for (l in as.character(unique(growth_estimates$label))) {
 
 # Tidy up and save data
 
-# BOOKMARK
-
 Relational abundances:
 
 ```{r}
@@ -814,7 +812,7 @@ for (l in as.character(growth_tidy$label)) {
   title <- paste0(count, ". ", tax_info$Phylum, ", ", tax_info$Genus)
   # Graph with estimate
   graph <- ggplot(norm_label, aes(x=Day, y=ln_norm_abund_avg)) +
-    geom_point(shape=1, size=2, color="#6F7378") +
+    geom_point(shape=1, size=3, color="#6F7378") +
     geom_line(color="#6F7378") +
     geom_smooth(method="lm", data=norm_label[growth_label$start_pt:growth_label$end_pt,], linetype=2, color="black") +
     labs(title=title, x="Day", y="ln Relational abundance") +
@@ -828,6 +826,100 @@ for (l in as.character(growth_tidy$label)) {
   }
 ```
 
+```{r, eval=FALSE, echo=FALSE}
+# Plotting for presentations/posters
+example_est <- growth_tidy[129,]
+example_dat <- filter(norm_tidy, label==example_est$label) %>% 
+  mutate(startend = if_else(Day==example_est$start_day | Day==example_est$end_day, "yes", "no"))
+example_tax <- filter(tax, ASV == example_est$ASV)
+example_title <- paste0(example_tax$Phylum, ", ", example_tax$Genus)
+  
+example_plot <- ggplot(example_dat, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(aes(shape=startend), size=4, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=example_dat[example_est$start_pt:example_est$end_pt,],
+                linetype=2, color="black") +
+    labs(title=example_title, x="", y="") +
+    scale_shape_manual(values=c(1, 16)) +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "none")
 
+example_plot
 
+ggsave("../figures/ISME18_growthexample.png", example_plot, width=5.3, height=3, units="in")
+```
+
+```{r, eval=FALSE, echo=FALSE}
+# Plotting for presentations/posters
+example_est <- growth_tidy[157,]
+example_dat <- filter(norm_tidy, label==example_est$label) %>% 
+  mutate(startend = if_else(Day==example_est$start_day | Day==example_est$end_day, "yes", "no"))
+example_tax <- filter(tax, ASV == example_est$ASV)
+example_title <- paste0(example_tax$Phylum, ", ", example_tax$Genus)
+  
+bin1_plot <- ggplot(example_dat, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(aes(shape=startend), size=4, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=example_dat[example_est$start_pt:example_est$end_pt,],
+                linetype=2, color="black") +
+  geom_vline(xintercept = 9, linetype=2) +
+    labs(title=example_title, x="", y="") +
+    scale_shape_manual(values=c(1, 16)) +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "none")
+
+bin1_plot
+
+ggsave("../figures/ISME18_bin1example.png", bin1_plot, width=7.5, height=5, units="in")
+
+example_est <- growth_tidy[79,]
+example_dat <- filter(norm_tidy, label==example_est$label) %>% 
+  mutate(startend = if_else(Day==example_est$start_day | Day==example_est$end_day, "yes", "no"))
+example_tax <- filter(tax, ASV == example_est$ASV)
+example_title <- paste0(example_tax$Phylum, ", ", example_tax$Genus)
+  
+bin2_plot <- ggplot(example_dat, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(aes(shape=startend), size=4, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=example_dat[example_est$start_pt:example_est$end_pt,],
+                linetype=2, color="black") +
+  geom_vline(xintercept = 9, linetype=2) +
+    labs(title=example_title, x="", y="") +
+    scale_shape_manual(values=c(1, 16)) +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "none")
+
+bin2_plot
+
+ggsave("../figures/ISME18_bin2example.png", bin2_plot, width=7.5, height=5, units="in")
+
+example_est <- growth_tidy[162,]
+example_dat <- filter(norm_tidy, label==example_est$label) %>% 
+  mutate(startend = if_else(Day==example_est$start_day | Day==example_est$end_day, "yes", "no"))
+example_tax <- filter(tax, ASV == example_est$ASV)
+example_title <- paste0(example_tax$Phylum, ", ", example_tax$Genus)
+  
+bin3_plot <- ggplot(example_dat, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(aes(shape=startend), size=4, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=example_dat[example_est$start_pt:example_est$end_pt,],
+                linetype=2, color="black") +
+  geom_vline(xintercept = 9, linetype=2) +
+    labs(title=example_title, x="", y="") +
+    scale_shape_manual(values=c(1, 16)) +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "none")
+
+bin3_plot
+
+ggsave("../figures/ISME18_bin3example.png", bin3_plot, width=7.5, height=5, units="in")
+```
 

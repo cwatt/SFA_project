@@ -34,6 +34,39 @@ growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
 ```
 
+# Growth vs death
+
+```{r}
+growth <- growth %>% 
+  select(label, Inoculant, ASV, k_growth=k, start_growth=start_day, end_growth=end_day, growth_chg_abund=change_abund)
+
+death <- death %>% 
+  select(label, Inoculant, ASV, k_death=k, start_death=start_day, end_death=end_day, death_chg_abund=change_abund)
+
+# Combine growth and death estimates
+growth_death <- inner_join(growth, death) %>% 
+  mutate(death_after_growth = if_else(end_growth<=start_death, "yes", "no")) %>% 
+  filter(death_after_growth=="yes")
+```
+
+Visualize:
+
+```{r}
+# k
+growth_death %>% 
+  ggplot(aes(x=k_death, y=k_growth)) +
+  geom_point() +
+  theme_test()
+
+# change abund
+growth_death %>% 
+  ggplot(aes(x=growth_chg_abund, y=death_chg_abund)) +
+  geom_point() +
+  theme_test()
+```
+
+Not enough data.
+
 # Growth vs growth
 
 k vs lag time:
@@ -87,4 +120,7 @@ Does combo of positive relationship between k and change in abundance with negat
 Faster growth rate <-> shorter period of growth & greater change in abundance
 
 Would need CO2 respiration and C consumption data for individual taxa to further validate.
+
+
+
 

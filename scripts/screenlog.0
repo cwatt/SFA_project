@@ -3911,3 +3911,21 @@ ls
 [32m[I 18:08:27.752 NotebookApp][m Starting buffering for aaded9de-f6eb-4976-a0c8-2c318e0d8029:8653801d4bfb4396b8f930745ef96128
 [32m[I 13:48:07.520 NotebookApp][m Starting buffering for aaded9de-f6eb-4976-a0c8-2c318e0d8029:5951b3c9f20b40518dcc6ff3d64fdea8
 [32m[I 12:36:20.040 NotebookApp][m 302 GET /tree (127.0.0.1) 1.250000ms
+[33m[W 16:05:58.163 NotebookApp][m 401 POST /login?next=%2Ftree (127.0.0.1) 5.170000ms referer=http://localhost:3331/login?next=%2Ftree
+[32m[I 16:07:27.686 NotebookApp][m 302 POST /login?next=%2Ftree (127.0.0.1) 12.850000ms
+[32m[I 16:15:59.222 NotebookApp][m Starting buffering for aaded9de-f6eb-4976-a0c8-2c318e0d8029:40af13517f814cdaa3639b269581feda
+[32m[I 12:36:18.106 NotebookApp][m 302 GET /tree (127.0.0.1) 5.490000ms
+[32m[I 12:36:49.489 NotebookApp][m 302 POST /login?next=%2Ftree (127.0.0.1) 31.060000ms
+[33m[W 12:37:39.391 NotebookApp][m 404 GET /api/contents/dada2_amplicon_processing_pipeline.ipynb?type=notebook&content=0&_=1662482227207 (127.0.0.1): No such file or directory: dada2_amplicon_processing_pipeline.ipynb
+[33m[W 12:37:39.391 NotebookApp][m No such file or directory: dada2_amplicon_processing_pipeline.ipynb
+[33m[W 12:37:39.391 NotebookApp][m 404 GET /api/contents/dada2_amplicon_processing_pipeline.ipynb?type=notebook&content=0&_=1662482227207 (127.0.0.1) 2.910000ms referer=http://localhost:3331/notebooks/SFA2full.dada2.pipeline.ipynb
+[32m[I 12:37:39.405 NotebookApp][m Uploading file to /dada2_amplicon_processing_pipeline.ipynb
+[32m[I 12:39:07.861 NotebookApp][m Saving file at /dada2_amplicon_processing_pipeline.ipynb
+[32m[I 12:41:07.867 NotebookApp][m Saving file at /dada2_amplicon_processing_pipeline.ipynb
+[32m[I 12:43:07.848 NotebookApp][m Saving file at /dada2_amplicon_processing_pipeline.ipynb
+[32m[I 12:45:07.857 NotebookApp][m Saving file at /dada2_amplicon_processing_pipeline.ipynb
+[32m[I 12:47:07.869 NotebookApp][m Saving file at /dada2_amplicon_processing_pipeline.ipynb
+[32m[I 12:48:00.640 NotebookApp][m Saving file at /dada2_amplicon_processing_pipeline.ipynb
+[32m[I 12:49:22.272 NotebookApp][m Starting buffering for aaded9de-f6eb-4976-a0c8-2c318e0d8029:eb7e244d84df4282a08424316192f3d9
+[32m[I 17:23:23.566 NotebookApp][m Kernel started: a6d31c4c-e08f-4991-aea9-8f023ba19259, name: python3
+[32m[I 17:27:44.098 NotebookApp][m Starting buffering for a6d31c4c-e08f-4991-aea9-8f023ba19259:8c2dafcd321f49768c771a6ec41d44c1

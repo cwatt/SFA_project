@@ -1,0 +1,111 @@
+---
+title: "Cryptic growth"
+author: "Cassandra Wattenburger"
+date: "9/15/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("phyloseq")
+library("vegan")
+library("tidyverse")
+library("lmerTest")
+
+sessionInfo()
+```
+
+# Import data
+
+```{r}
+# Import growth estimates and normalized abundance data
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+norm_abund <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+
+# Combine and calculate corrected normalized abundance
+growth_abund <- full_join(growth, norm_abund) %>% 
+  mutate(norm_abund_corr = norm_abund_avg/n16S)  %>% # Correct 16S copy number
+  select(Inoculant, ASV, Day, k, norm_abund_avg, ln_norm_abund_avg, norm_abund_corr)
+```
+
+# Weighted mean growth rates
+
+Calculate weighted mean specific growth rate per time point:
+
+* Based on normalized abundance (16S corrected)
+
+```{r}
+# Calculate weighted k
+weighted_gr <- data.frame()
+
+for (d in unique(growth_abund$Day)) {
+  for (i in unique(growth_abund$Inoculant)) {
+  data_subset <- filter(growth_abund, Day==d & Inoculant==i)
+  weighted_mean <- weighted.mean(data_subset$k, data_subset$norm_abund_corr)
+  this_row <- bind_cols(Inoculant=i, Day=d, weighted_k=weighted_mean)
+  weighted_gr <- bind_rows(weighted_gr, this_row)
+  }
+}
+
+# Visualize
+weighted_gr %>% 
+  ggplot(aes(x=Day, y=weighted_k)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~Inoculant) +
+  labs(title="Weighted mean growth rates over time") +
+  theme_test()
+```
+
+# ASV stacked area chart
+
+
+```{r}
+# Combine and calculate corrected normalized abundance
+growth_abund <- full_join(growth, norm_abund) %>% 
+  mutate(norm_abund_corr = norm_abund_avg/n16S)  %>% # Correct 16S copy number
+  select(Inoculant, ASV, Day, norm_abund_avg, norm_abund_corr)
+
+# Total abundance per time point
+growth_abund_total <- growth_abund %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(total_corr=sum(norm_abund_corr)) %>% 
+  ungroup()
+
+# Relative abundance by time point
+growth_relabund <- data.frame()
+
+for (d in unique(growth_abund$Day)) {
+  for (i in unique(growth_abund$Inoculant)) {
+    abund_subset <- filter(growth_abund, Day==d & Inoculant==i)
+    abund_total <- filter(growth_abund_total, Day==d & Inoculant==i) %>% 
+      select(total_corr) %>% 
+      as.numeric()
+    for (a in abund_subset$ASV) {
+      asv_abund <- filter(abund_subset, ASV==a) %>% 
+        select(norm_abund_corr) %>% 
+        as.numeric()
+      relabund <- asv_abund/abund_total
+      this_row <- bind_cols(Day=d, Inoculant=i, relabund)
+      growth_relabund <- bind_cols(growth_relabund, this_row)
+    }
+  }
+}
+``` 
+
+```{r}
+growth_abund %>% 
+  ggplot(aes(x=Day, y=norm_abund_corr, group=ASV, fill=ASV)) +
+  geom_area() +
+  facet_wrap(~Inoculant) +
+  theme_test() +
+  theme(legend.position = "none")
+```

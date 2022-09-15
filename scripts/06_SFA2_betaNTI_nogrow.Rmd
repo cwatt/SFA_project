@@ -76,7 +76,7 @@ Calculate betaNTI:
 
 SLOW STEP
 
-```{r}
+```{r, eval=FALSE}
 # Calculate empirical betaMNTD
 bMNTD_inoc41_whole <-  as.matrix(comdistnt(t(matched_inoc41_whole$data), cophenetic(matched_inoc41_whole$phy), abundance.weighted=T))
 
@@ -192,7 +192,7 @@ Calculate betaNTI:
 
 SLOW STEP
 
-```{r}
+```{r, eval=FALSE}
 # Calculate empirical betaMNTD
 bMNTD_inoc12_whole <-  as.matrix(comdistnt(t(matched_inoc12_whole$data), cophenetic(matched_inoc12_whole$phy), abundance.weighted=T))
 
@@ -308,7 +308,7 @@ Calculate betaNTI:
 
 SLOW STEP
 
-```{r}
+```{r, eval=FALSE}
 # Calculate empirical betaMNTD
 bMNTD_inoc2_whole <-  as.matrix(comdistnt(t(matched_inoc2_whole$data), cophenetic(matched_inoc2_whole$phy), abundance.weighted=T))
 
@@ -424,7 +424,7 @@ Calculate betaNTI:
 
 SLOW STEP
 
-```{r}
+```{r, eval=FALSE}
 # Calculate empirical betaMNTD
 bMNTD_inoc10_whole <-  as.matrix(comdistnt(t(matched_inoc10_whole$data), cophenetic(matched_inoc10_whole$phy), abundance.weighted=T))
 
@@ -540,7 +540,7 @@ Calculate betaNTI:
 
 SLOW STEP
 
-```{r}
+```{r, eval=FALSE}
 # Calculate empirical betaMNTD
 bMNTD_inoc19_whole <-  as.matrix(comdistnt(t(matched_inoc19_whole$data), cophenetic(matched_inoc19_whole$phy), abundance.weighted=T))
 
@@ -656,7 +656,7 @@ Calculate betaNTI:
 
 SLOW STEP
 
-```{r}
+```{r, eval=FALSE}
 # Calculate empirical betaMNTD
 bMNTD_inoc47_whole <-  as.matrix(comdistnt(t(matched_inoc47_whole$data), cophenetic(matched_inoc47_whole$phy), abundance.weighted=T))
 
@@ -797,6 +797,7 @@ bNTI_all %>%
   geom_point(aes(color=Inoculant)) +
   geom_line(aes(color=Inoculant)) +
   geom_hline(yintercept = c(2,-2), linetype=2) +
-  geom_vline(xintercept = 9) +
-  theme_test()
+  #geom_vline(xintercept = 9) +
+  theme_test() +
+  theme(axis.text = element_text(size=10))
 ```

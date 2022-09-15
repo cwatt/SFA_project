@@ -1,5 +1,5 @@
 ---
-title: "Climax community"
+title: "Early and late decomposition"
 author: "Cassandra Wattenburger"
 date: "4/13/2022"
 output: html_document
@@ -15,6 +15,8 @@ knitr::opts_chunk$set(warning = FALSE)
 # Clear working directory, load in packages, generate package info
 rm(list=ls())
 
+library("phyloseq")
+library("vegan")
 library("tidyverse")
 library("lmerTest")
 
@@ -136,14 +138,41 @@ norm_total_all %>%
   group_by(Day, type) %>%
   summarize(norm_abund = mean(norm_abund, na.rm=TRUE)) %>% 
   ungroup() %>% 
+  #filter(type=="growth") %>% 
+  mutate(type = fct_relevel(type, "whole", "growth")) %>% 
   ggplot(aes(x=Day, y=log(norm_abund))) +
-  geom_point(aes(shape=type)) +
+  geom_point(aes(shape=type), size=3) +
   geom_line(aes(linetype=type)) +
   geom_vline(xintercept = 9, linetype=2) +
-  theme_test()
+  labs(y="Total relational abundance (ln)") +
+  theme_test() +
+  theme(axis.title = element_text(size=20),
+        axis.text = element_text(size=20))
 ```
 
 Day 9 seems to be where the total abundances start to "even out". We'll define this until the end of the incubation as the plateau community.
+
+```{r, eval=FALSE, echo=FALSE}
+# For poster/presentation
+plot1 <- norm_total_all %>% 
+  group_by(Day, type) %>%
+  summarize(norm_abund = mean(norm_abund, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  filter(type=="growth") %>% 
+  ggplot(aes(x=Day, y=log(norm_abund))) +
+  geom_point(size=3) +
+  geom_line() +
+  geom_vline(xintercept = 9, linetype=2) +
+  labs(y="", x="") +
+  theme_test() +
+  theme(axis.text = element_text(size=20))
+
+plot1
+
+ggsave("../figures/ISME18_batchcurve.png", plot1, width=6, height=5, units = "in")
+```
+
+
 
 ### Isolate pre and post 
 
@@ -152,20 +181,20 @@ Day 9 seems to be where the total abundances start to "even out". We'll define t
 
 ```{r}
 # Phyloseq object
-meta_lvloff <- mutate(meta, leveloff = if_else(Day <= 9, "pre", "post"))
+meta_lvloff <- mutate(meta, leveloff = if_else(Day <= 9, "exponential", "stationary"))
 physeq_lvloff <- phyloseq(otu_table(physeq), tax_table(physeq), physeq@phy_tree, sample_data(meta_lvloff))
 
 # Growth start day
 growth_prepost <- growth %>% 
-  mutate(startend = if_else(start_day <= 9 & end_day <= 9, "prepre",
-                            if_else(start_day <= 9 & end_day > 9, "prepost", "postpost")),
-         startend = fct_relevel(startend, c("prepre", "prepost", "postpost")))
+  mutate(startend = if_else(start_day <= 9 & end_day <= 9, "exp-exp",
+                            if_else(start_day <= 9 & end_day > 9, "exp-stat", "stat-stat")),
+         startend = fct_relevel(startend, c("exp-exp", "exp-stat", "stat-stat")))
 
 # Death start day
 death_prepost <- death %>% 
-  mutate(startend = if_else(start_day <= 9 & end_day <= 9, "prepre",
-                            if_else(start_day <= 9 & end_day > 9, "prepost", "postpost")),
-         startend = fct_relevel(startend, c("prepre", "prepost", "postpost")))
+  mutate(startend = if_else(start_day <= 9 & end_day <= 9, "exp-exp",
+                            if_else(start_day <= 9 & end_day > 9, "exp-stat", "stat-stat")),
+         startend = fct_relevel(startend, c("exp-exp", "exp-stat", "stat-stat")))
 ```
 
 Growth summary:
@@ -194,6 +223,63 @@ death_prepost_summary %>%
 
 # Growth
 
+### Who grew
+
+```{r}
+# Totals
+growth_prepost_total <- growth_prepost %>% 
+  group_by(Inoculant, startend) %>% 
+  summarize(total=n()) %>% 
+  ungroup()
+
+growth_prepost_prop <- growth_prepost %>% 
+  group_by(Inoculant, startend, Phylum) %>% 
+  summarize(phy_total = n()) %>% 
+  ungroup() %>% 
+  full_join(growth_prepost_total) %>% 
+  mutate(proportion = phy_total/total)
+
+# Visualize
+growth_prepost_prop %>% 
+  ggplot(aes(x=proportion, y=Phylum, color=startend)) +
+  geom_point() +
+  facet_wrap(~startend) +
+  labs(x="Proportion of growth estimates") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 12),
+        strip.text.x = element_text(size = 15))
+```
+
+### ASV overlap b/w inoculants
+
+```{r}
+# ASV overlap
+growth_asv_overlap <- growth_prepost %>% 
+  select(Inoculant, ASV, Phylum, Class, Order, Family, Genus) %>% 
+  group_by(ASV, Phylum, Class, Order, Family, Genus) %>% 
+  summarize(overlap = n()) %>% 
+  ungroup()
+
+# ASVs found growing in all 6 inoculants
+filter(growth_asv_overlap, overlap==6)
+
+# Genus overlap
+growth_genus_overlap <- growth_prepost %>% 
+  select(Inoculant, Phylum, Class, Order, Family, Genus) %>% 
+  group_by(Phylum, Class, Order, Family, Genus) %>%
+  unique() %>% 
+  summarize(overlap = n()) %>% 
+  ungroup()
+
+# ASVs found growing in all 6 inoculants
+filter(growth_genus_overlap, overlap==6)
+```
+
+Only 3 ASVs in common among all inoculants.
+
+
 ### Growth traits
 
 * growth rates
@@ -205,15 +291,60 @@ Visualize:
 # k
 growth_prepost %>% 
   ggplot(aes(x=startend, y=k, color=startend)) +
-  geom_jitter() +
-  theme_test()
+  geom_boxplot() +
+  geom_jitter(size=2) +
+  theme_test() +
+  labs(y="Growth rate (day-1)", x="Period of growth") +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 15))
 
 # change in abundance
 growth_prepost %>% 
   ggplot(aes(x=startend, y=log(change_abund), color=startend)) +
-  geom_jitter() +
-  theme_test()
+  geom_boxplot() +
+  geom_jitter(size=2) +
+  theme_test() +
+  labs(y="Relational abundance change (ln)", x="Period of growth") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
 ```
+
+```{r}
+# For poster/presentation
+
+# growth k
+grk_plot <- growth_prepost %>% 
+  mutate(bin = case_when(startend=="exp-exp" ~ "Bin 1",
+                         startend=="exp-stat" ~ "Bin 2",
+                         startend=="stat-stat" ~ "Bin 3")) %>% 
+  ggplot(aes(x=bin, y=k)) +
+  geom_violin(color="#335A30") +
+  geom_jitter(size=2, color="#335A30") +
+  theme_test() +
+  labs(y="", x="") +
+  theme(axis.text = element_text(size = 20))
+
+grk_plot
+
+ggsave("../figures/ISME18_growthk.png", grk_plot, width=11, height=6, units="in")
+
+# growth change abundance
+grabund_plot <- growth_prepost %>% 
+  mutate(bin = case_when(startend=="exp-exp" ~ "Bin 1",
+                         startend=="exp-stat" ~ "Bin 2",
+                         startend=="stat-stat" ~ "Bin 3")) %>% 
+  ggplot(aes(x=bin, y=log(change_abund))) +
+  geom_violin(color="#335A30") +
+  geom_jitter(size=2, color="#335A30") +
+  theme_test() +
+  labs(y="", x="") +
+  theme(axis.text = element_text(size = 20))
+
+grabund_plot
+
+ggsave("../figures/ISME18_grabund.png", grabund_plot, width=11, height=6, units="in")
+```
+
 
 Linear mixed effects models with random slopes and intercepts for inoculant
 
@@ -229,11 +360,39 @@ chg_lmer <- lmer(log(change_abund) ~ startend + (1 + Inoculant | Inoculant), gro
 hist(resid(chg_lmer))
 plot(predict(chg_lmer), resid(chg_lmer))
 anova(chg_lmer)
+
+# k no steadysteady
+growth_prepost_nosteady <- filter(growth_prepost, startend!="steady-steady")
+k_lmer2 <- lmer(k ~ startend + (1 + Inoculant | Inoculant), growth_prepost_nosteady)
+hist(resid(k_lmer2))
+plot(predict(k_lmer2), resid(k_lmer2))
+anova(k_lmer2)
+
+# change abund no steadysteady
+chg_lmer2 <- lmer(log(change_abund) ~ startend + (1 + Inoculant | Inoculant), growth_prepost_nosteady)
+hist(resid(chg_lmer2))
+plot(predict(chg_lmer2), resid(chg_lmer2))
+anova(chg_lmer2)
 ```
 
 ### Growth correlations 
 
 Teasing apart relationship between category and growth traits, is it due to length of growth?
+
+Growth rate vs change abundance:
+
+```{r}
+growth_prepost %>% 
+  mutate(length = end_day-start_day,
+         change_abund_length = change_abund/length) %>% 
+  ggplot(aes(y=log(change_abund), x=k, color=startend)) + 
+  geom_point(size=2) +
+  geom_smooth(method="lm", linetype=2, alpha=0.1) +
+  labs(x="Growth rate (day-1)", y="Relational abundance change (ln)") +
+  theme_test() +  
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 15))
+```
 
 Length of growth vs growth rates:
 
@@ -328,7 +487,36 @@ anova(length_lmer)
 growth_prepost %>% 
   ggplot(aes(x=startend, y=log(n16S), color=startend)) +
   geom_jitter() +
-  theme_test()
+  labs(y="ln n16S", x="Period of growth")
+  theme_test() +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+```
+
+16S x growth rates
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=n16S, y=k)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  labs(x="Predicted 16S copy number", y="Growth rate (day-1)") +
+  theme_test() +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+```
+
+16S x change abundance
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=n16S, y=log(change_abund))) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  labs(x="Predicted 16S copy number", y="ln Change relational abundance") +
+  theme_test() +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
 ```
 
 Statistics:
@@ -342,31 +530,130 @@ plot(predict(n16S_lmer), resid(n16S_lmer))
 anova(n16S_lmer)
 ```
 
-
-Statistics:
+Correlations
 
 ```{r}
-
+cor.test(growth_prepost$n16S, log(growth_prepost$change_abund), method="pearson")
+cor.test(growth_prepost$n16S, growth_prepost$k, method="pearson")
 ```
-
 
 # Death
 
-Death visualize:
+### Who died
+
+```{r}
+# Totals
+death_prepost_total <- death_prepost %>% 
+  group_by(Inoculant, startend) %>% 
+  summarize(total=n()) %>% 
+  ungroup()
+
+death_prepost_prop <- death_prepost %>% 
+  group_by(Inoculant, startend, Phylum) %>% 
+  summarize(phy_total = n()) %>% 
+  ungroup() %>% 
+  full_join(death_prepost_total) %>% 
+  mutate(proportion = phy_total/total)
+
+# Visualize
+death_prepost_prop %>% 
+  ggplot(aes(x=proportion, y=Phylum, color=startend)) +
+  geom_point() +
+  facet_wrap(~startend) +
+  labs(x="Proportion of death estimates") +
+  theme_test() +
+  theme(panel.grid.major.y = element_line(colour="gray"),
+        axis.title = element_text(size = 15),
+        axis.text = element_text(size = 12),
+        strip.text.x = element_text(size = 15))
+```
+
+### ASV overlap b/w inoculants
+
+```{r}
+# ASV overlap
+death_asv_overlap <- death_prepost %>% 
+  select(Inoculant, ASV, Phylum, Class, Order, Family, Genus) %>% 
+  group_by(ASV, Phylum, Class, Order, Family, Genus) %>% 
+  summarize(overlap = n()) %>% 
+  ungroup()
+
+# ASVs found growing in all 6 inoculants
+filter(death_asv_overlap, overlap==6)
+
+# Genus overlap
+death_genus_overlap <- death_prepost %>% 
+  select(Inoculant, Phylum, Class, Order, Family, Genus) %>% 
+  group_by(Phylum, Class, Order, Family, Genus) %>%
+  unique() %>% 
+  summarize(overlap = n()) %>% 
+  ungroup()
+
+# ASVs found growing in all 6 inoculants
+filter(death_genus_overlap, overlap==6)
+```
+
+### Death traits
+
+Visualize:
 
 ```{r}
 # k
 death_prepost %>% 
   ggplot(aes(x=startend, y=k, color=startend)) +
   geom_jitter() +
-  theme_test()
+  theme_test() +
+  labs(y="Death rate (day-1)", x="Period of death") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
 
 # change in abundance
 death_prepost %>% 
   ggplot(aes(x=startend, y=log(abs(change_abund)), color=startend)) +
-  geom_jitter() +
-  theme_test()
+  geom_boxplot() +
+  geom_jitter(size=2) +
+  theme_test() +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 15)) +
+  labs(y="Relational abundance change (ln abs. value)", x="Period of death")
 ```
+
+```{r, eval=FALSE}
+# For poster/presentation
+
+# death k
+dek_plot <- death_prepost %>% 
+  mutate(bin = case_when(startend=="exp-exp" ~ "Bin 1",
+                         startend=="exp-stat" ~ "Bin 2",
+                         startend=="stat-stat" ~ "Bin 3")) %>% 
+  ggplot(aes(x=bin, y=k)) +
+  geom_violin(color="#94221F") +
+  geom_jitter(size=2, color="#94221F") +
+  theme_test() +
+  labs(y="", x="") +
+  theme(axis.text = element_text(size = 20))
+
+dek_plot
+
+ggsave("../figures/ISME18_deathk.png", dek_plot, width=11, height=6, units="in")
+
+# death change abundance
+deabund_plot <- death_prepost %>% 
+  mutate(bin = case_when(startend=="exp-exp" ~ "Bin 1",
+                         startend=="exp-stat" ~ "Bin 2",
+                         startend=="stat-stat" ~ "Bin 3")) %>% 
+  ggplot(aes(x=bin, y=log(abs(change_abund)))) +
+  geom_violin(color="#94221F") +
+  geom_jitter(size=2, color="#94221F") +
+  theme_test() +
+  labs(y="", x="") +
+  theme(axis.text = element_text(size = 20))
+
+deabund_plot
+
+ggsave("../figures/ISME18_deabund.png", deabund_plot, width=11, height=6, units="in")
+```
+
 
 ### Death statistics 
 
@@ -385,7 +672,6 @@ hist(resid(chgdeath_lmer))
 plot(predict(chgdeath_lmer), resid(chgdeath_lmer))
 anova(chgdeath_lmer)
 ```
-
 
 # Community comparisons
 
