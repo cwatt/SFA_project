@@ -2,6 +2,9 @@
 
 # Directories
 archive
+scripts/archive
+scripts/archive_031222
+scripts/SFA2_preliminary
 data_picogreen
 data_CO2
 data_DOC
@@ -24,6 +27,7 @@ paprica_analysis
 *.tsv
 *.txt
 *.pdf
+*.html
 
 # Other
 *.Rproj

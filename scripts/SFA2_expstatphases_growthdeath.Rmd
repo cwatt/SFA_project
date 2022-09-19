@@ -773,8 +773,6 @@ Linear mixed model with random intercepts for Inoculant (equivalent to paired t-
 
 Richness:
 
-# BOOKMARK
-
 ```{r}
 rich_lmer <- lmer(log(richness) ~ leveloff + (1|Inoculant), alpha_prepost)
 hist(resid(rich_lmer))
@@ -810,6 +808,13 @@ alpha_day %>%
   geom_vline(xintercept = 9, linetype=2) +
   theme_test()
 ```
+
+### Beta Diversity
+
+```{r}
+
+```
+
 
 ### Beta diversity variance
 
