@@ -1,5 +1,5 @@
 ---
-title: "Early and late decomposition"
+title: "Growth and death dynamics during exponential and stationary phases"
 author: "Cassandra Wattenburger"
 date: "4/13/2022"
 output: html_document
@@ -49,7 +49,7 @@ norm <- readRDS("../data_intermediate/SFA2_normalized.rds")
 physeq <- readRDS("../data_intermediate/SFA2_physeq_rare.rds")
 ```
 
-# Idenitfy pre and post level off
+# Identify pre and post level off
 
 Defining as when the total normalized abundance of each inoculant evens out, indicating balanced growth and death.
 
@@ -172,8 +172,6 @@ plot1
 ggsave("../figures/ISME18_batchcurve.png", plot1, width=6, height=5, units = "in")
 ```
 
-
-
 ### Isolate pre and post 
 
 * count data
@@ -280,7 +278,7 @@ filter(growth_genus_overlap, overlap==6)
 Only 3 ASVs in common among all inoculants.
 
 
-### Growth traits
+### Traits
 
 * growth rates
 * change in abundance
@@ -375,7 +373,7 @@ plot(predict(chg_lmer2), resid(chg_lmer2))
 anova(chg_lmer2)
 ```
 
-### Growth correlations 
+### Correlations
 
 Teasing apart relationship between category and growth traits, is it due to length of growth?
 
@@ -593,7 +591,7 @@ death_genus_overlap <- death_prepost %>%
 filter(death_genus_overlap, overlap==6)
 ```
 
-### Death traits
+### Traits
 
 Visualize:
 
@@ -654,8 +652,7 @@ deabund_plot
 ggsave("../figures/ISME18_deabund.png", deabund_plot, width=11, height=6, units="in")
 ```
 
-
-### Death statistics 
+### Statistics 
 
 Linear mixed effects models with random slopes and intercepts for inoculant
 
@@ -672,213 +669,3 @@ hist(resid(chgdeath_lmer))
 plot(predict(chgdeath_lmer), resid(chgdeath_lmer))
 anova(chgdeath_lmer)
 ```
-
-# Community comparisons
-
-### Alpha diversity
-
-* at each tp, each inoc
-* richness, shannon, evenness
-
-```{r}
-# Extract data from phyloseq
-count_lvloff <- data.frame(otu_table(physeq_lvloff)) %>% 
-  rownames_to_column(var="ASV") %>% 
-  gather(SampleID, count, -ASV)
-
-tax_lvloff <- data.frame(tax_table(physeq_lvloff))
-
-# Combine
-count_tax_meta <- inner_join(count_lvloff, tax_lvloff) %>% 
-  inner_join(meta_lvloff, by="SampleID") %>% 
-  mutate(Inoculant = as_factor(Inoculant)) %>% 
-  mutate(across(Domain:Species, ~as.character(.x), {.col})) %>% 
-  filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a") # remove spike-in
-```
-
-Calculate richness, Shannon's, evenness (J):
-
-J = H/log(S)
-
-Where H is Shannon-Weaver index and S is richness.
-
-```{r}
-# Reformat counts to be compatible with vegan
-count_tax_meta_wide <- count_tax_meta %>% 
-  select(ASV, SampleID, count) %>% 
-  pivot_wider(names_from="ASV", values_from="count") %>% 
-  column_to_rownames(var="SampleID")
-
-# Calculate
-shannon <- diversity(count_tax_meta_wide, "shannon")
-richness <- specnumber(count_tax_meta_wide)
-evenness <- shannon/log(richness)
-
-# Add evennness values to data
-even_df <- data.frame(evenness) %>% 
-  rownames_to_column(var="SampleID")
-
-alpha_df <- data.frame(richness) %>%
-  rownames_to_column(var="SampleID") %>% 
-  inner_join(even_df)
-
-# Add Shannon's diversity index
-alpha_df <- data.frame(shannon) %>% 
-  rownames_to_column(var="SampleID") %>% 
-  inner_join(alpha_df)
-
-# Add metadata
-alpha_df <- inner_join(alpha_df, meta_lvloff) %>% 
-  mutate(leveloff = as_factor(leveloff),
-         leveloff = fct_relevel(leveloff, levels=c("pre", "post")))
-
-# Sumarize pre and post level off
-alpha_prepost <- alpha_df %>% 
-  group_by(Inoculant, leveloff) %>% 
-  summarize(richness = mean(richness, na.rm=TRUE),
-            evenness = mean(evenness, na.rm=TRUE),
-            shannon = mean(shannon, na.rm=TRUE))
-
-# Summarize across replicates each day
-alpha_day <- alpha_df %>% 
-  group_by(Inoculant, Day, leveloff) %>% 
-  summarize(richness = mean(richness, na.rm=TRUE),
-            evenness = mean(evenness, na.rm=TRUE),
-            shannon = mean(shannon, na.rm=TRUE))
-```
-
-Visualize:
-
-Summary
-
-```{r}
-# richness
-alpha_prepost %>% 
-  ggplot(aes(x=leveloff, y=richness, color=Inoculant)) +
-  geom_point() + 
-  geom_line(aes(group=Inoculant)) +
-  theme_test()
-
-# Evenness
-alpha_prepost %>% 
-  ggplot(aes(x=leveloff, y=evenness, color=Inoculant)) +
-  geom_point() + 
-  geom_line(aes(group=Inoculant)) +
-  theme_test()
-```
-
-##### Statistics
-
-Linear mixed model with random intercepts for Inoculant (equivalent to paired t-test)
-
-Richness:
-
-```{r}
-rich_lmer <- lmer(log(richness) ~ leveloff + (1|Inoculant), alpha_prepost)
-hist(resid(rich_lmer))
-plot(predict(rich_lmer), resid(rich_lmer))
-anova(rich_lmer)
-```
-
-Evenness:
-
-```{r}
-even_lmer <- lmer(evenness ~ leveloff + (1|Inoculant), alpha_prepost)
-hist(resid(even_lmer))
-plot(predict(even_lmer), resid(even_lmer))
-anova(even_lmer)
-```
-
-All data:
-
-```{r}
-# richness
-alpha_day %>% 
-  ggplot(aes(x=Day, y=richness, color=Inoculant)) +
-  geom_point() + 
-  geom_line(aes(group=Inoculant)) +
-  geom_vline(xintercept = 9, linetype=2) +
-  theme_test()
-
-# Evenness
-alpha_day %>% 
-  ggplot(aes(x=Day, y=evenness, color=Inoculant)) +
-  geom_point() + 
-  geom_line(aes(group=Inoculant)) +
-  geom_vline(xintercept = 9, linetype=2) +
-  theme_test()
-```
-
-### Beta Diversity
-
-```{r}
-
-```
-
-
-### Beta diversity variance
-
-Import previously generated weighted unifrac distances:
-
-* self-comparisons already removed (slow)
-
-```{r}
-wuni_dist <- readRDS("../data_intermediate/SFA2_wunidist_slim.rds")
-```
-
-Calculate coeff. of variation for each timepoint:
-
-```{r}
-# Coefficient of variation across replicates for each time point
-wuni_cv_df <- data.frame()
-for (i in unique(meta_lvloff$Inoculant)) {
-  for (d in unique(meta_lvloff[meta_lvloff$Inoculant==i,]$Day)) {
-    sams <- filter(meta, Inoculant==i & Day==d) 
-    sams <- sams$SampleID
-    wuni_sub <- filter(wuni_dist, Sample1 %in% sams & Sample2 %in% sams) # isolate reps
-    wuni_cv <- (sd(wuni_sub$wuni_dist)/mean(wuni_sub$wuni_dist))*100 # calc coeff of var
-    this_row <- bind_cols(Inoculant=i, Day=d, wuni_cv=wuni_cv)
-    wuni_cv_df <- bind_rows(wuni_cv_df, this_row)
-  }
-}
-wuni_cv_df <- na.omit(wuni_cv_df) %>% 
-  inner_join(meta_lvloff) %>%
-  mutate(leveloff = fct_relevel(leveloff, c("pre", "post")))
-
-# Average pre and post days
-wuni_cv_prepost <- wuni_cv_df %>% 
-  group_by(Inoculant, leveloff) %>%
-  summarise(wuni_cv = mean(wuni_cv))
-```
-
-Visualize:
-
-```{r}
-# Pre and post average
-wuni_cv_prepost %>% 
-  ggplot(aes(x=leveloff, y=wuni_cv, color=Inoculant)) + 
-  geom_point() +
-  geom_line(aes(group=Inoculant)) +
-  theme_test()
-```
-
-##### Statistics
-
-```{r}
-wunicv_lmer <- lmer(wuni_cv ~ Inoculant + (1|Inoculant), wuni_cv_prepost)
-hist(resid(wunicv_lmer))
-plot(predict(wunicv_lmer), resid(wunicv_lmer))
-anova(wunicv_lmer)
-```
-
-
-
-
-
-
-OUTLINE
-
-* define pre and post level-off in phyloseq object, in growth estimates via start day
-* assess richness, evenness
-* compare growth rates/other characteristics
-* compare variability of beta diversity across time

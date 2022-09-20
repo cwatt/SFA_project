@@ -1,0 +1,343 @@
+---
+title: "Community composition during exponential and stationary phases"
+author: "Cassandra Wattenburger"
+date: "9/19/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("phyloseq")
+library("vegan")
+library("tidyverse")
+library("lmerTest")
+
+sessionInfo()
+```
+
+# Import and reformat data
+
+* metadata
+* rarefied phyloseq
+
+```{r}
+# Rarefied phyloseq
+physeq <- readRDS("../data_intermediate/SFA2_physeq_rare.rds")
+```
+
+Label exponential and stationary phases:
+
+```{r}
+meta <- data.frame(sample_data(physeq))
+meta_expstat <- mutate(meta, phase = if_else(Day <= 9, "exponential", "stationary"))
+physeq_expstat <- phyloseq(otu_table(physeq), tax_table(physeq), physeq@phy_tree, sample_data(meta_expstat))
+```
+
+# Alpha diversity
+
+* Each tp, each inoculant
+* richness, shannon, evenness
+
+```{r}
+# Extract data from phyloseq
+count_expstat <- data.frame(otu_table(physeq_expstat)) %>% 
+  rownames_to_column(var="ASV") %>% 
+  gather(SampleID, count, -ASV)
+
+tax_expstat <- data.frame(tax_table(physeq_expstat))
+
+# Combine
+count_tax_meta <- inner_join(count_expstat, tax_expstat) %>% 
+  inner_join(meta_expstat, by="SampleID") %>% 
+  mutate(Inoculant = as_factor(Inoculant)) %>% 
+  mutate(across(Domain:Species, ~as.character(.x), {.col})) %>% 
+  filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a") # remove spike-in
+```
+
+Calculate richness, Shannon's, evenness (J):
+
+J = H/log(S)
+
+Where H is Shannon-Weaver index and S is richness.
+
+```{r}
+# Reformat counts to be compatible with vegan
+count_tax_meta_wide <- count_tax_meta %>% 
+  select(ASV, SampleID, count) %>% 
+  pivot_wider(names_from="ASV", values_from="count") %>% 
+  column_to_rownames(var="SampleID")
+
+# Calculate
+shannon <- diversity(count_tax_meta_wide, "shannon")
+richness <- specnumber(count_tax_meta_wide)
+evenness <- shannon/log(richness)
+
+# Add evennness values to data
+even_df <- data.frame(evenness) %>% 
+  rownames_to_column(var="SampleID")
+
+alpha_df <- data.frame(richness) %>%
+  rownames_to_column(var="SampleID") %>% 
+  inner_join(even_df)
+
+# Add Shannon's diversity index
+alpha_df <- data.frame(shannon) %>% 
+  rownames_to_column(var="SampleID") %>% 
+  inner_join(alpha_df)
+
+# Add metadata
+alpha_df <- inner_join(alpha_df, meta_expstat) %>% 
+  mutate(leveloff = as_factor(leveloff),
+         leveloff = fct_relevel(leveloff, levels=c("pre", "post")))
+
+# Sumarize pre and post level off
+alpha_prepost <- alpha_df %>% 
+  group_by(Inoculant, leveloff) %>% 
+  summarize(richness = mean(richness, na.rm=TRUE),
+            evenness = mean(evenness, na.rm=TRUE),
+            shannon = mean(shannon, na.rm=TRUE))
+
+# Summarize across replicates each day
+alpha_day <- alpha_df %>% 
+  group_by(Inoculant, Day, phase) %>% 
+  summarize(richness = mean(richness, na.rm=TRUE),
+            evenness = mean(evenness, na.rm=TRUE),
+            shannon = mean(shannon, na.rm=TRUE))
+```
+
+Visualize:
+
+```{r}
+# richness
+alpha_prepost %>% 
+  ggplot(aes(x=phase, y=richness, color=Inoculant)) +
+  geom_point() + 
+  geom_line(aes(group=Inoculant)) +
+  theme_test()
+
+# Evenness
+alpha_prepost %>% 
+  ggplot(aes(x=phase, y=evenness, color=Inoculant)) +
+  geom_point() + 
+  geom_line(aes(group=Inoculant)) +
+  theme_test()
+```
+
+##### Statistics
+
+Linear mixed model with random intercepts for Inoculant (equivalent to paired t-test)
+
+Richness:
+
+```{r}
+rich_lmer <- lmer(log(richness) ~ phase + (1|Inoculant), alpha_prepost)
+hist(resid(rich_lmer))
+plot(predict(rich_lmer), resid(rich_lmer))
+anova(rich_lmer)
+```
+
+Evenness:
+
+```{r}
+even_lmer <- lmer(evenness ~ phase + (1|Inoculant), alpha_prepost)
+hist(resid(even_lmer))
+plot(predict(even_lmer), resid(even_lmer))
+anova(even_lmer)
+```
+
+All data:
+
+```{r}
+# richness
+alpha_day %>% 
+  ggplot(aes(x=Day, y=richness, color=Inoculant)) +
+  geom_point() + 
+  geom_line(aes(group=Inoculant)) +
+  geom_vline(xintercept = 9, linetype=2) +
+  theme_test()
+
+# Evenness
+alpha_day %>% 
+  ggplot(aes(x=Day, y=evenness, color=Inoculant)) +
+  geom_point() + 
+  geom_line(aes(group=Inoculant)) +
+  geom_vline(xintercept = 9, linetype=2) +
+  theme_test()
+```
+
+# Beta Diversity
+
+```{r}
+# Set seed for permutational analyses
+set.seed(2)
+```
+
+### All data
+
+```{r}
+# Calculate weighted unifrac
+wuni_expstat <- distance(physeq_expstat, method="wunifrac")
+
+# Ordination
+pcoa_expstat <- ordinate(physeq_expstat, method="PCoA")
+plot_ordination(physeq_expstat, pcoa_expstat, color="phase") +
+  facet_wrap(~Inoculant) +
+  stat_ellipse(type="t") +
+  theme_test()
+```
+
+### Day 0
+
+```{r}
+# Isolate day 0
+physeq_day0 <- subset_samples(physeq_expstat, Day==0)
+
+# Calculate weighted unifrac
+wuni_day0 <- distance(physeq_day0, method="wunifrac")
+
+# Ordination
+pcoa_day0 <- ordinate(physeq_day0, method="PCoA")
+plot_ordination(physeq_day0, pcoa_day0, color="Inoculant") +
+  stat_ellipse(type="t") +
+  theme_test()
+```
+
+Permanova:
+
+```{r}
+meta_day0 <- data.frame(sample_data(physeq_day0))
+adonis(wuni_day0 ~ Inoculant, data=meta_day0, permutations=9999)                        
+```
+
+### Day 30
+
+```{r}
+# Isolate day 30
+physeq_day30 <- subset_samples(physeq_expstat, Day==30)
+
+# Calculate weighted unifrac
+wuni_day30 <- distance(physeq_day30, method="wunifrac")
+
+# Ordination
+pcoa_day30 <- ordinate(physeq_day30, method="PCoA")
+plot_ordination(physeq_day30, pcoa_day30, color="Inoculant") +
+  stat_ellipse(type="t") +
+  theme_test()
+```
+
+Permanova:
+
+```{r}
+meta_day30 <- data.frame(sample_data(physeq_day30))
+adonis(wuni_day30 ~ Inoculant, data=meta_day30, permutations=9999)                        
+```
+
+### Day 0 vs Day 30
+
+Can we differentiate?
+
+```{r}
+# Isolate first and final day of inubation
+physeq_day030 <- subset_samples(physeq_expstat, Day==0 | Day==30)
+
+# Calculate weighted unifrac
+wuni_day030 <- distance(physeq_day030, method="wunifrac")
+
+# PCoA ordination
+pcoa_day030 <- ordinate(physeq_day030, method="PCoA")
+plot_ordination(physeq_day030, pcoa_day030, color="Inoculant", shape="phase") +
+  theme_test()
+```
+
+Permanova:
+
+```{r}
+meta_day030 <- data.frame(sample_data(physeq_day030))
+adonis(wuni_day030 ~ Day, data=meta_day030, strata=meta_day030$Inoculant, permutations = 9999)
+```
+
+### Day 10 vs day 30
+
+Is there a change? Would indicate a dynamic community despite steady biomass.
+
+```{r}
+# Isolate beginning and last time point measured of stationary phase
+physeq_stat1030 <- subset_samples(physeq_expstat, Day==10 | Day==30)
+
+# Calculate weighted unifrac
+wuni_stat1030 <- distance(physeq_stat1030, method="wunifrac")
+
+# PCoA ordination
+pcoa_stat1030 <- ordinate(physeq_stat1030, method="PCoA")
+plot_ordination(physeq_stat1030, pcoa_stat1030, color="Day") +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+meta_stat1030 <- data.frame(sample_data(physeq_stat1030))
+adonis(wuni_stat1030 ~ Day, data=meta_stat1030, strata=meta_stat1030$Inoculant, permutations = 9999)
+```
+
+### Beta diversity variance
+
+Import previously generated weighted unifrac distances:
+
+* self-comparisons already removed (slow)
+
+```{r}
+wuni_dist <- readRDS("../data_intermediate/SFA2_wunidist_slim.rds")
+```
+
+Calculate coeff. of variation for each timepoint:
+
+```{r}
+# Coefficient of variation across replicates for each time point
+wuni_cv_df <- data.frame()
+for (i in unique(meta_expstat$Inoculant)) {
+  for (d in unique(meta_expstat[meta_expstat$Inoculant==i,]$Day)) {
+    sams <- filter(meta, Inoculant==i & Day==d) 
+    sams <- sams$SampleID
+    wuni_sub <- filter(wuni_dist, Sample1 %in% sams & Sample2 %in% sams) # isolate reps
+    wuni_cv <- (sd(wuni_sub$wuni_dist)/mean(wuni_sub$wuni_dist))*100 # calc coeff of var
+    this_row <- bind_cols(Inoculant=i, Day=d, wuni_cv=wuni_cv)
+    wuni_cv_df <- bind_rows(wuni_cv_df, this_row)
+  }
+}
+wuni_cv_df <- na.omit(wuni_cv_df) %>% 
+  inner_join(meta_expstat) %>%
+  mutate(phase = fct_relevel(phase, c("pre", "post")))
+
+# Average pre and post days
+wuni_cv_prepost <- wuni_cv_df %>% 
+  group_by(Inoculant, phase) %>%
+  summarise(wuni_cv = mean(wuni_cv))
+```
+
+Visualize:
+
+```{r}
+# All time points
+wuni_cv_df %>% 
+  ggplot(aes(x=Day, y=wuni_cv, color=Inoculant)) + 
+  geom_point() +
+  facet_wrap(~Inoculant) +
+  geom_line(aes(group=Inoculant)) +
+  theme_test()
+
+# Phases
+wuni_cv_prepost %>% 
+  ggplot(aes(x=phase, y=wuni_cv, color=Inoculant)) + 
+  geom_point() +
+  geom_line(aes(group=Inoculant)) +
+  theme_test()
+```

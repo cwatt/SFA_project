@@ -318,15 +318,53 @@ P = 1 #atm, assumes 1 atm in ucosms during sampling
 molCO2100 = P*V/(R*temp) # total mol of CO2 in headspace, if it were 100% CO2
 mgCO2100 = molCO2100 * mwCO2*1000 # mol * g/mol * 1000mg/g = mg, mg of CO2 present if it were 100% CO2
 sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 based on ppm
-
-# Cumulative mg CO2 and C
-sample.totals = sample.conv %>%
-  group_by(Sample, Inoculant, DOC_predict) %>%
-  summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>% 
-  ungroup()
 ```
 
-# CO2 production before and after community level off
+# Cumulative CO2
+
+```{r}
+# Cumulative mg CO2 and C
+resp_cum = sample.conv %>%
+  group_by(Sample, Inoculant, DOC_predict) %>%
+  summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>% 
+  ungroup() %>% 
+  mutate(Inoculant = as.character(Inoculant))
+```
+
+```{r}
+# Visualize
+resp_cum %>% 
+  ggplot(aes(x=Inoculant, y=totalCO2mg)) +
+  geom_point() +
+  theme_test()
+```
+
+Statistics:
+
+Is there a difference in total respiration between inoculants?
+
+```{r}
+# Remove non-samples
+resp_cum <- filter(resp_cum, !(Inoculant %in% c(0, 51)))
+
+# linear model
+resp_cum_lm <- lm(totalCO2mg ~ Inoculant, data=resp_cum)
+hist(resid(resp_cum_lm)) # non-normal
+
+# Kruskal-Wallis
+kruskal.test(totalCO2mg ~ Inoculant, data=resp_cum)
+```
+
+
+# WIP BELOW
+
+
+
+
+
+
+
+# CO2 production during exponential and stationary phases
 
 Amount of CO2 collected per time point
 
@@ -338,7 +376,7 @@ respiration <- sample.conv %>%
   mutate(Inoculant = as.character(Inoculant),
          TP = gsub("tp", "", TP),
          TP = as.numeric(TP),
-         Phase = if_else(TP < 6, "exp", "steady")) %>% 
+         Phase = if_else(TP <= 9, "exp", "steady")) %>% 
   inner_join(meta)
   
 
