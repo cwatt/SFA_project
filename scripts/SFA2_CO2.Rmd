@@ -25,8 +25,9 @@ sessionInfo()
 rm(list=ls())
 ```
 
+# Process GCMS data
 
-# Import and reformat GCMS data
+## Import and reformat GCMS data
 
 Note: Exported from Shimadzu PostRun Analysis software as ASCII using second and fourth output options.
 
@@ -46,7 +47,7 @@ for (i in dir) {
 # TIC, w/z44 (12C), w/z45 (13C)
 
 # Construct data frame containing all data
-area.df = tibble() # initialize empty tibble
+area_df = tibble() # initialize empty tibble
 
 for (i in names(files)) { # for each list of files (refers to a directory)
   for (x in files[[i]]) { # for each file in the selected list (directory)
@@ -74,33 +75,35 @@ for (i in names(files)) { # for each list of files (refers to a directory)
              TP = tp, # adding additional metadata...
              Date = date,
              Sample = name)
-    area.df = rbind(area.df, dat) # add to master data frame
+    area_df = rbind(area_df, dat) # add to master data frame
   }
 }
 
 # Parse dates
-area.df = area.df %>%
+area_df = area_df %>%
   mutate(Date = gsub("([0-2]{2})([0-9]{2})([0-2]{2})", "\\1-\\2-20\\3", Date)) %>%
   mutate(Date = parse_date(Date, "%m-%d-%Y"))
 ```
 
-# Calculate total area
+## Calculate total area
 
 TIC area often does not record (not sure why), so we will use 12C + 13C instead which is a close approximation.
 
 ```{r}
 # Calculate
-area.df = area.df %>%
+area_df = area_df %>%
   pivot_wider(names_from = Measurement, values_from = Area) %>%
-  mutate(C1213 = C12+C13)
+  mutate(area_C1213 = C12+C13)
 ```
 
-# Standards
+## Standards
 
-Separate from samples/atmosphere measurements
+Note: some of these analyses were done while the experiment was ongoing, to adjust the number of standards run during the experiment.
+
+Separate standards from samples/atmosphere measurements:
 
 ```{r}
-std.df = area.df %>%
+std_df = area_df %>%
   filter(str_detect(Sample, "std"))
 ```
 
@@ -113,8 +116,8 @@ Multiplier: 0.5x = 0.9, x = 1.8
 
 ```{r}
 # Calculate adjusted areas
-std.df = std.df %>%
-  mutate(Area.adj = if_else(str_detect(Sample, "[7-9]"), C1213*1.8, C1213, missing=NULL), # correct split-ratio
+std_df = std_df %>%
+  mutate(area_adj = if_else(str_detect(Sample, "[7-9]"), area_C1213*1.8, area_C1213, missing=NULL), # correct split-ratio
          ppm = case_when(Sample == "std0" ~ 0, # add ppm
                          Sample == "std1" ~ 769,
                          Sample == "std2" ~ 1538,
@@ -130,70 +133,70 @@ std.df = std.df %>%
   
 ```
 
-Visualize
+Visualize:
 
 ```{r}
-std.df %>%
-  ggplot(aes(x=ppm, y=Area.adj)) +
+std_df %>%
+  ggplot(aes(x=ppm, y=area_adj)) +
   geom_point() +
   geom_smooth(method="lm") +
   facet_wrap(~Date, scales="free") +
   theme_test()
 ```
 
-Calibration curve
+Calculate calibration curve
 
 ```{r}
 # Linear regressions
-std.cal = tibble()
-for (x in unique(std.df$Date)) {
-  dat = filter(std.df, Date==x)
-  std.lm = lm(Area.adj ~ ppm, dat)
-  this.row = bind_cols(Date = unique(dat$Date), # save results
-                       intercept = summary(std.lm)$coefficients[1,1],
-                       slope = summary(std.lm)$coefficients[2,1], 
-                       adjR2 = summary(std.lm)$adj.r.squared, 
-                       pval = summary(std.lm)$coefficients[2,4])
-  std.cal = bind_rows(std.cal, this.row)
+std_cal <- tibble()
+for (x in unique(std_df$Date)) {
+  dat <- filter(std_df, Date==x)
+  std_lm <- lm(area_adj ~ ppm, dat)
+  this_row <- bind_cols(Date = unique(dat$Date), # save results
+                       intercept = summary(std_lm)$coefficients[1,1],
+                       slope = summary(std_lm)$coefficients[2,1], 
+                       adjR2 = summary(std_lm)$adj.r.squared, 
+                       pval = summary(std_lm)$coefficients[2,4])
+  std_cal <- bind_rows(std_cal, this_row)
 }
 
-std.cal
+std_cal
 ```
 
 Remove std 1 - I think it would be better to include another high ppm sample instead of lower ones.
 
 ```{r}
-std.df %>%
+std_df %>%
   filter(Sample != "std1") %>%
-  ggplot(aes(x=ppm, y=Area.adj)) +
+  ggplot(aes(x=ppm, y=area_adj)) +
   geom_point() +
   geom_smooth(method="lm") +
   facet_wrap(~Date, scales="free") +
   theme_test()
 ```
 
-Calibration curve - no std1
+Calibration curve - no std1:
 
 ```{r}
 # Linear regressions
-std.cal1 = tibble()
-for (x in unique(std.df$Date)) {
-  dat1 = filter(std.df, Date==x & Sample != "std1")
-  std.lm1 = lm(Area.adj ~ ppm, dat)
-  date1 = unique(dat1$Date)
-  this.row1 = bind_cols(Date = date, coeff = summary(std.lm1)$coefficients[2,1], adjR2 = summary(std.lm1)$adj.r.squared , pval = summary(std.lm1)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
-  std.cal1 = bind_rows(std.cal, this.row)
+std_cal1 <- tibble()
+for (x in unique(std_df$Date)) {
+  dat1 <- filter(std_df, Date==x & Sample != "std1")
+  std_lm1 <- lm(area_adj ~ ppm, dat)
+  date1 <- unique(dat1$Date)
+  this_row1 <- bind_cols(Date = date, coeff = summary(std_lm1)$coefficients[2,1], adjR2 = summary(std_lm1)$adj.r.squared , pval = summary(std_lm1)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
+  std_cal1 <- bind_rows(std_cal, this_row)
 }
 
-std.cal1
+std_cal1
 ```
 
-Remove std 1 and 4
+Remove std 1 and 4:
 
 ```{r}
-std.df %>%
+std_df %>%
   filter(!(Sample %in% c("std1", "std4"))) %>%
-  ggplot(aes(x=ppm, y=Area.adj)) +
+  ggplot(aes(x=ppm, y=area_adj)) +
   geom_point() +
   geom_smooth(method="lm") +
   facet_wrap(~Date, scales="free") +
@@ -204,55 +207,63 @@ Calibration curve - no std1 or std4
 
 ```{r}
 # Linear regressions
-std.cal14 = tibble()
-for (x in unique(std.df$Date)) {
-  dat14 = filter(std.df, Date==x & Sample != "std1")
-  std.lm14 = lm(Area.adj ~ ppm, dat14)
-  this.row14 = bind_cols(coeff = summary(std.lm14)$coefficients[2,1], adjR2 = summary(std.lm14)$adj.r.squared , pval = summary(std.lm14)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
-  std.cal14 = bind_rows(std.cal14, this.row14)
+std_cal14 <- tibble()
+for (x in unique(std_df$Date)) {
+  dat14 <- filter(std_df, Date==x & Sample != "std1")
+  std_lm14 <- lm(area_adj ~ ppm, dat14)
+  this_row14 <- bind_cols(coeff = summary(std_lm14)$coefficients[2,1], adjR2 = summary(std_lm14)$adj.r.squared , pval = summary(std_lm14)$coefficients[2,4]) # save coefficent, adj. R2, and p-value
+  std_cal14 <- bind_rows(std_cal14, this_row14)
 }
 
-std.cal14
+std_cal14
 ```
 
 Same result. Will add more high ppm standards and omit stds 1 and 4 for future runs.
 
-# Samples
+## Samples
 
-Isolate microcosm samples
+Isolate microcosm samples:
 
 ```{r}
-sample.df = anti_join(area.df, std.df) %>%
+sample_df <- anti_join(area_df, std_df) %>%
   mutate(dummy_ppm = 0) %>% # dummy ppm for graphing with standards on ppm axis
   filter(!str_detect(Sample, "[a-z]")) %>% # exclude other non-samples 
-  mutate(Sample, Sample = parse_number(Sample))# convert to numeric
+  mutate(Sample, Sample = parse_number(Sample)) # convert to numeric
 ```
 
-Add metadata information about inoculants
+Add metadata:
 
 ```{r}
 # Import metadata
-meta = read_csv("../data_CO2/SFA2/SFA2_headspace_metadata.csv")
+meta_sample <- read_csv("../data_CO2/SFA2/SFA2_headspace_metadata.csv") %>% 
+  mutate(Inoculant = as.character(Inoculant)) %>% 
+  select(Sample, Inoculant)
 
-# Merge with CO2 data
-sample.df = full_join(sample.df, meta, by="Sample")
+meta_tp <- read_tsv("../data_CO2/SFA2/headspace_tps_metadata.tsv")
+
+# Merge metadata with CO2 data
+sample_df <- full_join(sample_df, meta_sample, by="Sample") %>% 
+  mutate(TP = gsub("tp", "", TP),
+         TP = as.numeric(TP)) %>% 
+  left_join(meta_tp, by="TP") %>% 
+  select(Sample, Inoculant, TP, Date, Day, Timeframe, area_C1213, dummy_ppm)
 ```
 
-Visualize
+Visualize:
 
 ```{r}
 # Compare samples against range of standards
-std.df %>%
-  ggplot(aes(x=ppm, y=Area.adj)) +
+std_df %>%
+  ggplot(aes(x=ppm, y=area_adj)) +
   geom_point(shape=1) +
-  geom_point(aes(y=C1213, x=dummy_ppm, color=Date), data=sample.df) +
+  geom_point(aes(y=area_C1213, x=dummy_ppm, color=Date), data=sample_df) +
   labs(title="Samples vs. standards") +
   theme_test()
 
 # Observe progression of CO2 production
-sample.df %>%
+sample_df %>%
   mutate(Control = if_else(Sample %in% c(379:384), "Y", "N")) %>% # distinguish negative control
-  ggplot(aes(y=C1213, x=Date)) +
+  ggplot(aes(y=area_C1213, x=Date)) +
   labs(y="Area") +
   geom_jitter(aes(color = Control)) +
   labs(title="Quick look - respiration over time") +
@@ -263,100 +274,129 @@ Outlier ~ Dec. 15, looking at lab notes it seems I may have accidentally sampled
 
 ```{r}
 # Isolate outlier and correct
-outlier = sample.df %>%
-  subset(Sample==363 & TP=="tp6") %>%
-  mutate(Ctotal = Ctotal/2, C12 = C12/2, C13 = C13/2, C1213 = C1213/2) # halve measurements
+outlier <- sample_df %>%
+  subset(Sample==363 & TP==6) %>%
+  mutate(area_C1213 = area_C1213/2) # halve measurement
 
 # Replace in dataframe
-sample.df = sample.df %>%
-  filter(!(Sample==363 & TP=="tp6")) %>%
+sample_df <- sample_df %>%
+  filter(!(Sample==363 & TP==6)) %>%
   bind_rows(outlier)
 ```
 
-### Calculate CO2
+## Calculate CO2
 
 Use calibration curve to convert sample areas into ppm.
 
 ```{r}
 # Convert sample area to ppm using calibration curves
-sample.conv = tibble()
-for (d in unique(sample.df$Date)) {
-  cal = std.cal %>% filter(Date==d)
-  conv = sample.df %>% 
+sample_conv <- tibble()
+for (d in unique(sample_df$Date)) {
+  cal = std_cal %>% filter(Date==d)
+  conv = sample_df %>% 
     filter(Date==d) %>%
-    mutate(ppm = (C1213 - cal$intercept)/cal$slope)
-  sample.conv = rbind(sample.conv, conv)
+    mutate(ppm = (area_C1213 - cal$intercept)/cal$slope)
+  sample_conv = rbind(sample_conv, conv)
 }
 ```
 
-Sanity check visualization
+Sanity check visualization: Do the sample measurements fall within the standards?
 
 ```{r}
 # Sanity check, plot against standards
-std.df %>%
-  ggplot(aes(x=ppm, y=Area.adj)) +
+std_df %>%
+  ggplot(aes(x=ppm, y=area_adj)) +
   geom_point(shape=1) +
-  geom_point(aes(y=C1213, x=ppm, color=Date), data=sample.conv) +
+  geom_point(aes(y=area_C1213, x=ppm, color=Date), data=sample_conv) +
   #scale_y_continuous(limits=c(0,500000)) +
   #scale_x_continuous(limits=c(0, 20000)) +
   theme_test() +
   theme()
 ```
 
-Calculate mol CO2
+Calculate mg CO2:
 
 ```{r}
 # Ideal gas law: n=(P*V)/(R*temp)
 # NOTE: pressure does not matter for this calulation because it's all relative to the stds
-R = 0.082057338 # universal gas constant, (L*atm)/(mol*K)
-temp = 296.48 # K, 74F in lab throughout experiment
-V = 0.013 # L, headspace of 30 mL serum bottle with sand ########### NEED TO DBL CHECK##########
-mwCO2 = 44.01 # molecular weight (g/mol) of CO2
-P = 1 #atm, assumes 1 atm in ucosms during sampling
+R <- 0.082057338 # universal gas constant, (L*atm)/(mol*K)
+temp <- 296.48 # K, 74F in lab throughout experiment
+V <- 0.013 # L, headspace of 30 mL serum bottle with sand
+mwCO2 <- 44.01 # molecular weight (g/mol) of CO2
+P <- 1 #atm, assumes 1 atm in ucosms during sampling
 
 # Calculate per time point
-molCO2100 = P*V/(R*temp) # total mol of CO2 in headspace, if it were 100% CO2
-mgCO2100 = molCO2100 * mwCO2*1000 # mol * g/mol * 1000mg/g = mg, mg of CO2 present if it were 100% CO2
-sample.conv = mutate(sample.conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 based on ppm
+molCO2100 <- P*V/(R*temp) # total mol of CO2 in headspace, if it were 100% CO2
+mgCO2100 <- molCO2100 * mwCO2*1000 # mol * g/mol * 1000mg/g = mg, mg of CO2 present if it were 100% CO2
+sample_conv <- mutate(sample_conv, mgCO2 = mgCO2100*(ppm*10^-6)) # actual mg CO2 based on ppm
 ```
 
-# Cumulative CO2
+# Analysis
+
+## Total respiration per inoculant
 
 ```{r}
 # Cumulative mg CO2 and C
-resp_cum = sample.conv %>%
-  group_by(Sample, Inoculant, DOC_predict) %>%
-  summarize(totalCO2mg = sum(mgCO2), totalCmg = totalCO2mg*(12/44)) %>% 
+resp_total = sample_conv %>%
+  group_by(Sample, Inoculant) %>%
+  summarize(total_mgCO2 = sum(mgCO2), total_mgC = total_mgCO2*(12/44)) %>% # molar weight ratio of C in CO2
   ungroup() %>% 
   mutate(Inoculant = as.character(Inoculant))
 ```
 
 ```{r}
 # Visualize
-resp_cum %>% 
-  ggplot(aes(x=Inoculant, y=totalCO2mg)) +
+resp_total %>% 
+  filter(!(Inoculant %in% c(0, 51))) %>% # remove controls
+  ggplot(aes(x=Inoculant, y=total_mgCO2)) +
   geom_point() +
   theme_test()
 ```
 
 Statistics:
 
-Is there a difference in total respiration between inoculants?
+Are there any differences in total respiration between inoculants?
 
 ```{r}
 # Remove non-samples
-resp_cum <- filter(resp_cum, !(Inoculant %in% c(0, 51)))
+resp_total_noctrl <- filter(resp_total, !(Inoculant %in% c(0, 51)))
 
 # linear model
-resp_cum_lm <- lm(totalCO2mg ~ Inoculant, data=resp_cum)
-hist(resid(resp_cum_lm)) # non-normal
+resp_total_lm <- lm(total_mgCO2 ~ Inoculant, data=resp_total_noctrl)
+hist(resid(resp_total_lm)) # non-normal
 
 # Kruskal-Wallis
-kruskal.test(totalCO2mg ~ Inoculant, data=resp_cum)
+kruskal.test(total_mgCO2 ~ Inoculant, data=resp_total_noctrl)
+```
+
+## Respiration rate
+
+Calculate mg CO2 respired per day:
+
+```{r}
+resp_rate <- sample_conv %>% 
+  select(Sample, Inoculant, Day, Timeframe, mgCO2) %>% 
+  mutate(mgCO2_day = mgCO2/Timeframe) %>% 
+  filter(!is.infinite(mgCO2_day)) # remove day 0 (no rate possible)
+
+# Average replicates for each inoculant
+resp_rate_mean <- resp_rate %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(mgCO2_day = mean(mgCO2_day))
+```
+
+Visualize:
+
+```{r}
+resp_rate_mean %>% 
+  filter(!(Inoculant %in% c(0, 51))) %>%  # remove controls
+  ggplot(aes(x=Day, y=mgCO2_day)) +
+  geom_boxplot(aes(group=Day)) +
+    geom_jitter() +
+  theme_test()
 ```
 
 
-# WIP BELOW
 
 
 
@@ -364,14 +404,99 @@ kruskal.test(totalCO2mg ~ Inoculant, data=resp_cum)
 
 
 
-# CO2 production during exponential and stationary phases
+
+
+
+
+## Cellular production rate vs respiration rate
+
+Cellular production rate = specific growth rate x normalized abundance
+
+Prediction: The celllular production to respiration rate will shift from exponential to stationary phase as growth becomes more selective and efficient.
+
+Import growth rate and normalized abundance data:
+
+```{r}
+# Import data
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+norm_abund <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+
+# Combine
+growth_abund <- full_join(growth, norm_abund)
+```
+
+Calculate total cellular production:
+
+Steps
+* cellular production = specific growth rate x normalized abundance at time point
+* sum for total
+
+```{r}
+# Calculate cellular production
+cell_prod_asv <- growth_abund %>% 
+  mutate(cell_prod = k*norm_abund_avg) %>% 
+  select(ASV, Inoculant, Day, k, norm_abund_avg, cell_prod)
+
+# Total cellular production per day
+cell_prod_day <- cell_prod_asv %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(total_cell_prod = sum(cell_prod))
+```
+
+Visualize:
+
+```{r}
+# By day, all ASVs
+cell_prod_asv %>% 
+  ggplot(aes(x=Day, y=log(cell_prod))) +
+  geom_jitter() +
+  geom_smooth() +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+# Total production (ASVs summed)
+cell_prod_day %>% 
+  ggplot(aes(x=Day, y=log(total_cell_prod))) +
+  geom_jitter() +
+  geom_smooth() +
+  theme_test()
+
+```
+
+Combine data:
+
+```{r}
+cell_resp_rate <- cell_prod_day %>% 
+  inner_join(resp_rate_mean, by=c("Inoculant", "Day"))
+```
+
+Correlation:
+
+```{r}
+cell_resp_rate %>% 
+  ggplot(aes(x=mgCO2_day, y=log(total_cell_prod))) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+cor.test(cell_resp_rate$total_cell_prod, cell_resp_rate$mgCO2_day)
+```
+
+
+# ARCHIVE
+
+## CO2 production during exponential and stationary phases
 
 Amount of CO2 collected per time point
 
 ```{r}
 meta <- read_tsv("../data_CO2/SFA2/headspace_tps_metadata.tsv")
   
-respiration <- sample.conv %>% 
+respiration <- sample_conv %>% 
   select(Inoculant, TP, Date, mgCO2) %>%
   mutate(Inoculant = as.character(Inoculant),
          TP = gsub("tp", "", TP),
@@ -454,7 +579,7 @@ resp_plot
 ggsave("../figures/ISME18_CO2.png", resp_plot, width=15, height=8, unit="in")
 ```
 
-# Growth rates vs CO2 respiration rates
+## Growth rates vs CO2 respiration rates
 
 Import growth estimate and normalized abundance data:
 
