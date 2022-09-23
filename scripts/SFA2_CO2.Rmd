@@ -396,18 +396,6 @@ resp_rate_mean %>%
   theme_test()
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
 ## Cellular production rate vs respiration rate
 
 Cellular production rate = specific growth rate x normalized abundance
@@ -422,7 +410,8 @@ growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 norm_abund <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
 
 # Combine
-growth_abund <- full_join(growth, norm_abund)
+growth_abund <- full_join(growth, norm_abund) %>% 
+  mutate(norm_abund_corr = norm_abund_avg / n16S)
 ```
 
 Calculate total cellular production:
@@ -434,8 +423,8 @@ Steps
 ```{r}
 # Calculate cellular production
 cell_prod_asv <- growth_abund %>% 
-  mutate(cell_prod = k*norm_abund_avg) %>% 
-  select(ASV, Inoculant, Day, k, norm_abund_avg, cell_prod)
+  mutate(cell_prod = k*norm_abund_corr) %>% 
+  select(ASV, Inoculant, Day, k, norm_abund_corr, cell_prod)
 
 # Total cellular production per day
 cell_prod_day <- cell_prod_asv %>% 
