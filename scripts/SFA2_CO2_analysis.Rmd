@@ -1,0 +1,274 @@
+---
+title: "SFA2 - CO2 data analysis"
+author: "Cassandra Wattenburger"
+date: "10/7/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+**Goal:** Analyze headspace CO2 from microcosms.
+
+# Import libraries, clear working directory
+
+```{r}
+library(tidyverse)
+library(cowplot)
+
+sessionInfo()
+
+rm(list=ls())
+```
+
+# Import and prep data
+
+* respiration data
+* growth estimates
+* normalized abundances
+
+```{r}
+# Respiration data, remove non-samples
+resp <- readRDS("../data_intermediate/SFA2_respiration.rds") %>% 
+  filter(!Inoculant %in% c(0, 51))
+
+# Growth estimates
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+
+# Normalized abundances
+normabund <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+
+# Combine and clean up growth and normalized abundance data
+growth_abund <- full_join(growth, normabund) %>% 
+  select(Inoculant, Day, ASV, start_day, end_day, k, n16S, norm_abund_avg) # remove unneeded columns
+```
+
+# Total respired CO2
+
+Calculate totals:
+
+```{r}
+# Cumulative mg CO2 and C
+resp_total <-  resp %>%
+  group_by(Sample, Inoculant) %>%
+  summarize(total_mgCO2 = sum(mgCO2), total_mgC = total_mgCO2*(12/44)) %>% # molar weight ratio of C in CO2
+  ungroup() %>% 
+  mutate(Inoculant = as.character(Inoculant))
+```
+
+```{r}
+# Visualize
+resp_total %>% 
+  filter(!(Inoculant %in% c(0, 51))) %>% # remove controls
+  ggplot(aes(x=Inoculant, y=total_mgCO2)) +
+  geom_point() +
+  theme_test()
+```
+
+Statistics:
+
+Are there any differences in total respiration between inoculants?
+
+```{r}
+# linear model
+resp_total_lm <- lm(total_mgCO2 ~ Inoculant, data=resp_total)
+hist(resid(resp_total_lm)) # non-normal
+
+# Kruskal-Wallis
+kruskal.test(total_mgCO2 ~ Inoculant, data=resp_total)
+```
+
+# Respiration rate
+
+Calculate mg CO2 respired per inoculant per day:
+
+```{r}
+resp_rate <- resp %>% 
+  select(Sample, Inoculant, Day, Timeframe, mgCO2) %>% 
+  mutate(mgCO2_day = mgCO2/Timeframe) %>% 
+  filter(!is.infinite(mgCO2_day)) # remove day 0 (no rate possible)
+
+# Average replicates for each inoculant
+resp_rate_inoc <- resp_rate %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(mgCO2_day = mean(mgCO2_day))
+```
+
+Visualize:
+
+```{r}
+resp_rate_inoc %>% 
+  filter(!(Inoculant %in% c(0, 51))) %>%  # remove controls
+  ggplot(aes(x=Day, y=mgCO2_day)) +
+  geom_boxplot(aes(group=Day)) +
+    geom_jitter() +
+  theme_test()
+```
+
+## Growth rate vs respiration rate
+
+Calculate weighted mean growth rate for each time point:
+
+```{r}
+# Correct normalized abundance by 16S copy number
+growth_abund <- growth_abund %>% 
+  mutate(norm_abund_corr = norm_abund_avg/n16S)
+
+# Calculate weighted k and summed k
+weighted_gr <- data.frame()
+
+for (i in unique(growth_abund$Inoculant)) {
+  for (d in unique(growth_abund$Day)) {
+    data_subset <- filter(growth_abund, Inoculant==i & Day==d) %>% 
+      filter(start_day <= d & end_day >= d) # include only ASVs that grew on the given day
+    weighted_mean <- weighted.mean(data_subset$k, data_subset$norm_abund_corr)
+    this_row <- bind_cols(Inoculant=i, Day=d, weighted_k=weighted_mean)
+    weighted_gr <- bind_rows(weighted_gr, this_row)
+  }
+}
+
+# Visualize
+weighted_gr %>% 
+  ggplot(aes(x=Day, y=weighted_k)) +
+  geom_boxplot(aes(group=Day)) +
+  geom_point() +
+  #geom_line() +
+  #facet_wrap(~Inoculant) +
+  labs(title="Weighted mean growth rates over time") +
+  theme_test()
+```
+
+Combine weighted mean growth rate and respiration rate means:
+
+```{r}
+growth_resprate <- inner_join(weighted_gr, resp_rate_inoc)
+```
+
+Respiration rate x weighted growth rate:
+
+```{r}
+growth_resprate %>% 
+  ggplot(aes(x=mgCO2_day, y=weighted_k)) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test() +
+  labs(title="Weighted growth rates vs. respiration rates", x="Respiration rate mean (mgCO2/day)", y="specific growth rate w.mean")
+```
+
+Statistics:
+
+```{r}
+cor.test(growth_resprate$mgCO2_day, growth_resprate$weighted_k)
+```
+
+## Mean growth rate efficiency
+
+Calculate efficiency:
+
+```{r}
+growth_resprate %>%
+  mutate(eff = weighted_k/mgCO2_day) %>% 
+  ggplot(aes(x=Day, y=eff)) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+## Cellular production rate vs respiration rate
+
+Calculate cellular production rate:
+
+Steps
+* cellular production = specific growth rate x log corrected normalized abundance at time point
+* Sum for total per day
+
+This results in a measure of total new biomass that will be produced at that time point.
+
+Note: multiply by log normalized abundance because k is calculated using log transformed abundance data.
+
+```{r}
+# Calculate total cellular production per day
+cell_prod <- data.frame()
+
+for (i in unique(growth_abund$Inoculant)) {
+  for (d in unique(growth_abund$Day)) {
+    data_subset <- filter(growth_abund, Inoculant==i & Day==d) %>% 
+      filter(start_day <= d & end_day >= d) %>% # remove taxa that did not grow on given day
+      mutate(cell_prod = k*log(norm_abund_corr)) # calculate cellular production by multiplying specific growth rate by log abundance
+    cell_prod_total <- sum(data_subset$cell_prod) # total
+    add_row <- bind_cols(Inoculant=i, Day=d, cell_prod=cell_prod_total)
+    cell_prod <- bind_rows(cell_prod, add_row)
+    }
+}
+```
+
+Visualize:
+
+```{r}
+cell_prod %>% 
+  ggplot(aes(x=Day, y=cell_prod)) +
+  geom_jitter() +
+  geom_smooth(linetype=2) +
+  labs(title="Total cellular production over time") +
+  theme_test()
+```
+
+Combine with respiration data:
+
+```{r}
+cell_prod_resp <- cell_prod %>% 
+  inner_join(resp_rate_inoc, by=c("Inoculant", "Day"))
+```
+
+Correlation:
+
+```{r}
+cell_prod_resp %>% 
+  ggplot(aes(x=mgCO2_day, y=cell_prod)) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  #facet_wrap(~Inoculant) +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+cor.test(cell_prod_resp$mgCO2_day, cell_prod_resp$cell_prod)
+```
+
+## Cellular production efficiency
+
+Calculate the ratio of CO2 respiration rate to log cellular production rate to estimate a proxy for efficiency.
+
+Note: high efficiency proxy would be higher number because less CO2 produced per cellular production
+
+```{r}
+cell_prod_resp <- cell_prod_resp %>% 
+  mutate(eff_proxy = cell_prod/mgCO2_day)
+```
+
+Save output for use in other scripts:
+
+```{r, eval=FALSE}
+saveRDS(cell_prod_resp, file="../data_intermediate/SFA2_cellprod_eff.rds")
+```
+
+Visualize over time:
+
+```{r}
+cell_prod_resp %>% 
+  ggplot(aes(x=Day, y=eff_proxy)) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+cor.test(cell_prod_resp$eff_proxy, cell_prod_resp$Day)
+```

@@ -1,0 +1,152 @@
+---
+title: "SFA2 - community dissimilarity vs."
+author: "Cassandra Wattenburger"
+date: "10/7/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("ape")
+library("phyloseq")
+library("picante")
+
+sessionInfo()
+```
+
+# Import data:
+
+* metadata
+* distances
+* growth estimates
+* normalized abundances
+
+```{r}
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
+wuni_dist <- readRDS("../data_intermediate/SFA2_wunidist_slim.rds")
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+norm_gr <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds") # in case want to do weighted mean k
+```
+
+# Dissimilarity vs growth rates
+
+How does the disimilarity between replicates within a sample relate to growth rates?
+
+Calculate averages:
+
+```{r}
+# Calculate average distance per inoculant per day
+comm_dist <- data.frame()
+for (i in unique(meta$Inoculant)) {
+  for (d in unique(meta$Day)) {
+    meta_filt <- filter(meta, Type=="Growth" & Inoculant==i & Day==d)
+    sams <- meta_filt$SampleID
+    wuni_filt <- filter(wuni_dist, Sample1 %in% sams & Sample2 %in% sams)
+    wuni_avg <- mean(wuni_filt$wuni_dist, na.rm=TRUE)
+    add_row <- bind_cols(Inoculant=i, Day=d, avg_dist=wuni_avg)
+    comm_dist <- bind_rows(comm_dist, add_row)
+  }
+}
+
+# Remove unnecessary columns and combine
+growth <- growth %>% 
+  select(ASV, Inoculant, start_day, end_day, k, n16S)
+
+norm_gr <- norm_gr %>% 
+  select(ASV, Inoculant, Day, norm_abund_avg)
+
+norm_growth <- inner_join(growth, norm_gr)
+
+# Correct normalized abundance by 16S copy numbers
+norm_growth <- norm_growth %>% 
+  mutate(norm_abund_corr = norm_abund_avg/n16S)
+
+# Calculate avg k
+weighted_k <- data.frame()
+for (i in unique(norm_growth$Inoculant)) {
+  for (d in unique(norm_growth$Day)) {
+    data_filt <- filter(norm_growth, Inoculant==i & Day==d) %>% 
+      filter(start_day <= d & end_day >= d) # make sure ASV is growing on this day
+    k_wmean <- weighted.mean(data_filt$k, data_filt$norm_abund_corr)
+    add_row <- bind_cols(Inoculant=i, Day=d, wmean_k=k_wmean)
+    weighted_k <- bind_rows(weighted_k, add_row)
+  }
+}
+```
+
+Combine distance and growth rate averages:
+
+```{r}
+dist_k <- inner_join(comm_dist, weighted_k)
+```
+
+Visualize:
+
+```{r}
+dist_k %>% 
+  ggplot(aes(x=avg_dist, y=wmean_k)) +
+  geom_point() +
+  facet_wrap(~Inoculant) +
+  geom_smooth(method="lm", linetype=2) +
+  labs(x="Weighted unifrac distance (avg)", y="Weighted mean specific growth rate") +
+  theme_test()
+
+dist_k %>% 
+  ggplot(aes(x=avg_dist, y=wmean_k)) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  labs(x="Weighted unifrac distance (avg)", y="weighted mean specific growth rate") +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+# Overall
+cor.test(dist_k$avg_dist, dist_k$wmean_k)
+```
+
+## BNTI vs. growth rates
+
+Does growth rate correlate with stochasticity?
+
+Import bNTI calculations:
+
+```{r}
+bNTI <- readRDS("../data_intermediate/SFA2_bNTI_mean_overall.rds")
+
+# Combine with wmean growth rates
+bNTI_wmk <- inner_join(bNTI, weighted_k)
+```
+
+Visualize:
+
+```{r}
+bNTI_wmk %>% 
+  ggplot(aes(x=bNTI_mean, y=wmean_k)) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+# Dissimilarity vs CUE
+
+Import cellular production and efficiency data:
+
+```{r}
+# Import
+eff_proxy <- readRDS("../data_intermediate/SFA2_cellprod_eff.rds")
+```
+
+
+
+

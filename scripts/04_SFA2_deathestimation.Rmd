@@ -526,7 +526,9 @@ example_plot
 ggsave("../figures/ISME18_deathexample.png", example_plot, width=5.3, height=3, units="in")
 ```
 
-# Plot growth and death
+# Growth and death
+
+## Visualize
 
 ```{r}
 # Import growth estimates and relational abundances
@@ -574,5 +576,48 @@ for (l in as.character(both$label)) {
   print(graph)
 }
 
+```
+
+## Death after growth
+
+```{r}
+# how many estimates with both growth and death?
+nrow(both)
+
+# how many estimates with death after growth?
+both_after <-  both %>% 
+  mutate(death_after = if_else(death_end_day >= growth_end_day, 1, 0)) %>%
+  filter(death_after==1)
+
+nrow(both_after)
+
+# How many death after growth estimates per phase?
+both_after_phase <- both_after %>% 
+  mutate(phase = case_when(death_end_day <= 9 ~ "bin1",
+                           death_start_day <= 9 & death_end_day >= 9 ~ "bin2",
+                           death_start_day >= 9 ~ "bin3"))
+
+both_after_phase_total <- both_after_phase %>% 
+  group_by(Inoculant, phase) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
+
+# Add empty bins
+for (i in unique(both$Inoculant)) {
+  for (b in c("bin1", "bin2", "bin3")) {
+    dat <- filter(both_after_phase_total, Inoculant==i & phase==b)
+    if (nrow(dat)==0) { # if no estimates, create bin with 0
+      add_row <- bind_cols(Inoculant=i, phase=b, total=0)
+      both_after_phase_total <- bind_rows(both_after_phase_total, add_row)
+    }
+    else (next)
+  }
+}
+
+# Average total per bin
+both_after_phase_total %>% 
+  group_by(phase) %>% 
+  summarize(mean_total = mean(total, na.rm=TRUE), sd_total = sd(total)) %>% 
+  ungroup()
 ```
 

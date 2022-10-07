@@ -769,6 +769,12 @@ bNTI_overall <- bNTI_all %>%
 bNTI_all <- bind_rows(bNTI_all, bNTI_overall)
 ```
 
+Save result:
+
+```{r, eval=FALSE}
+saveRDS(bNTI_all, "../data_intermediate/SFA2_bNTI_mean_overall.rds")
+```
+
 Visualize:
 
 Whole community:

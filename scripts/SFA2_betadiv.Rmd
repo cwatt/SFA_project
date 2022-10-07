@@ -167,4 +167,3 @@ wuni_day30 <- distance(physeq_day30, method="wunifrac")
 adonis(wuni_day30~Inoculant, data=meta_day30, permutations=999)
 ```
 
-Inoculants started with significantly different communities then became indistinguishable, but I wouldn't call it convergence. The variation increased between replicates. Indicates stochastic processes?

@@ -1,0 +1,37 @@
+---
+title: "SFA2 - carrying capacity"
+author: "Cassandra Wattenburger"
+date: "10/7/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+
+sessionInfo()
+```
+
+# Import and reformat data
+
+```{r}
+
+```
+
+# Estimate carrying capacity
+
+# Analysis
+
+## Carrying capacity x death abundance losses
+
+## Carrying capacity x growth rates
+
+## Carrying capacity x length of growth

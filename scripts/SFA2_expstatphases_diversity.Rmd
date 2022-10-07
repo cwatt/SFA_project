@@ -95,12 +95,12 @@ alpha_df <- data.frame(shannon) %>%
 
 # Add metadata
 alpha_df <- inner_join(alpha_df, meta_expstat) %>% 
-  mutate(leveloff = as_factor(leveloff),
-         leveloff = fct_relevel(leveloff, levels=c("pre", "post")))
+  mutate(phase = as_factor(phase),
+         phase = fct_relevel(phase, levels=c("pre", "post")))
 
 # Sumarize pre and post level off
 alpha_prepost <- alpha_df %>% 
-  group_by(Inoculant, leveloff) %>% 
+  group_by(Inoculant, phase) %>% 
   summarize(richness = mean(richness, na.rm=TRUE),
             evenness = mean(evenness, na.rm=TRUE),
             shannon = mean(shannon, na.rm=TRUE))
@@ -287,6 +287,61 @@ Statistics:
 meta_stat1030 <- data.frame(sample_data(physeq_stat1030))
 adonis(wuni_stat1030 ~ Day, data=meta_stat1030, strata=meta_stat1030$Inoculant, permutations = 9999)
 ```
+
+### Day 0 vs. total respiration
+
+Did the initial community structure impact CO2 respiration? Focusing on axis 2 because of difference between inoculant 10 in both beta diversity and total respiration.
+
+Import respiration data:
+
+```{r}
+# CO2
+resp <- readRDS("../data_intermediate/SFA2_respiration.rds")
+
+# Calculate total CO2, average per inoculant
+resp_total <- resp %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(avg_mgco2 = mean(mgCO2)) %>% 
+  ungroup() %>% 
+  group_by(Inoculant) %>% 
+  summarize(total_mgco2 = sum(avg_mgco2)) %>% 
+  ungroup() %>% 
+  filter(Inoculant != 0)
+```
+
+Isolate and average axis 2 of day 0 PCoA:
+
+```{r}
+samids_day0 <- meta_day0$SampleID
+
+pcoa_day0_ax2 <- pcoa_day0$vectors %>% 
+  as.data.frame() %>% 
+  select(Axis.2) %>% 
+  rownames_to_column(var="SampleID") %>%
+  inner_join(meta_day0) %>% 
+  group_by(Inoculant) %>% # average inoculant replicates
+  summarize(mean_axis2 = mean(Axis.2))
+```
+
+Combine total respiration and axis 2:
+
+```{r}
+resp_axis2 <- inner_join(resp_total, pcoa_day0_ax2)
+```
+
+Visaulze:
+
+```{r}
+resp_axis2 %>% 
+  ggplot(aes(x=mean_axis2, y=total_mgco2)) +
+  geom_point() +
+  geom_text(aes(label=Inoculant), hjust=1.2, vjust=1.2) +
+  theme_test()
+```
+
+
+
+
 
 ### Beta diversity variance
 
