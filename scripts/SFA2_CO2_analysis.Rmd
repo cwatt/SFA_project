@@ -23,7 +23,6 @@ sessionInfo()
 
 rm(list=ls())
 ```
-
 # Import and prep data
 
 * respiration data
@@ -164,6 +163,171 @@ Statistics:
 cor.test(growth_resprate$mgCO2_day, growth_resprate$weighted_k)
 ```
 
+# Growth efficiency
+
+Proxy for CUE using generation time, period of time, normalized abundance, and respiration rate.
+
+N0 = normalized abundance of taxon at start of time interval (not log transformed)
+g = generation time of taxon (days)
+t = days in time frame
+r = mg CO2/day, respiration rate
+
+n = t/g, number of generations
+Nt = N0*2^n, biomass at end of time frame
+deltaN = Nt - N0, change in biomass
+r*t = the mg CO2 produced in that time frame
+
+growth efficiency = ΣdeltaN/(r*t), the sum of gained abundance over mg CO2 produced
+
+```{r}
+growth_eff <- data.frame()
+
+times <- as.data.frame(unique(growth_abund$Day)) %>%
+  select(Day = `unique(growth_abund$Day)`) %>%
+  arrange(Day) %>% 
+  rownames_to_column(var="TP") %>% 
+  mutate(TP = as.numeric(TP))
+
+resp_times <- as.data.frame(unique(resp_rate$Day)) %>% 
+  select(Day = `unique(resp_rate$Day)`) %>%
+  arrange(Day) %>% 
+  rownames_to_column(var="TP") %>% 
+  mutate(TP = as.numeric(TP))
+
+for (i in unique(growth_abund$Inoculant)) {
+  for (d in unique(growth_abund$Day)) {
+    # Calculate time frame
+    next_tp <- times[times$Day==d,]$TP + 1
+    next_day <- times[next_tp, 2]
+    t <- next_day - d
+    # Calculate gained abundance for each taxon
+    gained_abund <- filter(growth_abund, Inoculant==i & Day==d) %>% 
+      filter(start_day <= d & end_day >= d) %>% # remove taxa that did not grow on given day
+      mutate(g = log(2)/k, # calculate doubling time (ln2 / specific growth rate)
+             t = t, # timeframe
+             n = t/g, # number of generations
+             Nt = norm_abund_corr*2^n,
+             deltaN = Nt - norm_abund_corr) %>% # biomass at end of timeframe
+      summarize(total = sum(deltaN)) %>% 
+      select(total) %>% 
+      as.numeric()
+    # Calculate respired CO2
+    times_subset <- filter(resp_times, Day > d) # use the rate calculated for the timeframe, associated with next tp value
+    resp_d <- times_subset[1,] %>% # will choose d or nearest time point after d
+      select(Day) %>% 
+      as.numeric()
+    respired <- filter(resp_rate, Inoculant==i & Day==resp_d) %>% 
+      summarize(rate = mean(mgCO2_day)) %>% # average technical replicates
+      mutate(t = t,
+             total = rate*t) %>%
+      select(total) %>% 
+      as.numeric()
+    # Combine dataframes
+    add_row <- bind_cols(Inoculant=i, Day=next_day, deltaN_total=gained_abund, CO2=respired)
+    growth_eff <- bind_rows(growth_eff, add_row)
+  }
+}
+
+# Calculate growth efficiency
+growth_eff <- mutate(growth_eff, growth_eff = deltaN_total/CO2)
+```
+
+Visualize:
+
+```{r}
+# gained abundance vs CO2 produced
+growth_eff %>% 
+  ggplot(aes(x=log(deltaN_total), y=CO2)) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+
+# Growth efficiency over time
+growth_eff %>% 
+  ggplot(aes(x=Day, y=log(growth_eff))) +
+  geom_point() +
+  #geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+# Spearman correlations
+cor.test(log(growth_eff$deltaN_total), growth_eff$CO2, method="spearman")
+cor.test(log(growth_eff$growth_eff), growth_eff$Day, method="spearman")
+```
+
+
+# Growing:non-growing
+
+Import data of all ASVs:
+
+* Normalized abundances at each time point
+* PAPRICA predicions
+
+```{r}
+normabund_all <- readRDS("../data_intermediate/SFA2_normalized.rds")
+paprica <- readRDS("../data_intermediate/SFA2_paprica_all.rds")
+
+# Combine
+normabund_pap <- inner_join(normabund_all, paprica)
+
+asvs_growing <- unique(growth$ASV)
+
+# Tidy up
+normabund_pap <- normabund_pap %>% 
+  full_join(growth) %>% 
+  mutate(grew = if_else(ASV %in% asvs_growing, "yes", "no"),
+         norm_abund_corr = norm_abund/n16S) %>% # correct for copy #
+  filter(Type=="Growth") %>% 
+  select(Sample, Inoculant, Day, ASV, start_day, end_day, norm_abund_corr, grew)
+```
+
+
+```{r}
+# Calculate grow:no-grow ratio
+grow_ratio <- data.frame()
+
+for (i in unique(normabund_pap$Inoculant)) {
+  for (d in unique(normabund_pap$Day)) {
+    # Calculate gained abundance for each taxon
+    grow_total <- filter(normabund_pap, Inoculant==i & Day==d & grew=="yes") %>% 
+      mutate(growing = if_else(start_day <= d & end_day >= d, "yes", "no")) %>% # make sure growing on day of interest 
+      filter(growing == "yes") %>% 
+      summarize(total = sum(norm_abund_corr, na.rm=TRUE)) %>% 
+      select(total) %>% 
+      as.numeric()
+    nogrow_total <- filter(normabund_pap, Inoculant==i & Day==d) %>% 
+      mutate(growing = if_else(grew=="yes" & start_day <= d & end_day >= d, "yes", "no")) %>% 
+      filter(growing == "no" | grew=="no") %>% 
+      summarize(total = sum(norm_abund_corr, na.rm=TRUE)) %>% 
+      select(total) %>% 
+      as.numeric()
+    ratio <- grow_total/nogrow_total # growing biomass/non-growing biomass
+    add_row <- bind_cols(Inoculant=i, Day=d, ratio=ratio)
+    grow_ratio <- bind_rows(grow_ratio, add_row)
+  }
+}
+
+# Add respiration data
+resp_mean <- resp_rate %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(mgCO2_day = mean(mgCO2_day))
+ratio_resp <- inner_join(grow_ratio, resp_mean)
+```
+
+Visualize:
+
+```{r}
+ratio_resp %>% 
+  ggplot(aes(x=mgCO2_day, y=log(ratio))) +
+  geom_point() +
+  theme_test()
+```
+
+# ARCHIVE
+
 ## Mean growth rate efficiency
 
 Calculate efficiency:
@@ -176,6 +340,19 @@ growth_resprate %>%
   geom_smooth(method="lm", linetype=2) +
   theme_test()
 ```
+
+# Ratio with growth efficiency
+
+```{r}
+ratio_eff <- inner_join(growth_eff, ratio_resp)
+
+ratio_eff %>% 
+  ggplot(aes(x=Day, y=log(growth_eff), size=ratio)) +
+  geom_point() +
+  #geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
 
 ## Cellular production rate vs respiration rate
 
@@ -272,3 +449,5 @@ Statistics:
 ```{r}
 cor.test(cell_prod_resp$eff_proxy, cell_prod_resp$Day)
 ```
+
+

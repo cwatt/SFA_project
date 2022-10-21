@@ -339,10 +339,6 @@ resp_axis2 %>%
   theme_test()
 ```
 
-
-
-
-
 ### Beta diversity variance
 
 Import previously generated weighted unifrac distances:

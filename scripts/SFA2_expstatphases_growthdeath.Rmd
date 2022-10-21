@@ -298,7 +298,7 @@ growth_prepost %>%
 
 # change in abundance
 growth_prepost %>% 
-  ggplot(aes(x=startend, y=log(change_abund), color=startend)) +
+  ggplot(aes(x=startend, y=log(change_abund_corr), color=startend)) +
   geom_boxplot() +
   geom_jitter(size=2) +
   theme_test() +
@@ -331,7 +331,7 @@ grabund_plot <- growth_prepost %>%
   mutate(bin = case_when(startend=="exp-exp" ~ "Bin 1",
                          startend=="exp-stat" ~ "Bin 2",
                          startend=="stat-stat" ~ "Bin 3")) %>% 
-  ggplot(aes(x=bin, y=log(change_abund))) +
+  ggplot(aes(x=bin, y=log(change_abund_corr))) +
   geom_violin(color="#335A30") +
   geom_jitter(size=2, color="#335A30") +
   theme_test() +
@@ -354,7 +354,7 @@ plot(predict(k_lmer), resid(k_lmer))
 anova(k_lmer)
 
 # change abund
-chg_lmer <- lmer(log(change_abund) ~ startend + (1 + Inoculant | Inoculant), growth_prepost)
+chg_lmer <- lmer(log(change_abund_corr) ~ startend + (1 + Inoculant | Inoculant), growth_prepost)
 hist(resid(chg_lmer))
 plot(predict(chg_lmer), resid(chg_lmer))
 anova(chg_lmer)
@@ -367,7 +367,7 @@ plot(predict(k_lmer2), resid(k_lmer2))
 anova(k_lmer2)
 
 # change abund no steadysteady
-chg_lmer2 <- lmer(log(change_abund) ~ startend + (1 + Inoculant | Inoculant), growth_prepost_nosteady)
+chg_lmer2 <- lmer(log(change_abund_corr) ~ startend + (1 + Inoculant | Inoculant), growth_prepost_nosteady)
 hist(resid(chg_lmer2))
 plot(predict(chg_lmer2), resid(chg_lmer2))
 anova(chg_lmer2)
@@ -382,8 +382,8 @@ Growth rate vs change abundance:
 ```{r}
 growth_prepost %>% 
   mutate(length = end_day-start_day,
-         change_abund_length = change_abund/length) %>% 
-  ggplot(aes(y=log(change_abund), x=k, color=startend)) + 
+         change_abund_length = change_abund_corr/length) %>% 
+  ggplot(aes(y=log(change_abund_corr), x=k, color=startend)) + 
   geom_point(size=2) +
   geom_smooth(method="lm", linetype=2, alpha=0.1) +
   labs(x="Growth rate (day-1)", y="Relational abundance change (ln)") +
@@ -417,7 +417,7 @@ Length of growth vs change in abundance:
 
 ```{r}
 growth_prepost %>% 
-  ggplot(aes(x=length, y=log(change_abund))) + 
+  ggplot(aes(x=length, y=log(change_abund_corr))) + 
   geom_point() +
   geom_smooth(method="lm", linetype=2) +
   theme_test()
@@ -428,7 +428,7 @@ Statistics:
 * Pearson correlation
 
 ```{r}
-cor.test(log(growth_prepost$change_abund), growth_prepost$length, method="pearson")
+cor.test(log(growth_prepost$change_abund_corr), growth_prepost$length, method="pearson")
 ```
 
 Lag vs growth rate:
@@ -445,7 +445,7 @@ Lag vs change in abundance:
 
 ```{r}
 growth_prepost %>% 
-  ggplot(aes(x=start_day, y=log(change_abund))) + 
+  ggplot(aes(x=start_day, y=log(change_abund_corr))) + 
   geom_point() +
   geom_smooth(method="lm", linetype=2) +
   theme_test()
@@ -456,7 +456,7 @@ Statistics:
 * Pearson correlation
 
 ```{r}
-cor.test(log(growth_prepost$change_abund), growth_prepost$start_day, method="spearm")
+cor.test(log(growth_prepost$change_abund_corr), growth_prepost$start_day, method="spearm")
 ```
 
 ### Length of growth
@@ -508,7 +508,7 @@ growth_prepost %>%
 
 ```{r}
 growth_prepost %>% 
-  ggplot(aes(x=n16S, y=log(change_abund))) +
+  ggplot(aes(x=n16S, y=log(change_abund_corr))) +
   geom_point() +
   geom_smooth(method="lm") +
   labs(x="Predicted 16S copy number", y="ln Change relational abundance") +
@@ -531,7 +531,7 @@ anova(n16S_lmer)
 Correlations
 
 ```{r}
-cor.test(growth_prepost$n16S, log(growth_prepost$change_abund), method="pearson")
+cor.test(growth_prepost$n16S, log(growth_prepost$change_abund_corr), method="pearson")
 cor.test(growth_prepost$n16S, growth_prepost$k, method="pearson")
 ```
 
@@ -607,7 +607,7 @@ death_prepost %>%
 
 # change in abundance
 death_prepost %>% 
-  ggplot(aes(x=startend, y=log(abs(change_abund)), color=startend)) +
+  ggplot(aes(x=startend, y=log(abs(change_abund_corr)), color=startend)) +
   geom_boxplot() +
   geom_jitter(size=2) +
   theme_test() +
@@ -640,7 +640,7 @@ deabund_plot <- death_prepost %>%
   mutate(bin = case_when(startend=="exp-exp" ~ "Bin 1",
                          startend=="exp-stat" ~ "Bin 2",
                          startend=="stat-stat" ~ "Bin 3")) %>% 
-  ggplot(aes(x=bin, y=log(abs(change_abund)))) +
+  ggplot(aes(x=bin, y=log(abs(change_abund_corr)))) +
   geom_violin(color="#94221F") +
   geom_jitter(size=2, color="#94221F") +
   theme_test() +
@@ -664,7 +664,7 @@ plot(predict(kdeath_lmer), resid(kdeath_lmer))
 anova(kdeath_lmer)
 
 # change abund
-chgdeath_lmer <- lmer(log(abs(change_abund)) ~ startend + (1 + Inoculant | Inoculant), death_prepost)
+chgdeath_lmer <- lmer(log(abs(change_abund_corr)) ~ startend + (1 + Inoculant | Inoculant), death_prepost)
 hist(resid(chgdeath_lmer))
 plot(predict(chgdeath_lmer), resid(chgdeath_lmer))
 anova(chgdeath_lmer)

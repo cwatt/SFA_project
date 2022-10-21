@@ -27,12 +27,12 @@ Files produced by paprica v0.6.
 ```{r}
 # PAPRICA outputs
 # Bacteria
-pap_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath.bacteria.edge_data.csv")
-place_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath.bacteria.combined_16S.bacteria.tax.placements.csv")
+pap_bac <- read_csv("../paprica_analysis/asvs_all/SFA2_full.rep-seqs-merged.bacteria.edge_data.csv")
+place_bac <- read_csv("../paprica_analysis/asvs_all/SFA2_full.rep-seqs-merged.bacteria.combined_16S.bacteria.tax.placements.csv")
 
 # Archaea
-pap_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath.archaea.edge_data.csv")
-place_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath.archaea.combined_16S.archaea.tax.placements.csv")
+pap_arc <- read_csv("../paprica_analysis/asvs_all/SFA2_full.rep-seqs-merged.archaea.edge_data.csv")
+place_arc <- read_csv("../paprica_analysis/asvs_all/SFA2_full.rep-seqs-merged.archaea.combined_16S.archaea.tax.placements.csv")
 
 # Growth and death estimates
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
@@ -42,11 +42,11 @@ death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 
 # Pathways
-path_bac <- read_csv("../paprica_analysis/output_bacteria/growthdeath.bacteria.pathways.csv")
-path_arc <- read_csv("../paprica_analysis/output_archaea/growthdeath.archaea.pathways.csv")
+path_bac <- read_csv("../paprica_analysis/asvs_all/SFA2_full.rep-seqs-merged.archaea.pathways.csv")
+path_arc <- read_csv("../paprica_analysis/asvs_all/SFA2_full.rep-seqs-merged.bacteria.pathways.csv")
 ```
 
-# PAPRICA predictions
+# PAPRICA results
 
 ```{r}
 # What's going on here:
@@ -93,7 +93,7 @@ pap_all %>%
   filter(Phylum == "Acidobacteriota" | Phylum == "Chloroflexi")
 
 # Average across phyla
-missing_replace <- pap_all %>% 
+missing_impute <- pap_all %>% 
   group_by(Phylum) %>% 
   summarize(n16s = mean(n16S, na.rm=TRUE),
             genome_size = mean(genome_size, na.rm=TRUE),
@@ -101,25 +101,25 @@ missing_replace <- pap_all %>%
             npaths_actual = mean(npaths_actual, na.rm=TRUE),
             nec_actual = mean(nec_actual, na.rm=TRUE)) %>% 
   filter(Phylum=="Acidobacteriota" | Phylum=="Chloroflexi")
-missing_replace
+missing_impute
 
 # Acidobacteria imputations
-acido_n16S <- as.numeric(missing_replace[1,2])
-acido_genome <- as.numeric(missing_replace[1,3])
-acido_phi <- as.numeric(missing_replace[1,4])
-acido_npaths <- as.numeric(missing_replace[1,5])
-acido_nec <- as.numeric(missing_replace[1,6])
+acido_n16S <- as.numeric(missing_impute[1,2])
+acido_genome <- as.numeric(missing_impute[1,3])
+acido_phi <- as.numeric(missing_impute[1,4])
+acido_npaths <- as.numeric(missing_impute[1,5])
+acido_nec <- as.numeric(missing_impute[1,6])
 
 # Chloroflexi imputations
-chloro_n16S <- as.numeric(missing_replace[2,2])
-chloro_genome <- as.numeric(missing_replace[2,3])
-chloro_phi <- as.numeric(missing_replace[2,4])
-chloro_npaths <- as.numeric(missing_replace[2,5])
-chloro_nec <- as.numeric(missing_replace[2,6])
+chloro_n16S <- as.numeric(missing_impute[2,2])
+chloro_genome <- as.numeric(missing_impute[2,3])
+chloro_phi <- as.numeric(missing_impute[2,4])
+chloro_npaths <- as.numeric(missing_impute[2,5])
+chloro_nec <- as.numeric(missing_impute[2,6])
 
 
 # Impute
-pap_replace <- pap_all %>% 
+pap_impute <- pap_all %>% 
   mutate(n16S = if_else(Phylum=="Acidobacteriota" & is.na(n16S), acido_n16S, if_else(Phylum=="Chloroflexi" & is.na(n16S), chloro_n16S, n16S)),
          genome_size = if_else(Phylum=="Acidobacteriota" & is.na(genome_size), acido_genome, 
                                if_else(Phylum=="Chloroflexi" & is.na(genome_size), chloro_genome, genome_size)),
@@ -135,10 +135,10 @@ pap_replace <- pap_all %>%
 Combine estimates with paprica predictions:
 
 ```{r}
-growth_pap <- left_join(growth, pap_replace, by="ASV") %>% 
+growth_pap <- left_join(growth, pap_impute, by="ASV") %>% 
   select(-global_edge_num)
 
-death_pap <- left_join(death, pap_replace, by="ASV") %>% 
+death_pap <- left_join(death, pap_impute, by="ASV") %>% 
   select(-global_edge_num)
 ```
 
@@ -146,19 +146,20 @@ Correct abundances using n16S prediction:
 
 ```{r}
 growth_pap <- growth_pap %>%
-  mutate(start_abund = start_abund/n16S,
-         end_abund = end_abund/n16S,
-         change_abund = change_abund/n16S)
+  mutate(start_abund_corr = start_abund/n16S,
+         end_abund_corr = end_abund/n16S,
+         change_abund_corr = change_abund/n16S)
 
 death_pap <- death_pap %>%
-  mutate(start_abund = start_abund/n16S,
-         end_abund = end_abund/n16S,
-         change_abund = change_abund/n16S)
+  mutate(start_abund_corr = start_abund/n16S,
+         end_abund_corr = end_abund/n16S,
+         change_abund_corr = change_abund/n16S)
 ```
 
 Save:
 
 ```{r, eval=FALSE}
+saveRDS(pap_impute, "../data_intermediate/SFA2_paprica_all.rds")
 saveRDS(growth_pap, "../data_intermediate/SFA2_growth_estimates_pap.rds")
 saveRDS(death_pap, "../data_intermediate/SFA2_death_estimates_pap.rds")
 ```
