@@ -23,6 +23,7 @@ sessionInfo()
 
 rm(list=ls())
 ```
+
 # Import and prep data
 
 * respiration data
@@ -30,6 +31,8 @@ rm(list=ls())
 * normalized abundances
 
 ```{r}
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
+
 # Respiration data, remove non-samples
 resp <- readRDS("../data_intermediate/SFA2_respiration.rds") %>% 
   filter(!Inoculant %in% c(0, 51))
@@ -43,6 +46,9 @@ normabund <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
 # Combine and clean up growth and normalized abundance data
 growth_abund <- full_join(growth, normabund) %>% 
   select(Inoculant, Day, ASV, start_day, end_day, k, n16S, norm_abund_avg) # remove unneeded columns
+
+# community dissimilarity
+wuni_dist <- readRDS("../data_intermediate/SFA2_wunidist_slim.rds")
 ```
 
 # Total respired CO2
@@ -326,128 +332,51 @@ ratio_resp %>%
   theme_test()
 ```
 
-# ARCHIVE
-
-## Mean growth rate efficiency
-
-Calculate efficiency:
+# Community dissimilarity vs growth efficiency
 
 ```{r}
-growth_resprate %>%
-  mutate(eff = weighted_k/mgCO2_day) %>% 
-  ggplot(aes(x=Day, y=eff)) +
-  geom_point() +
-  geom_smooth(method="lm", linetype=2) +
-  theme_test()
-```
+# Combine with metadata for Sample1
+meta_short <- meta %>% 
+  select(SampleID, ucosm=Sample, Inoculant, Day, Type)
 
-# Ratio with growth efficiency
+wuni_meta <- inner_join(wuni_dist, meta_short, by=c("Sample1"="SampleID")) %>%
+  select(Sample1, Sample2, Inoc1=Inoculant, Day1=Day, wuni_dist) %>% 
+  inner_join(meta_short, by=c("Sample2"="SampleID")) %>%
+  select(Sample1, Sample2, Inoc1, Inoc2=Inoculant, Day1, Day2=Day, wuni_dist)
 
-```{r}
-ratio_eff <- inner_join(growth_eff, ratio_resp)
+# Filter non-self distance comparisons and find centroid
+wuni_noself <- wuni_meta %>% 
+  mutate(lab1 = paste0(Inoc1, "_", Day1),
+         lab2 = paste0(Inoc2, "_", Day2)) %>% 
+  filter(lab1!=lab2) %>% # remove comparisons that are not between the same Inoculant and day
+  group_by(lab1) %>% 
+  summarize(wuni_mean = mean(wuni_dist))
 
-ratio_eff %>% 
-  ggplot(aes(x=Day, y=log(growth_eff), size=ratio)) +
-  geom_point() +
-  #geom_smooth(method="lm", linetype=2) +
-  theme_test()
-```
+# Calculate distances between inoculants at each time point
+days <- filter(meta, Day <= 30 & !is.na(Day))
+days <- unique(days$Day)
+inocs <- filter(meta, Inoculant!=51 & !is.na(Inoculant))
+inocs <- unique(inocs$Inoculant)
 
+ffuu <- data.frame()
 
-## Cellular production rate vs respiration rate
-
-Calculate cellular production rate:
-
-Steps
-* cellular production = specific growth rate x log corrected normalized abundance at time point
-* Sum for total per day
-
-This results in a measure of total new biomass that will be produced at that time point.
-
-Note: multiply by log normalized abundance because k is calculated using log transformed abundance data.
-
-```{r}
-# Calculate total cellular production per day
-cell_prod <- data.frame()
-
-for (i in unique(growth_abund$Inoculant)) {
-  for (d in unique(growth_abund$Day)) {
-    data_subset <- filter(growth_abund, Inoculant==i & Day==d) %>% 
-      filter(start_day <= d & end_day >= d) %>% # remove taxa that did not grow on given day
-      mutate(cell_prod = k*log(norm_abund_corr)) # calculate cellular production by multiplying specific growth rate by log abundance
-    cell_prod_total <- sum(data_subset$cell_prod) # total
-    add_row <- bind_cols(Inoculant=i, Day=d, cell_prod=cell_prod_total)
-    cell_prod <- bind_rows(cell_prod, add_row)
-    }
+for (d in days) {
+    data_filt <- filter(wuni_noself, Day1==d & Day2==d)
+    for (i in 1:length(inocs)) {
+      inoc <- inocs[i]
+      data_filt2 <- filter(data_filt, Inoc1==inoc)
+      if (i < 6) {
+        for (x in 1:(6-i)) { # does this even do what I think it does?
+        inoc_next <- inocs[i+x]
+        data_filt3 <- filter(data_filt2, Inoc2==inoc_next)
+        dist_mean <- mean(data_filt3$wuni_dist)
+        this_row <- bind_cols(Inoc1=inocs[i], Inoc2=inocs[x], Day=d, wuni_mean=dist_mean)
+        ffuu <- bind_rows(ffuu, this_row)
+        }
+      }
+      else {
+          next
+      }
+  }
 }
 ```
-
-Visualize:
-
-```{r}
-cell_prod %>% 
-  ggplot(aes(x=Day, y=cell_prod)) +
-  geom_jitter() +
-  geom_smooth(linetype=2) +
-  labs(title="Total cellular production over time") +
-  theme_test()
-```
-
-Combine with respiration data:
-
-```{r}
-cell_prod_resp <- cell_prod %>% 
-  inner_join(resp_rate_inoc, by=c("Inoculant", "Day"))
-```
-
-Correlation:
-
-```{r}
-cell_prod_resp %>% 
-  ggplot(aes(x=mgCO2_day, y=cell_prod)) +
-  geom_point() +
-  geom_smooth(method="lm", linetype=2) +
-  #facet_wrap(~Inoculant) +
-  theme_test()
-```
-
-Statistics:
-
-```{r}
-cor.test(cell_prod_resp$mgCO2_day, cell_prod_resp$cell_prod)
-```
-
-## Cellular production efficiency
-
-Calculate the ratio of CO2 respiration rate to log cellular production rate to estimate a proxy for efficiency.
-
-Note: high efficiency proxy would be higher number because less CO2 produced per cellular production
-
-```{r}
-cell_prod_resp <- cell_prod_resp %>% 
-  mutate(eff_proxy = cell_prod/mgCO2_day)
-```
-
-Save output for use in other scripts:
-
-```{r, eval=FALSE}
-saveRDS(cell_prod_resp, file="../data_intermediate/SFA2_cellprod_eff.rds")
-```
-
-Visualize over time:
-
-```{r}
-cell_prod_resp %>% 
-  ggplot(aes(x=Day, y=eff_proxy)) +
-  geom_point() +
-  geom_smooth(method="lm", linetype=2) +
-  theme_test()
-```
-
-Statistics:
-
-```{r}
-cor.test(cell_prod_resp$eff_proxy, cell_prod_resp$Day)
-```
-
-

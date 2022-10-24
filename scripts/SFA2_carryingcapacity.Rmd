@@ -22,16 +22,120 @@ sessionInfo()
 
 # Import and reformat data
 
-```{r}
+* metadata
+* growth estimates
+* death estimates
+* normalized abundances
 
+```{r}
+# Import
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
+norm <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds") # associated with growth estimated ASVs only
+
+# Reformat for calculating carrying capacity
+growth_short <- growth %>% 
+  select(Inoculant, ASV, end_growth = end_day, n16S)
+
+death_short <- death %>% 
+    select(Inoculant, ASV, start_death = start_day, n16S)
+  
+# Combine growth and death dataframes
+growth_death <- full_join(growth_short, death_short)
+
+# Combine with normalized abundances
+growth_death_norm <- left_join(growth_death, norm) %>% 
+  select(Inoculant, ASV, Day, end_growth, start_death, n16S, norm_abund_avg) %>% 
+  mutate(norm_abund_corr = norm_abund_avg / n16S)
 ```
 
 # Estimate carrying capacity
 
-# Analysis
+Average normalized abundance between end of growth and start of death.
 
-## Carrying capacity x death abundance losses
+```{r}
+# Carry capacity with death
+died <- growth_death_norm %>% 
+  filter(!is.na(start_death)) %>% # remove taxa that did not die 
+  filter(Day >= end_growth & Day <= start_death) %>% 
+  group_by(Inoculant, ASV) %>% 
+  summarize(carry_cap = mean(norm_abund_avg))
+
+# Carry capacity no death
+nodie <- growth_death_norm %>% 
+  filter(is.na(start_death)) %>% # remove taxa that died
+  filter(Day >= end_growth & end_growth != 30) %>% 
+  group_by(Inoculant, ASV) %>% 
+  summarize(carry_cap = mean(norm_abund_avg))
+
+# Combine
+carry_cap <- bind_rows(died, nodie)
+```
+
+Visualize:
+
+```{r}
+carry_cap %>% 
+  ggplot(aes(x=Inoculant, y=log(carry_cap))) +
+  geom_point() +
+  theme_test()
+```
+
+# Analysis
 
 ## Carrying capacity x growth rates
 
+```{r}
+# Combine carrying capacity data with death estimates
+carry_cap_growth <- carry_cap %>% 
+  inner_join(growth)
+
+# Visualize
+carry_cap_growth %>% 
+  ggplot(aes(x=log(carry_cap), y=log(k))) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+cor.test(log(carry_cap_growth$k), log(carry_cap_growth$carry_cap), method="pearson")
+```
+
 ## Carrying capacity x length of growth
+
+```{r}
+# Visualize
+carry_cap_growth <- carry_cap_growth %>% 
+  mutate(length_grew = end_day - start_day)
+
+carry_cap_growth %>%
+  ggplot(aes(x=log(carry_cap), y=length_grew)) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+cor.test(carry_cap_growth$length_grew, log(carry_cap_growth$carry_cap), method="pearson")
+```
+
+## Carrying capacity x death abundance losses
+
+```{r}
+# Combine carrying capacity data with death estimates
+carry_cap_death <- carry_cap %>% 
+  inner_join(death)
+
+# Visualize
+carry_cap_death %>% 
+  ggplot(aes(x=carry_cap, y=change_abund_corr)) +
+  geom_point() +
+  theme_test()
+```
+

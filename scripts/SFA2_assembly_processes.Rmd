@@ -18,26 +18,30 @@ rm(list=ls())
 library("tidyverse")
 library("ape")
 library("phyloseq")
+library("vegan")
 library("picante")
 
 sessionInfo()
 ```
 
-# Import data:
+# Import data
 
 * metadata
-* distances
+* rarefied phyloseq
+* weighted unifrac distances
 * growth estimates
 * normalized abundances
 
 ```{r}
 meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
+physeq <- readRDS("../data_intermediate/SFA2_physeq_rare.rds")
 wuni_dist <- readRDS("../data_intermediate/SFA2_wunidist_slim.rds")
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 norm_gr <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds") # in case want to do weighted mean k
+bNTI <- readRDS("../data_intermediate/SFA2_bNTI_mean_overall.rds")
 ```
 
-# Dissimilarity vs growth rates
+# Sample dispersion vs growth rates
 
 How does the disimilarity between replicates within a sample relate to growth rates?
 
@@ -115,7 +119,7 @@ Statistics:
 cor.test(dist_k$avg_dist, dist_k$wmean_k)
 ```
 
-## BNTI vs. growth rates
+# BNTI vs. growth rates
 
 Does growth rate correlate with stochasticity?
 
@@ -125,28 +129,87 @@ Import bNTI calculations:
 bNTI <- readRDS("../data_intermediate/SFA2_bNTI_mean_overall.rds")
 
 # Combine with wmean growth rates
-bNTI_wmk <- inner_join(bNTI, weighted_k)
+bNTI_wmk <- inner_join(bNTI, weighted_k) %>% 
+  mutate(assembly = if_else(bNTI_mean >= -2 & bNTI_mean <= 2, "stochastic", "deterministic"))
 ```
 
 Visualize:
 
 ```{r}
 bNTI_wmk %>% 
-  ggplot(aes(x=bNTI_mean, y=wmean_k)) +
-  geom_point() +
+  filter(!is.na(assembly)) %>% 
+  ggplot(aes(x=assembly, y=wmean_k)) +
+  geom_boxplot() +
+  geom_jitter() +
   geom_smooth(method="lm", linetype=2) +
   theme_test()
 ```
 
-# Dissimilarity vs CUE
+# bNTI vs evenness
 
-Import cellular production and efficiency data:
+Calculate alpha diversity:
 
 ```{r}
-# Import
-eff_proxy <- readRDS("../data_intermediate/SFA2_cellprod_eff.rds")
+# Extract data from phyloseq
+count_physeq <- data.frame(otu_table(physeq)) %>% 
+  rownames_to_column(var="ASV") %>% 
+  gather(SampleID, count, -ASV)
+
+# Add metadata
+count_meta <- inner_join(count_physeq, meta, by="SampleID") %>% 
+  mutate(Inoculant = as_factor(Inoculant)) %>% 
+  filter(ASV != "445e8681c3c1a735760e6c394f5f4d0a") # remove spike-in
+
+# Calculate evenness
+# Reformat counts to be compatible with vegan
+count_meta_wide <- count_meta %>% 
+  select(ASV, SampleID, count) %>% 
+  pivot_wider(names_from="ASV", values_from="count") %>% 
+  column_to_rownames(var="SampleID")
+
+# Calculate
+shannon <- diversity(count_meta_wide, "shannon")
+richness <- specnumber(count_meta_wide)
+evenness <- shannon/log(richness)
+
+# Add evennness values to data
+even_df <- data.frame(evenness) %>% 
+  rownames_to_column(var="SampleID")
+
+alpha_df <- data.frame(richness) %>%
+  rownames_to_column(var="SampleID") %>% 
+  inner_join(even_df)
+
+# Add Shannon's diversity index
+alpha_df <- data.frame(shannon) %>% 
+  rownames_to_column(var="SampleID") %>% 
+  inner_join(alpha_df)
+
+# Add metadata
+alpha_df <- inner_join(alpha_df, meta)
+
+# Add bNTI results 
+alpha_bNTI <- inner_join(alpha_df, bNTI)
 ```
 
+Filter and label based on bNTI:
 
+```{r}
+# Interested in days 20+ (return to stochasticity)
+alpha_bNTI_day20plus <- alpha_bNTI %>% 
+  filter(Day >= 20 & Type=="Growth") %>% 
+  mutate(assembly = if_else(bNTI_mean >= -2, "deterministic", "stochastic")) %>% 
+  select(Sample, Inoculant, Day, richness, shannon, evenness, bNTI_mean, assembly)
+```
 
+Visualize:
+
+```{r}
+alpha_bNTI_day20plus %>% 
+  ggplot(aes(x=assembly, y=evenness)) +
+  geom_boxplot() +
+  geom_jitter() +
+  labs(title="Evenness on days 20+") +
+  theme_test()
+```
 
