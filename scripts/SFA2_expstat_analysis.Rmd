@@ -1,0 +1,553 @@
+---
+title: "Growth and death dynamics during exponential and stationary phases"
+author: "Cassandra Wattenburger"
+date: "4/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("phyloseq")
+library("vegan")
+library("tidyverse")
+library("lmerTest")
+
+sessionInfo()
+```
+
+# Notes
+
+* Copy of SFA2_expstatphases_growthdeath
+* Plan to clean up
+
+# Import data
+
+* metadata
+* growth estimates
+* normalized abundances
+* rarefied phyloseq
+
+```{r}
+# Metadata
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
+
+# Growth estimates
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+
+# Death estimates
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap.rds")
+
+# All paprica estimates
+pap_all <- readRDS("../data_intermediate/SFA2_paprica_all.rds")
+
+# Normalized abundance data
+norm <- readRDS("../data_intermediate/SFA2_normalized.rds")
+
+# Rarefied phyloseq
+physeq <- readRDS("../data_intermediate/SFA2_physeq_rare.rds")
+```
+
+# Total abundance
+
+Defining as when the total normalized abundance of each inoculant evens out, indicating balanced growth and death.
+
+## All taxa
+
+```{r}
+# Add metadata and reformat
+meta <- meta %>%
+  select(SampleID, Sample, Inoculant, Day, Replicate)
+
+norm_meta <- norm %>%
+  full_join(meta)
+
+pap_slim <- pap_all %>% 
+  select(ASV, n16S)
+
+# Calculate total normalized abundance through time
+norm_whole_total <- norm_meta %>% 
+  inner_join(pap_slim) %>% # add 16S copy predictions
+  mutate(norm_abund_corr = norm_abund / n16S) %>% # correct normalized abundance by 16S copies
+  group_by(Inoculant, Day, ASV) %>% # average across replicates
+  summarize(norm_abund_corr = mean(norm_abund_corr, na.rm=TRUE)) %>% 
+  ungroup() %>%
+  group_by(Inoculant, Day) %>%  # sum across ASVs
+  summarize(total = sum(norm_abund_corr, na.rm=TRUE)) %>%
+  ungroup() %>%
+  filter(Inoculant %in% c(10, 12,19, 2, 41, 47)) %>% # remove controls
+  select(Inoculant, Day, total) # tidy
+
+# Calculate overall avg
+norm_whole_avg <- norm_whole_total %>% 
+  group_by(Day) %>% 
+  summarize(total = mean(total)) %>% 
+  ungroup() %>% 
+  add_column(Inoculant="avg") %>% 
+  select(Inoculant, Day, total)
+```
+
+Visualize:
+
+```{r}
+norm_whole_total %>% 
+  add_row(norm_whole_avg) %>% 
+  mutate(fade = if_else(Inoculant!="avg", "avg", "inoc")) %>% 
+  ggplot(aes(x=Day, y=log(total), group=Inoculant, alpha=fade)) +
+  geom_point() +
+  geom_line() + 
+  geom_vline(xintercept=9, linetype=2) +
+  labs(title="Summed normalized abundance of all taxa", y="ln summed normalized abundance") +
+  theme_test() +
+  theme(legend.position = "none")
+```
+
+## Growing taxa
+
+```{r}
+# Add metadata and reformat
+meta <- meta %>%
+  select(SampleID, Sample, Inoculant, Day, Replicate)
+
+norm_meta <- norm %>%
+  full_join(meta)
+
+# Make a label for growing ASVs
+growth_labels <- growth %>% 
+  mutate(label = paste0(Inoculant, ASV)) %>%
+  select(label, n16S)
+
+# Calculate total normalized abundance through time
+norm_growth_total <- norm_meta %>% 
+  mutate(label = paste0(Inoculant, ASV)) %>% 
+  inner_join(growth_labels) %>% # isolate growing taxa only
+  mutate(norm_abund_corr = norm_abund / n16S) %>% # correct normalized abundance by 16S copies
+  group_by(Inoculant, Day, ASV) %>% # average across replicates
+  summarize(norm_abund_corr = mean(norm_abund_corr, na.rm=TRUE)) %>% 
+  ungroup() %>%
+  group_by(Inoculant, Day) %>% 
+  summarize(total = sum(norm_abund_corr)) %>% # total normalized abundances
+  ungroup() %>%
+  filter(Inoculant %in% c(10, 12,19, 2, 41,47)) %>% # remove controls
+  select(Inoculant, Day, total)
+
+# Calculate overall avg
+norm_growth_avg <- norm_growth_total %>% 
+  group_by(Day) %>% 
+  summarize(total = mean(total)) %>% 
+  ungroup() %>% 
+  add_column(Inoculant="avg") %>% 
+  select(Inoculant, Day, total)
+```
+
+Visualize:
+
+```{r}
+norm_growth_total %>% 
+  add_row(norm_growth_avg) %>% 
+  mutate(fade = if_else(Inoculant!="avg", "avg", "inoc")) %>% 
+  ggplot(aes(x=Day, y=log(total), group=Inoculant, alpha=fade)) +
+  geom_point() +
+  geom_line() + 
+  geom_vline(xintercept=9, linetype=2) +
+  labs(title="Summed normalized abundance of growing taxa", y="ln summed normalized abundance") +
+  theme_test() +
+  theme(legend.position = "none")
+```
+
+## Growth bin examples
+
+```{r}
+# Bin 1
+
+# Bin 2
+
+# Bin 3
+```
+
+# Bin ASVs
+
+Depending on if start of growth/death before or on day 9 and if end of growth/death after day 9
+
+Bin 1: start_day <= 9 & end_day <= 9 (exponential phase only)
+Bin 2: start_day <= 9 & end_day > 9 (exponential and stationary phases)
+Bin 3: start_day > 9 & end_day > 9 (stationary phase only)
+
+```{r}
+# Growth
+growth_bin <- growth %>% 
+  mutate(bin = if_else(start_day <= 9 & end_day <= 9, "Bin 1",
+                            if_else(start_day <= 9 & end_day > 9, "Bin 2", "Bin 3")),
+         bin = as.factor(bin))
+
+# Death
+death_bin <- death %>% 
+  mutate(bin = if_else(start_day <= 9 & end_day <= 9, "Bin 1",
+                            if_else(start_day <= 9 & end_day > 9, "Bin 2", "Bin 3")),
+         bin = as.factor(bin))
+```
+
+Summary of number ASVs per bin:
+
+```{r}
+growth_bin %>% 
+  group_by(Inoculant, bin) %>% 
+  summarize(total = n()) %>% 
+  ungroup() %>% 
+  group_by(bin) %>% 
+  summarize(total_mean = mean(total), total_sd = sd(total)) %>% 
+  ungroup()
+
+death_bin %>% 
+  group_by(Inoculant, bin) %>% 
+  summarize(total = n()) %>% 
+  ungroup() %>% 
+  group_by(bin) %>% 
+  summarize(total_mean = mean(total), total_sd = sd(total)) %>% 
+  ungroup()
+```
+
+Summary of phylogenetic placements in bins:
+
+* Phylum level
+
+```{r}
+growth_bin %>% 
+  group_by(Inoculant, bin, Phylum) %>% 
+  summarize(total = n()) %>% 
+  ungroup() %>% 
+  group_by(bin, Phylum) %>% 
+  summarize(total_mean = mean(total, na.rm=TRUE), total_sd = sd(total, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  arrange(bin, desc(total_mean))
+```
+
+```{r}
+death_bin %>% 
+  group_by(Inoculant, bin, Phylum) %>% 
+  summarize(total = n()) %>% 
+  ungroup() %>% 
+  group_by(bin, Phylum) %>% 
+  summarize(total_mean = mean(total, na.rm=TRUE), total_sd = sd(total, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  arrange(bin, desc(total_mean))
+```
+
+# Growth traits
+
+* growth rates
+* change in abundance
+* n16S
+
+Visualize:
+
+```{r}
+# k
+growth_bin %>% 
+  ggplot(aes(x=bin, y=k)) +
+  geom_boxplot() +
+  geom_jitter(size=2, alpha=0.5) +
+  theme_test() +
+  labs(y="Growth rate (day-1)", x="") +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 15))
+
+# change in abundance
+growth_bin %>% 
+  ggplot(aes(x=bin, y=log(change_abund_corr))) +
+  geom_boxplot() +
+  geom_jitter(size=2, alpha=0.5) +
+  theme_test() +
+  labs(y="Normalized abundance change (ln)", x="") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+
+# n16S
+growth_bin %>% 
+  ggplot(aes(x=bin, y=n16S)) +
+  geom_boxplot() +
+  geom_jitter(size=2, alpha=0.5) +
+  theme_test() +
+  labs(y="16S copy number", x="") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+```
+
+## Statistics
+
+Linear mixed effects models with random slopes and intercepts for inoculant
+
+```{r}
+# k
+k_lmer <- lmer(k ~ bin + (1 + Inoculant | Inoculant), growth_bin)
+hist(resid(k_lmer))
+plot(predict(k_lmer), resid(k_lmer))
+anova(k_lmer)
+
+# change abund
+chg_lmer <- lmer(log(change_abund_corr) ~ bin + (1 + Inoculant | Inoculant), growth_bin)
+hist(resid(chg_lmer))
+plot(predict(chg_lmer), resid(chg_lmer))
+anova(chg_lmer)
+
+# 16S
+n16s_lmer <- lmer(log(n16S) ~ bin + (1 + Inoculant | Inoculant), growth_bin)
+hist(resid(n16s_lmer))
+plot(predict(n16s_lmer), resid(n16s_lmer))
+anova(n16s_lmer)
+
+# Try removing bin 3 (much lower sample size)
+
+# k no bin 3
+growth_nobin3 <- filter(growth_bin, bin!="Bin 3")
+k_lmer2 <- lmer(k ~ bin + (1 + Inoculant | Inoculant), growth_nobin3)
+hist(resid(k_lmer2))
+plot(predict(k_lmer2), resid(k_lmer2))
+anova(k_lmer2)
+
+# change abund no bin 3
+chg_lmer2 <- lmer(log(change_abund_corr) ~ bin + (1 + Inoculant | Inoculant), growth_nobin3)
+hist(resid(chg_lmer2))
+plot(predict(chg_lmer2), resid(chg_lmer2))
+anova(chg_lmer2)
+
+# 16S no bin 3
+n16s_lmer <- lmer(log(n16S) ~ bin + (1 + Inoculant | Inoculant), growth_nobin3)
+hist(resid(n16s_lmer))
+plot(predict(n16s_lmer), resid(n16s_lmer))
+anova(n16s_lmer)
+```
+
+# Death Traits
+
+Visualize:
+
+```{r}
+# k
+death_bin %>% 
+  ggplot(aes(x=bin, y=k)) +
+  geom_boxplot() +
+  geom_jitter(size=2, alpha=0.5) +
+  theme_test() +
+  labs(y="Death rate (day-1)", x="") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+
+# change in abundance
+death_bin %>% 
+  ggplot(aes(x=bin, y=log(abs(change_abund_corr)))) +
+  geom_boxplot() +
+  geom_jitter(size=2, alpha=0.5) +
+  theme_test() +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 15)) +
+  labs(y="Normalized abundance change (ln abs. value)", x="")
+
+# n16S
+death_bin %>% 
+  ggplot(aes(x=bin, y=n16S)) +
+  geom_boxplot() +
+  geom_jitter(size=2, alpha=0.5) +
+  theme_test() +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 15)) +
+  labs(y="16S copy numbers", x="")
+```
+
+### Statistics 
+
+Linear mixed effects models with random slopes and intercepts for inoculant
+
+```{r}
+# k
+kdeath_lmer <- lmer(log(abs(k)) ~ bin + (1 + Inoculant | Inoculant), death_bin)
+hist(resid(kdeath_lmer))
+plot(predict(kdeath_lmer), resid(kdeath_lmer))
+anova(kdeath_lmer)
+
+# change abund
+chgdeath_lmer <- lmer(log(abs(change_abund_corr)) ~ bin + (1 + Inoculant | Inoculant), death_bin)
+hist(resid(chgdeath_lmer))
+plot(predict(chgdeath_lmer), resid(chgdeath_lmer))
+anova(chgdeath_lmer)
+
+# n16S
+n16S_lmer <- lmer(n16S ~ bin + (1 + Inoculant | Inoculant), death_bin)
+hist(resid(chgdeath_lmer))
+plot(predict(chgdeath_lmer), resid(chgdeath_lmer))
+anova(chgdeath_lmer)
+```
+
+# WIP BELOW
+
+### Correlations
+
+Teasing apart relationship between category and growth traits, is it due to length of growth?
+
+Growth rate vs change abundance:
+
+```{r}
+growth_prepost %>% 
+  mutate(length = end_day-start_day,
+         change_abund_length = change_abund_corr/length) %>% 
+  ggplot(aes(y=log(change_abund_corr), x=k, color=startend)) + 
+  geom_point(size=2) +
+  geom_smooth(method="lm", linetype=2, alpha=0.1) +
+  labs(x="Growth rate (day-1)", y="Relational abundance change (ln)") +
+  theme_test() +  
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 15))
+```
+
+Length of growth vs growth rates:
+
+```{r}
+growth_prepost <- growth_prepost %>% 
+  mutate(length=end_day-start_day) 
+
+growth_prepost %>% 
+  ggplot(aes(x=length, y=k)) + 
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+Statistics:
+
+* Pearson correlation
+
+```{r}
+cor.test(growth_prepost$k, growth_prepost$length, method="pearson")
+```
+
+Length of growth vs change in abundance:
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=length, y=log(change_abund_corr))) + 
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+Statistics:
+
+* Pearson correlation
+
+```{r}
+cor.test(log(growth_prepost$change_abund_corr), growth_prepost$length, method="pearson")
+```
+
+Lag vs growth rate:
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=start_day, y=log(k))) + 
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+Lag vs change in abundance:
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=start_day, y=log(change_abund_corr))) + 
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
+```
+
+Statistics:
+
+* Pearson correlation
+
+```{r}
+cor.test(log(growth_prepost$change_abund_corr), growth_prepost$start_day, method="spearm")
+```
+
+### Length of growth
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=startend, y=log(length), color=startend)) +
+  geom_jitter() +
+  theme_test()
+```
+
+Statistics: 
+
+Linear mixed effects models with random slopes and intercepts for inoculant
+
+```{r}
+length_lmer <- lmer(log(length) ~ startend + (1 + Inoculant | Inoculant), growth_prepost)
+hist(resid(length_lmer))
+plot(predict(length_lmer), resid(length_lmer))
+anova(length_lmer)
+```
+
+### 16S
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=startend, y=log(n16S), color=startend)) +
+  geom_jitter() +
+  labs(y="ln n16S", x="Period of growth")
+  theme_test() +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+```
+
+16S x growth rates
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=n16S, y=k)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  labs(x="Predicted 16S copy number", y="Growth rate (day-1)") +
+  theme_test() +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+```
+
+16S x change abundance
+
+```{r}
+growth_prepost %>% 
+  ggplot(aes(x=n16S, y=log(change_abund_corr))) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  labs(x="Predicted 16S copy number", y="ln Change relational abundance") +
+  theme_test() +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+```
+
+Statistics:
+
+Linear mixed effects
+
+```{r}
+n16S_lmer <- lmer(log(n16S) ~ startend + (1 + Inoculant | Inoculant), growth_prepost)
+hist(resid(n16S_lmer))
+plot(predict(n16S_lmer), resid(n16S_lmer))
+anova(n16S_lmer)
+```
+
+Correlations
+
+```{r}
+cor.test(growth_prepost$n16S, log(growth_prepost$change_abund_corr), method="pearson")
+cor.test(growth_prepost$n16S, growth_prepost$k, method="pearson")
+```
+
+# Death
+
