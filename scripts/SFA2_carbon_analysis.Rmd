@@ -251,8 +251,9 @@ growth_eff %>%
 # Growth efficiency over time
 growth_eff %>% 
   ggplot(aes(x=Day, y=log(growth_eff))) +
+  geom_boxplot(aes(group=Day)) +
   geom_point() +
-  #geom_smooth(method="lm", linetype=2) +
+  geom_smooth(linetype=2) +
   theme_test()
 ```
 
@@ -262,6 +263,21 @@ Statistics:
 # Spearman correlations
 cor.test(log(growth_eff$deltaN_total), growth_eff$CO2, method="spearman")
 cor.test(log(growth_eff$growth_eff), growth_eff$Day, method="spearman")
+```
+
+## Abundnance gain vs respiration rate
+
+```{r}
+deltaN_resprate <- growth_eff %>% 
+  inner_join(resp_rate) %>% 
+  select(Inoculant, Day, deltaN_total, mgCO2_day)
+
+# Visualize
+deltaN_resprate %>% 
+  ggplot(aes(x=mgCO2_day, y=log(deltaN_total))) +
+  geom_point() +
+  geom_smooth(method="lm", linetype=2) +
+  theme_test()
 ```
 
 

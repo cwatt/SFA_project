@@ -3929,3 +3929,7 @@ ls
 [32m[I 12:49:22.272 NotebookApp][m Starting buffering for aaded9de-f6eb-4976-a0c8-2c318e0d8029:eb7e244d84df4282a08424316192f3d9
 [32m[I 17:23:23.566 NotebookApp][m Kernel started: a6d31c4c-e08f-4991-aea9-8f023ba19259, name: python3
 [32m[I 17:27:44.098 NotebookApp][m Starting buffering for a6d31c4c-e08f-4991-aea9-8f023ba19259:8c2dafcd321f49768c771a6ec41d44c1
+ls
+[32m[I 15:02:22.441 NotebookApp][m 302 GET /?token=4b6ee2c022e046090e1a0e59deeda01f2937c0ccc49f7919 (127.0.0.1) 2.070000ms
+[32m[I 15:06:28.436 NotebookApp][m Saving file at /SFA2full.dada2.pipeline.ipynb
+[32m[I 15:07:58.395 NotebookApp][m Starting buffering for a6d31c4c-e08f-4991-aea9-8f023ba19259:be09f0b1999c456e8589eb78e8b2145b

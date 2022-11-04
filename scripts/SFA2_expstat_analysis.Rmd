@@ -21,6 +21,9 @@ library("tidyverse")
 library("lmerTest")
 
 sessionInfo()
+
+# I can't type "head" apparently so I'm going to make an alias
+h <- function(x) {head(x)}
 ```
 
 # Notes
@@ -97,7 +100,7 @@ norm_whole_avg <- norm_whole_total %>%
 Visualize:
 
 ```{r}
-norm_whole_total %>% 
+plot_whole_total <- norm_whole_total %>% 
   add_row(norm_whole_avg) %>% 
   mutate(fade = if_else(Inoculant!="avg", "avg", "inoc")) %>% 
   ggplot(aes(x=Day, y=log(total), group=Inoculant, alpha=fade)) +
@@ -107,6 +110,7 @@ norm_whole_total %>%
   labs(title="Summed normalized abundance of all taxa", y="ln summed normalized abundance") +
   theme_test() +
   theme(legend.position = "none")
+plot_whole_total
 ```
 
 ## Growing taxa
@@ -150,7 +154,7 @@ norm_growth_avg <- norm_growth_total %>%
 Visualize:
 
 ```{r}
-norm_growth_total %>% 
+plot_grow_total<- norm_growth_total %>% 
   add_row(norm_growth_avg) %>% 
   mutate(fade = if_else(Inoculant!="avg", "avg", "inoc")) %>% 
   ggplot(aes(x=Day, y=log(total), group=Inoculant, alpha=fade)) +
@@ -158,19 +162,12 @@ norm_growth_total %>%
   geom_line() + 
   geom_vline(xintercept=9, linetype=2) +
   labs(title="Summed normalized abundance of growing taxa", y="ln summed normalized abundance") +
+  coord_cartesian(xlim = c(0, 30)) +
   theme_test() +
   theme(legend.position = "none")
+plot_grow_total 
 ```
 
-## Growth bin examples
-
-```{r}
-# Bin 1
-
-# Bin 2
-
-# Bin 3
-```
 
 # Bin ASVs
 
@@ -239,6 +236,117 @@ death_bin %>%
   ungroup() %>% 
   arrange(bin, desc(total_mean))
 ```
+
+## Growth bin examples
+
+```{r}
+# Bin 1
+growth_bin1_ex <- growth_bin %>% 
+  filter(ASV==growth[157,]$ASV & Inoculant==growth[157,]$Inoculant) # see growth estimation plots from script 03
+
+# Prepare abudnance table
+norm_bin1_ex <- norm_meta %>%
+  filter(ASV==growth[157,]$ASV & Inoculant==growth[157,]$Inoculant) %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(norm_abund_avg = mean(norm_abund, na.rm=TRUE)) %>% # average across technical replicates
+  ungroup() %>% 
+  arrange(Day) %>% 
+  filter(norm_abund_avg > 0) # filter missing values
+              
+# Visualize
+plot_bin1_ex <- norm_bin1_ex %>% 
+  ggplot(aes(x=Day, y=log(norm_abund_avg))) +
+  geom_point(shape=1, size=3, color="#6F7378") +
+  geom_line(color="#6F7378") +
+  geom_vline(xintercept=9, linetype=2) +
+  geom_smooth(method="lm", data=norm_bin1_ex[growth_bin1_ex$start_pt:growth_bin1_ex$end_pt,], linetype=2, color="black") +
+  labs(title=paste0("Bin 1 example - ", growth_bin1_ex$Phylum, ", ", growth_bin1_ex$Genus), x="Day", y="ln normalized abundance") +
+  coord_cartesian(xlim = c(0, 30)) +
+  theme_test()
+plot_bin1_ex
+```
+
+```{r}
+# Bin 2
+growth_bin2_ex <- growth_bin %>% 
+  filter(ASV==growth[79,]$ASV & Inoculant==growth[79,]$Inoculant) # see growth estimation plots from script 03
+
+# Prepare abudnance table
+norm_bin2_ex <- norm_meta %>%
+  filter(ASV==growth[79,]$ASV & Inoculant==growth[79,]$Inoculant) %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(norm_abund_avg = mean(norm_abund, na.rm=TRUE)) %>% # average across technical replicates
+  ungroup() %>% 
+  arrange(Day) %>% 
+  filter(norm_abund_avg > 0) # filter missing values
+              
+# Visualize
+plot_bin2_ex <- norm_bin2_ex %>% 
+  ggplot(aes(x=Day, y=log(norm_abund_avg))) +
+  geom_point(shape=1, size=3, color="#6F7378") +
+  geom_line(color="#6F7378") +
+  geom_vline(xintercept=9, linetype=2) +
+  geom_smooth(method="lm", data=norm_bin2_ex[growth_bin2_ex$start_pt:growth_bin2_ex$end_pt,], linetype=2, color="black") +
+  labs(title=paste0("Bin 2 example - ", growth_bin2_ex$Phylum, ", ", growth_bin2_ex$Genus), x="Day", y="ln normalized abundance") +
+  coord_cartesian(xlim = c(0, 30)) +
+  theme_test()
+plot_bin2_ex
+```
+
+```{r}
+# Bin 3
+growth_bin3_ex <- growth_bin %>% 
+  filter(ASV==growth[162,]$ASV & Inoculant==growth[162,]$Inoculant) # see growth estimation plots from script 03
+
+# Prepare abudnance table
+norm_bin3_ex <- norm_meta %>%
+  filter(ASV==growth[162,]$ASV & Inoculant==growth[162,]$Inoculant) %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(norm_abund_avg = mean(norm_abund, na.rm=TRUE)) %>% # average across technical replicates
+  ungroup() %>% 
+  arrange(Day) %>% 
+  filter(norm_abund_avg > 0) # filter missing values
+              
+# Visualize
+plot_bin3_ex <- norm_bin3_ex %>% 
+  ggplot(aes(x=Day, y=log(norm_abund_avg))) +
+  geom_point(shape=1, size=3, color="#6F7378") +
+  geom_line(color="#6F7378") +
+  geom_vline(xintercept=9, linetype=2) +
+  geom_smooth(method="lm", data=norm_bin3_ex[growth_bin3_ex$start_pt:growth_bin3_ex$end_pt,], linetype=2, color="black") +
+  labs(title=paste0("Bin 3 example -", growth_bin3_ex$Phylum, ", ", growth_bin3_ex$Genus), x="Day", y="ln normalized abundance") +
+  coord_cartesian(xlim = c(0, 30)) +
+  theme_test()
+plot_bin3_ex
+```
+
+All together:
+
+```{r}
+# Combine examples into one df
+norm_bin1_ex <- add_column(norm_bin1_ex, bin="bin1")
+norm_bin2_ex <- add_column(norm_bin2_ex, bin="bin2")
+norm_bin3_ex <- add_column(norm_bin3_ex, bin="bin3")
+
+norm_bins_ex <- bind_rows(norm_bin1_ex, norm_bin2_ex) %>% 
+  bind_rows(norm_bin3_ex)
+
+# Visualize
+norm_bins_ex %>% 
+  ggplot(aes(x=Day, y=log(norm_abund_avg))) +
+  geom_point(size=3, aes(shape=bin, color=bin)) +
+  geom_line(aes(group=bin, color=bin)) +
+  geom_vline(xintercept=9, linetype=2) +
+  # Growth estimates
+  geom_smooth(method="lm", data=norm_bin1_ex[growth_bin1_ex$start_pt:growth_bin1_ex$end_pt,], linetype=2, color=2, alpha=0.2) +
+  geom_smooth(method="lm", data=norm_bin2_ex[growth_bin2_ex$start_pt:growth_bin2_ex$end_pt,], linetype=2, color=3, alpha=0.2) +
+  geom_smooth(method="lm", data=norm_bin3_ex[growth_bin3_ex$start_pt:growth_bin3_ex$end_pt,], linetype=2, color=4, alpha=0.2) +
+  #labs(title=paste0("Bin 3 example -", growth_bin3_ex$Phylum, ", ", growth_bin3_ex$Genus), x="Day", y="ln normalized abundance") +
+  coord_cartesian(xlim = c(0, 30)) +
+  theme_test()
+```
+
+
 
 # Growth traits
 
@@ -549,5 +657,8 @@ cor.test(growth_prepost$n16S, log(growth_prepost$change_abund_corr), method="pea
 cor.test(growth_prepost$n16S, growth_prepost$k, method="pearson")
 ```
 
-# Death
+# Figures
+
+
+
 
