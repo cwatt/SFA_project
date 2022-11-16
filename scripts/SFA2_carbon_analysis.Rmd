@@ -265,7 +265,11 @@ cor.test(log(growth_eff$deltaN_total), growth_eff$CO2, method="spearman")
 cor.test(log(growth_eff$growth_eff), growth_eff$Day, method="spearman")
 ```
 
-## Abundnance gain vs respiration rate
+```{r, eva=FALSE}
+saveRDS(growth_eff, "../data_intermediate/SFA2_growtheff.rds")
+```
+
+## Abundance gain vs respiration rate
 
 ```{r}
 deltaN_resprate <- growth_eff %>% 
