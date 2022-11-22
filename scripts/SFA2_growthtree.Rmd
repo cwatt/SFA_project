@@ -1,0 +1,107 @@
+---
+title: "SFA2 - growth tree"
+author: "Cassandra Wattenburger"
+date: "11/18/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Import libraries
+library(phyloseq)
+library(ape)
+library(tidyverse)
+library(cowplot)
+
+sessionInfo()
+
+# Clear environment
+rm(list=ls())
+```
+
+# Import data
+
+* Growth estimates
+* phylogenetic tree
+
+```{r}
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+physeq <- readRDS("../data_intermediate/SFA2_physeq_unrare.rds") # contains tree
+tree <- phy_tree(physeq)
+```
+
+# Prune tree
+
+Growing ASVs only
+
+```{r}
+# Prune phyloseq to just growing ASVs
+gr_asvs <- unique(growth$ASV)
+physeq_gr <- prune_taxa(gr_asvs, physeq)
+
+# Extract tree
+tree_gr <- phy_tree(physeq_gr)
+```
+
+```{r, eval=FALSE}
+write.tree(phy=tree_gr, file="../data_intermediate/SFA_phylotree_grew.newick")
+```
+
+# iTOL
+
+Using iTOL to create figure: https://itol.embl.de/
+
+# Annotation files
+
+Labels and growth traits for heatmap.
+
+```{r}
+# Clean up taxonomy
+tree_annot <- growth %>% 
+  mutate(lab = gsub("unclassified  ", "", Family),
+         lab = gsub("putative  ", "", lab),
+         lab = gsub("putative ", "", lab),
+         lab = if_else((lab=="^unclassified$" | lab=="uncultured"), Order, lab)) %>% 
+  select(ASV, lab, k, start_day, change_abund_corr, n16S)
+
+# Tree tip labels
+tree_annot_labels <- tree_annot %>% 
+  select(ASV, lab)
+
+# Tree heatmap data
+tree_annot_heat <- tree_annot %>% 
+  mutate(log_chng = log(change_abund_corr)) %>% 
+  select(ASV, k, start_day, log_chng, n16S)
+
+# Tree taxonomy colors
+tree_annot_colorstrip <- growth %>% 
+  select(ASV, Phylum) %>% 
+  mutate(color = case_when(
+    Phylum=="Acidobacteriota" ~ "#583789",
+    Phylum=="Actinobacteriota" ~ "#9bb140",
+    Phylum=="Chloroflexi" ~ "#c071c9",
+    Phylum=="Firmicutes" ~ "#5dbb68",
+    Phylum=="Gemmatimonadota" ~ "#b5508f",
+    Phylum=="Proteobacteria" ~ "#46c19a",
+    Phylum=="Verrucomicrobiota" ~ "#bb486a",
+    Phylum=="Cyanobacteria" ~ "#758a3c",
+    Phylum=="Myxococcota" ~ "#6d80d8",
+    Phylum=="Bacteroidota" ~ "#cb9637",
+    Phylum=="Planctomycetota" ~ "#b4443f",
+    Phylum=="Desulfobacterota" ~ "#c06e3b")) %>% 
+  select(ASV, color)
+```
+
+```{r,eval=FALSE}
+# Write to files
+write.table(tree_annot_labels, "../data_intermediate/SFA_tree_annot_labels.txt")
+write.table(tree_annot_heat, "../data_intermediate/SFA_tree_annot_heat.txt")
+write.table(tree_annot_colorstrip, "../data_intermediate/SFA_tree_annot_colorstrip.txt")
+```
+
+

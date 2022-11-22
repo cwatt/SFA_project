@@ -1,5 +1,5 @@
 ---
-title: "SFA - CUE vs community dissimilarity"
+title: "SFA - growth efficiency difference vs community dissimilarity"
 author: "Cassandra Wattenburger"
 date: "11/16/2022"
 output: html_document
@@ -13,6 +13,7 @@ knitr::opts_chunk$set(warning = FALSE)
 
 ```{r}
 # Import libraries
+library(vegan)
 library(phyloseq)
 library(tidyverse)
 library(cowplot)
@@ -143,176 +144,87 @@ relabund_avg <- data.frame(otu_table(physeq_relabund)) %>% # lots of reformattin
   as.matrix() %>% 
   t()
 
+# Add metadata
 meta2 <- meta %>% 
   filter(Type=="Growth") %>% 
   mutate(ucosm = paste0(Inoculant, Day)) %>% 
   select(ucosm, Type, Inoculant, Day) %>% 
   unique() %>% 
-  column_to_rownames(var="ucosm")
+  mutate(ucosm2 = ucosm) %>% 
+  arrange(ucosm) %>% 
+  column_to_rownames(var="ucosm2")
 
+# Phyloseq reobjectify
 physeq_relabund_avg <- phyloseq(otu_table(relabund_avg, taxa_are_rows = TRUE), 
                                 sample_data(meta2), phy_tree(physeq_relabund))
 
-# String sorting function stolen from https://gist.github.com/martinctc/56b3fb701a182f5b8dffceecd65b6d86
-str_arrange <- function(x) {
-  x %>%
-    stringr::str_split("") %>% # Split string into letters
-    purrr::map(~sort(.) %>% paste(collapse = "")) %>% # Sort and re-combine
-    as_vector() 
-  } # Convert list into vector
+# Remove samples not in the growth efficiency dataset
+greff_meta <- groweff %>% 
+  mutate(ucosm = paste0(Inoculant, Day)) %>% 
+  filter(!is.na(Day)) %>% # remove na rows
+  arrange(ucosm)
 
-# Calculate distances
-wuni_relabund_avg <- distance(physeq_relabund_avg, method="wunifrac")
+greff_ucosms <- unique(greff_meta$ucosm)
 
-# Reformat
-wuni_dist_df <- wuni_relabund_avg %>% 
-  as.matrix() %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var="Sample1") %>% 
-  pivot_longer(-Sample1, names_to = "Sample2", values_to = "wuni_dist") %>% 
-  filter(wuni_dist!=0) %>% # remove self-comparisons
-  mutate(foo = as.character(paste0(Sample1, Sample2)), # remove repeated comparisons
-         foo = str_arrange(foo)) %>% 
-  bind_cols(dup=duplicated(.$foo)) %>% # id duplicated comparisons
-  filter(dup==FALSE) %>% # remove duplicates
-  select(Sample1, Sample2, wuni_dist)
+physeq_relabund_sub <- subset_samples(physeq_relabund_avg, ucosm %in% greff_ucosms)
+physeq_relabund_sub
 ```
 
-# Calculate growth eff. diff
+```{r}
+# Calculate community distances
+wuni_relabund <- distance(physeq_relabund_sub, method="wunifrac")
+wuni_mx <- as.matrix(wuni_relabund)
+```
+
+# Calculate efficiency differences
 
 ```{r}
-# Reformat
-groweff_mx <- groweff %>% 
-  mutate(ucosm = paste0(Inoculant, Day)) %>% 
-  filter(!is.na(Day)) %>% # remove NAs
+# Convert to matrix
+groweff_mx <- greff_meta %>%  
   select(ucosm, growth_eff) %>% 
+  arrange(ucosm) %>% 
   column_to_rownames(var="ucosm") %>% 
   as.matrix()
 
-groweff_diff <- dist(groweff_mx, method="maximum") %>% # calculate difference
-  as.matrix() %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var="Sample1") %>% 
-  pivot_longer(-Sample1, names_to = "Sample2", values_to = "greff_diff") %>% 
-  filter(greff_diff!=0) %>% # remove self-comparisons
-  mutate(foo = as.character(paste0(Sample1, Sample2)), # remove repeated comparisons
-         foo = str_arrange(foo)) %>% 
-  bind_cols(dup=duplicated(.$foo)) %>% # id duplicated comparisons
-  filter(dup==FALSE) %>% # remove duplicates
-  select(Sample1, Sample2, greff_diff)
+wuni_colorder <- colnames(wuni_mx)
+
+# Calculate difference into distance matrix
+greff_dist <- dist(groweff_mx, method="maximum") 
+greff_mx <- as.matrix(greff_dist)
+
+greff_mx <- as.data.frame(greff_mx) %>% # reorder to match wuni dist matrix
+  select(`1010`, `1012`, `1014`, `1016`, `1018`, `1021`, `1024`, `1027`, `103`, `103.5`, `1030`, `104`, `104.5`, `105`, `105.5`, `106`, `107`, `108`, `109`, `1210`, `1212`, `1214`, `1216`, `1218`, `1221`, `1224` , `1227`, `123`, `123.5`, `1230`, `124`, `124.5`, `125`, `125.5`, `126`, `127`, `128`, `129`, `1910` , `1912`, `1914`, `1916`, `1918`, `1921`, `1924`, `1927`, `193`, `193.5`, `1930`, `194`, `194.5`, `195`, , `195.5`, `196`, `197`, `198`, `199`, `210`, `212`, `214`, `216`, `218`, `221`, `224`, `227`, , `23`, , `23.5`, `230`, `24`, , `24.5`, `25`, , `25.5`, `26`, , `27`, , `28`, , `29`, , `4110`, `4112` , `4114`, `4116`, `4118`, `4121`, `4124`, `4127`, `413`, `413.5`, `4130`, `414`, `414.5`, `415`, `415.5`, `416`, `417`, `418`, `419`, `4710`, `4712`, `4714`, `4716`, `4718`, `4721`, `4724`, `4727`, `473`, `473.5`, `4730`, `474`, `474.5`, `475`, `475.5`, `476`, `477`, `478`, `479`) %>% 
+  as.matrix()
 ```
 
-Combine:
+# Mantel test
 
 ```{r}
-# Add metadata and combine
-meta2 <- rownames_to_column(meta2, var="ucosm")
+# Mantel test
+mantel(wuni_mx, greff_mx)
+```
 
-greff_dist <- inner_join(groweff_diff, wuni_dist_df) %>% 
-  inner_join(meta2, by=c("Sample1"="ucosm")) %>% 
-  select(Sample1, Inoc1=Inoculant, Sample2, greff_diff, wuni_dist) %>% 
-  inner_join(meta2, by=c("Sample2"="ucosm")) %>% 
-  select(Sample1, Inoc1, Sample2, Inoc2=Inoculant, Day, greff_diff, wuni_dist)
+# Dispersion vs. growth efficiency
+
+```{r}
+# Import data
+wuni_rep <- readRDS("SFA_wunidist_withinreps.rds")
+
+# Combine with growth efficiency 
+greff_wuni <- inner_join(groweff, wuni_rep) %>% 
+  filter(!is.na(wuni_dist)) # remove na rows
 
 # Visualize
-greff_dist %>% 
-  #mutate(color = if_else(Day==30, "yes", "no")) %>% 
-  ggplot(aes(x=wuni_dist, y=log(greff_diff))) +
-  geom_point(aes(color=Day)) +
-  geom_smooth(method="lm", color="black") +
-  labs(x="Weighted unifrac, relative abundance normalized", y="ln Difference in growth efficiency") +
+greff_wuni %>%
+  ggplot(aes(x=wuni_dist, y=log(growth_eff))) +
+  geom_point() +
+  geom_smooth(method="lm") +
   theme_test()
 ```
-
-Statistics:
-
-Pearson corr
-
+ 
+Pearson Correlation:
+ 
 ```{r}
-cor.test(log(greff_dist$greff_diff), greff_dist$wuni_dist, method="pearson")
+cor.test(greff_wuni$wuni_dist, greff_wuni$growth_eff, method="pearson")
 ```
-
-# Rarefied growth eff diff
-
-Just for comparison.
-
-Average replicates:
-
-```{r}
-# Average technical replicates
-rare_avg <- data.frame(otu_table(physeq_rare)) %>% # lots of reformatting needed
-  as.matrix() %>% 
-  t() %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var="SampleID") %>%  
-  pivot_longer(cols=c(-SampleID), names_to="ASV", values_to="rare") %>% # long format
-  mutate(SampleID = gsub("sa", "", SampleID),
-         SampleID = as.numeric(SampleID)) %>% 
-  filter(!(SampleID %in% nongrowth_sams)) %>% 
-  inner_join(meta) %>% # add metadata
-  mutate(ucosm = paste0(Inoculant, Day)) %>%
-  group_by(ucosm, ASV) %>% 
-  summarize(rare_avg = mean(rare)) %>% # calc. mean
-  ungroup() %>% 
-  pivot_wider(names_from=ASV, values_from=rare_avg) %>% 
-  column_to_rownames(var="ucosm") %>% # reformat back
-  as.matrix() %>% 
-  t()
-
-meta2 <- meta %>% 
-  filter(Type=="Growth") %>% 
-  mutate(ucosm = paste0(Inoculant, Day)) %>% 
-  select(ucosm, Type, Inoculant, Day) %>% 
-  unique() %>% 
-  column_to_rownames(var="ucosm")
-
-physeq_rare_avg <- phyloseq(otu_table(rare_avg, taxa_are_rows = TRUE), 
-                                sample_data(meta2), phy_tree(physeq_rare))
-
-# String sorting function stolen from https://gist.github.com/martinctc/56b3fb701a182f5b8dffceecd65b6d86
-str_arrange <- function(x) {
-  x %>%
-    stringr::str_split("") %>% # Split string into letters
-    purrr::map(~sort(.) %>% paste(collapse = "")) %>% # Sort and re-combine
-    as_vector() 
-  } # Convert list into vector
-
-# Calculate distances
-wuni_rare_avg <- distance(physeq_rare_avg, method="wunifrac")
-
-# Reformat
-wuni_dist_df <- wuni_rare_avg %>% 
-  as.matrix() %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var="Sample1") %>% 
-  pivot_longer(-Sample1, names_to = "Sample2", values_to = "wuni_dist") %>% 
-  filter(wuni_dist!=0) %>% # remove self-comparisons
-  mutate(foo = as.character(paste0(Sample1, Sample2)), # remove repeated comparisons
-         foo = str_arrange(foo)) %>% 
-  bind_cols(dup=duplicated(.$foo)) %>% # id duplicated comparisons
-  filter(dup==FALSE) %>% # remove duplicates
-  select(Sample1, Sample2, wuni_dist)
-```
-
-Combine with growth efficiencies:
-
-```{r}
-# Add metadata and combine
-meta2 <- rownames_to_column(meta2, var="ucosm")
-
-greff_dist <- inner_join(groweff_diff, wuni_dist_df) %>% 
-  inner_join(meta2, by=c("Sample1"="ucosm")) %>% 
-  select(Sample1, Inoc1=Inoculant, Sample2, greff_diff, wuni_dist) %>% 
-  inner_join(meta2, by=c("Sample2"="ucosm")) %>% 
-  select(Sample1, Inoc1, Sample2, Inoc2=Inoculant, Day, greff_diff, wuni_dist)
-
-# Visualize
-greff_dist %>% 
-  #mutate(color = if_else(Day==30, "yes", "no")) %>% 
-  ggplot(aes(x=wuni_dist, y=log(greff_diff))) +
-  geom_point(aes(color=Day)) +
-  geom_smooth(method="lm", color="black") +
-  labs(x="Weighted unifrac, rarefied", y="ln Difference in growth efficiency") +
-  theme_test()
-```
-
+ 

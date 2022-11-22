@@ -23,8 +23,6 @@ library("picante")
 sessionInfo()
 ```
 
-# Notes
-
 # Import data
 
 * Rarefied phyloseq object (1500 counts)
@@ -41,9 +39,7 @@ meta <- data.frame(sample_data(physeq))
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 ```
 
-# Beta diversity
-
-### Phylogenetic dispersion
+# Phylogenetic dispersion
 
 Weighted unifrac distances:
 
@@ -65,9 +61,9 @@ wuni_df <- wuni_df[wuni_df$Sample1 != wuni_df$Sample2,] # remove self-comparison
 
 Remove duplicate pairwise comparisons:
 
-SLOW STEP
+SLOW STEP, run manually
 
-```{r}
+```{r, eval=FALSE}
 # Remove duplicates
 # SLOW
 # Sort sample1 and sample2 to create a unique label for duplicates regardless of order in columns
@@ -91,7 +87,7 @@ wuni_df2 <- bind_cols(wuni_df, all_labels) %>%
 saveRDS(wuni_df2, "../data_intermediate/SFA2_wunidist_slim.rds")
 ```
 
-```{r}
+```{r, eval=FALSE}
 wuni_df <- readRDS("../data_intermediate/SFA2_wunidist_slim.rds")
 
 # Comparisons of interest
@@ -110,7 +106,8 @@ for (i in unique(meta$Inoculant)) {
 # Visualize
 wuni_within %>% 
   ggplot(aes(x=Day, y=wuni_dist)) +
-  geom_boxplot(aes(group=Day)) +
+  geom_line(aes(group=Day)) +
+  geom_point(aes(color=Inoculant)) +
   labs(y="Weighted unifrac distance (between replicates)") +
   theme_test()
 
@@ -120,10 +117,17 @@ wuni_within %>%
   geom_line() +
   facet_wrap(~Inoculant) +
   labs(y="Weighted unifrac distance (between replicates)") +
-  theme_test()
+  theme_test
 ```
 
-### Community structure 
+```{r, eval=FALSE}
+saveRDS(wuni_within, "../data_intermediate/SFA_wunidist_withinreps.rds")
+```
+
+
+# Ordinations
+
+## Overall
 
 NMDS ordination:
 
@@ -167,3 +171,56 @@ wuni_day30 <- distance(physeq_day30, method="wunifrac")
 adonis(wuni_day30~Inoculant, data=meta_day30, permutations=999)
 ```
 
+## Effect of time on each innoculant
+
+```{r}
+# Inoculant 10
+meta_inoc10 <- meta %>% filter(Inoculant==10)
+physeq_inoc10 <- subset_samples(physeq, Inoculant==10)
+wuni_inoc10 <- distance(physeq_inoc10, method="wunifrac")
+ad10 <- adonis(wuni_inoc10~Day, data=meta_inoc10, permutations=999)
+p10 <- ad10$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 41
+meta_inoc41 <- meta %>% filter(Inoculant==41)
+physeq_inoc41 <- subset_samples(physeq, Inoculant==41)
+wuni_inoc41 <- distance(physeq_inoc41, method="wunifrac")
+ad41 <- adonis(wuni_inoc41~Day, data=meta_inoc41, permutations=999)
+p41 <- ad41$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 12
+meta_inoc12 <- meta %>% filter(Inoculant==12)
+physeq_inoc12 <- subset_samples(physeq, Inoculant==12)
+wuni_inoc12 <- distance(physeq_inoc12, method="wunifrac")
+adonis(wuni_inoc12~Day, data=meta_inoc12, permutations=999)
+ad12 <- adonis(wuni_inoc12~Day, data=meta_inoc12, permutations=999)
+p12 <- ad12$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 2
+meta_inoc2 <- meta %>% filter(Inoculant==2)
+physeq_inoc2 <- subset_samples(physeq, Inoculant==2)
+wuni_inoc2 <- distance(physeq_inoc2, method="wunifrac")
+adonis(wuni_inoc2~Day, data=meta_inoc2, permutations=999)
+ad2 <- adonis(wuni_inoc2~Day, data=meta_inoc2, permutations=999)
+p2 <- ad2$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 19
+meta_inoc19 <- meta %>% filter(Inoculant==19)
+physeq_inoc19 <- subset_samples(physeq, Inoculant==19)
+wuni_inoc19 <- distance(physeq_inoc19, method="wunifrac")
+adonis(wuni_inoc19~Day, data=meta_inoc19, permutations=999)
+ad19 <- adonis(wuni_inoc19~Day, data=meta_inoc19, permutations=999)
+p19 <- ad19$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 47
+meta_inoc47 <- meta %>% filter(Inoculant==47)
+physeq_inoc47 <- subset_samples(physeq, Inoculant==47)
+wuni_inoc47 <- distance(physeq_inoc47, method="wunifrac")
+adonis(wuni_inoc47~Day, data=meta_inoc47, permutations=999)
+ad47 <- adonis(wuni_inoc47~Day, data=meta_inoc47, permutations=999)
+p47 <- ad47$aov.tab$`Pr(>F)`[1]
+
+# P adjust
+p.adjust(c(p10, p2, p41, p47, p12, p19), method="fdr", n=6)
+
+```

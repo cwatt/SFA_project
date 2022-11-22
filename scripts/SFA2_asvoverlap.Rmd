@@ -1,0 +1,223 @@
+---
+title: "SFA2 - ASV inoculant overlap"
+author: "Cassandra Wattenburger"
+date: "11/17/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Import libraries
+library(phyloseq)
+library(tidyverse)
+library(cowplot)
+
+sessionInfo()
+
+# Clear environment
+rm(list=ls())
+```
+
+# Import data
+
+* Growth estimates
+
+```{r}
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
+```
+
+# Overlap between inoculants
+
+```{r}
+inoc_asvs <- data.frame()
+for (i in unique(growth$Inoculant)) {
+  data_sub <- filter(growth, Inoculant==i)
+  add_rows <- bind_cols(Inoculant=i, ASV=data_sub$ASV)
+  inoc_asvs <- bind_rows(inoc_asvs, add_rows)
+}
+
+# Growing ASVs pre inoc
+inoc_asvs %>% 
+  group_by(Inoculant) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
+
+# Count overlaps
+overlap_totals <- inoc_asvs %>% 
+  group_by(ASV) %>% 
+  summarize(total=n()) %>% 
+  ungroup() %>% 
+  filter(total > 1) %>% 
+  arrange(desc(total))
+overlap_totals
+
+nrow(overlap_totals)
+```
+
+## Who overlaps inoculants?
+
+```{r}
+# Get taxonomic info
+overlap_asvs <- overlap_totals$ASV
+
+overlap_tax <- filter(growth, ASV %in% overlap_asvs) %>% 
+  select(Phylum:Genus) %>% 
+  unique()
+
+# Summarize phylum level
+overlap_tax %>% 
+  group_by(Phylum) %>% 
+  summarize(total=n()) %>% 
+  arrange(desc(total))
+```
+
+# Variation among inoculants
+
+```{r}
+growth_overlap <- growth %>% 
+  filter(ASV %in% overlap_asvs)
+
+# Calculate coefficient of variation
+overlap_coefvar <- growth_overlap %>% 
+  group_by(ASV) %>% 
+  summarize(coefvar_k = sd(k)/mean(k),
+            coefvar_start = sd(start_day)/mean(start_day),
+            coefvar_chngabund = sd(change_abund_corr)/mean(change_abund_corr)) %>% 
+  ungroup()
+
+growth_overlap <- left_join(growth_overlap, overlap_coefvar) %>% 
+  select(Inoculant, ASV, k, start_day, change_abund_corr, coefvar_k, coefvar_start, coefvar_chngabund, Phylum:Genus)
+```
+
+```{r}
+# Visualize
+
+# k
+growth_overlap %>% 
+  ggplot(aes(x=reorder(ASV, desc(coefvar_k)), y=k, color=Phylum)) +
+  geom_point() +
+  geom_line() +
+  labs(x="ASV ordered by coeff. var. (highest to lowest)") +
+  theme_test() +
+  theme(axis.text.x=element_blank())
+
+# lag
+growth_overlap %>% 
+  ggplot(aes(x=reorder(ASV, desc(coefvar_start)), y=start_day, color=Phylum)) +
+  geom_point() +
+  geom_line() +
+  labs(x="ASV ordered by coeff. var. (highest to lowest)") +
+  theme_test() +
+  theme(axis.text.x=element_blank())
+
+# change abundance
+growth_overlap %>% 
+  ggplot(aes(x=reorder(ASV, desc(coefvar_chngabund)), y=log(change_abund_corr), color=Phylum)) +
+  geom_point() +
+  geom_line() +
+  labs(x="ASV ordered by coeff. var. (highest to lowest)") +
+  theme_test() +
+  theme(axis.text.x=element_blank())
+```
+
+# Variation and phylogeny
+
+Calculate coef. var. for each phylum
+
+```{r}
+growth_overlap %>% 
+  group_by(Phylum) %>% 
+  summarize(avg_cvk = mean(coefvar_k, na.rm=TRUE),
+            avg_cvstart = mean(coefvar_start, na.rm=TRUE),
+            avg_cvchng = mean(coefvar_chngabund, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  arrange(desc(avg_cvk))
+
+# Visualize
+growth_overlap %>% 
+  ggplot(aes(x=Phylum, y=coefvar_k)) +
+  geom_point() +
+  geom_line() +
+  labs(x="Phyla)") +
+  theme_test()
+```
+
+
+# Correlations w/variation
+
+Is variation related to taxonomy? phyla
+Is variation in one trait related to coeff variation in another?
+
+Predictions:
+
+* fast k assoc. w/higher variation in k (lottery/luck, random ruderal)
+* long lag assoc. w/lower var. in k (consistent competitor)
+* variation in one trait begets variation in another (k, lag, change abund)
+
+## Growth rate var. vs lag, change abund.
+
+```{r}
+# Average replicates (need independence for correlations)
+growth_overlap_avg <- growth_overlap %>%
+  group_by(ASV) %>% 
+  summarize(avg_k = mean(k, na.rm=TRUE),
+            avg_start = mean(start_day, na.rm=TRUE),
+            avg_chng = mean(change_abund_corr, na.rm=TRUE),
+            coefvar_k = mean(coefvar_k, na.rm=TRUE),
+            coefvar_start = mean(coefvar_start, na.rm=TRUE),
+            coefvar_chngabund = mean(coefvar_chngabund, na.rm=TRUE)) %>% 
+  ungroup()
+  
+# Visualize
+# k vs var k
+growth_overlap_avg %>% 
+  ggplot(aes(x=avg_k, y=coefvar_k)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test()
+
+# lag vs var k
+growth_overlap_avg %>% 
+  ggplot(aes(x=log(avg_start), y=coefvar_k)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test()
+
+# var vs var
+growth_overlap_avg %>% 
+  ggplot(aes(x=coefvar_k, y=coefvar_start)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test()
+
+growth_overlap_avg %>% 
+  ggplot(aes(x=coefvar_k, y=coefvar_chngabund)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test()
+
+growth_overlap_avg %>% 
+  ggplot(aes(x=coefvar_start, y=coefvar_chngabund)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test()
+  
+```
+
+**Statistics**
+
+Pearson correlations
+
+```{r}
+# k vs var k
+cor.test(growth_overlap_avg$avg_k, growth_overlap_avg$coefvar_k, data=growth_overlap_avg)
+
+# lag vs var k
+cor.test(growth_overlap_avg$avg_start, growth_overlap_avg$coefvar_k, data=growth_overlap_avg)
+```
+
