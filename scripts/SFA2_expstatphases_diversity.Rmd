@@ -19,6 +19,7 @@ library("phyloseq")
 library("vegan")
 library("tidyverse")
 library("lmerTest")
+library("cowplot")
 
 sessionInfo()
 ```
@@ -261,7 +262,7 @@ Permanova:
 
 ```{r}
 meta_day030 <- data.frame(sample_data(physeq_day030))
-adonis(wuni_day030 ~ Day, data=meta_day030, strata=meta_day030$Inoculant, permutations = 9999)
+adonis(wuni_day030 ~ Inoculant+Day+Inoculant*Day, data=meta_day030, strata=meta_day030$Inoculant, permutations = 9999)
 ```
 
 ### Day 10 vs day 30
@@ -392,3 +393,55 @@ wuni_cv_prepost %>%
   geom_line(aes(group=Inoculant)) +
   theme_test()
 ```
+
+# Figures
+
+Alpha diversity:
+
+```{r}
+# richness
+plot1 <- alpha_prepost %>% 
+  ggplot(aes(x=phase, y=richness)) +
+  geom_point() + 
+  geom_line(aes(group=Inoculant)) +
+  theme_test() +
+  theme(axis.text=element_text(size=10),
+      axis.title=element_blank())
+plot1
+
+# Evenness
+plot2 <- alpha_prepost %>% 
+  ggplot(aes(x=phase, y=evenness)) +
+  geom_point() + 
+  geom_line(aes(group=Inoculant)) +
+  theme_test() +
+  theme(axis.text=element_text(size=10),
+      axis.title=element_blank())
+plot2
+```
+
+Combine:
+
+```{r}
+plot_comb12 <- plot_grid(plot1, plot2, nrow=2)
+plot_comb12
+```
+
+```{r, evla=FALSE}
+ggsave("../figures/supp_alpha.svg", height=120, width=90, units="mm", device="svg")
+```
+
+Beta diversity:
+
+```{r}
+plot3 <- plot_ordination(physeq_day030, pcoa_day030, color="Inoculant", shape="phase") +
+  theme_test()
+plot3
+```
+
+```{r, eval=FALSE}
+ggsave("../figures/supp_beta.svg", height=90, width=120, units="mm", device="svg")
+```
+
+
+

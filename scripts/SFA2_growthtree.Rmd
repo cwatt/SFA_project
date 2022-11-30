@@ -75,8 +75,9 @@ tree_annot_labels <- tree_annot %>%
 
 # Tree heatmap data
 tree_annot_heat <- tree_annot %>% 
-  mutate(log_chng = log(change_abund_corr)) %>% 
-  select(ASV, k, start_day, log_chng, n16S)
+  mutate(log_chng = log(change_abund_corr),
+         log_strt = log(start_day + 0.1)) %>% # log transform values with large outliers
+  select(ASV, k, log_strt, log_chng, n16S)
 
 # Tree taxonomy colors
 tree_annot_colorstrip <- growth %>% 
@@ -103,5 +104,4 @@ write.table(tree_annot_labels, "../data_intermediate/SFA_tree_annot_labels.txt")
 write.table(tree_annot_heat, "../data_intermediate/SFA_tree_annot_heat.txt")
 write.table(tree_annot_colorstrip, "../data_intermediate/SFA_tree_annot_colorstrip.txt")
 ```
-
 
