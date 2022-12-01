@@ -41,10 +41,14 @@ resp <- readRDS("../data_intermediate/SFA2_respiration.rds") %>%
 growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap.rds")
 
 # Normalized abundances
-normabund <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+norm_gr <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
+norm_all <- readRDS("../data_intermediate/SFA2_normalized.rds")
+
+# All paprica estimates
+pap_all <- readRDS("../data_intermediate/SFA2_paprica_all.rds")
 
 # Combine and clean up growth and normalized abundance data
-growth_abund <- full_join(growth, normabund) %>% 
+growth_abund <- full_join(growth, norm_gr) %>% 
   select(Inoculant, Day, ASV, start_day, end_day, k, n16S, norm_abund_avg) # remove unneeded columns
 ```
 
@@ -113,6 +117,48 @@ resp_rate_inoc %>%
   theme_test()
 ```
 
+## Biomass vs respiration
+
+```{r, eval=FALSE}
+# Add 16S copies to normalized abundance data
+pap_slim <- pap_all %>% 
+  select(ASV, n16S)
+
+norm_pap <- inner_join(norm_all, pap_slim)
+
+# Average replicates and sum ASVs
+norm_total <- norm_pap %>% 
+  filter(Type=="Growth") %>% 
+  select(Inoculant, Day, Replicate, ASV, norm_abund, n16S) %>% 
+  group_by(Inoculant, Day, ASV, n16S) %>% # average reps
+  summarize(norm_abund_avg = mean(norm_abund, na.rm=TRUE)) %>%
+  ungroup() %>%
+  mutate(norm_abund_cor = norm_abund_avg/n16S) %>% # correct by rrn copies
+  group_by(Inoculant, Day) %>%  # sum ASV abundances for total
+  summarize(norm_total = sum(norm_abund_cor, na.rm=TRUE)) %>% 
+  ungroup()
+
+# CO2 averages
+resp_rate_avg <- resp_rate %>% 
+  group_by(Inoculant, Day) %>% 
+  summarize(mgCO2 = mean(mgCO2),
+            mgCO2_day = mean(mgCO2_day)) %>% 
+  ungroup()
+
+# combine
+norm_total_resp <- inner_join(norm_total, resp_rate_avg)
+```
+
+Visualize:
+
+```{r}
+norm_total_resp %>% 
+  ggplot(aes(x=log(norm_total), y=mgCO2_day)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme_test() 
+```
+
 ## Growth rate vs respiration rate
 
 Calculate weighted mean growth rate for each time point:
@@ -161,6 +207,18 @@ growth_resprate %>%
   geom_smooth(method="lm", linetype=2) +
   theme_test() +
   labs(title="Weighted growth rates vs. respiration rates", x="Respiration rate mean (mgCO2/day)", y="specific growth rate w.mean")
+
+# Averaged across inoculants
+# growth_resprate %>% 
+#   group_by(Day) %>% 
+#   summarize(weighted_k = mean(weighted_k, na.rm=TRUE),
+#             mgCO2_day = mean(mgCO2_day, na.rm=TRUE)) %>%
+#   ungroup() %>% 
+#   ggplot(aes(x=mgCO2_day, y=weighted_k)) +
+#   geom_point() +
+#   geom_smooth(method="lm", linetype=2) +
+#   theme_test() +
+#   labs(title="Weighted growth rates vs. respiration rates", x="Respiration rate mean (mgCO2/day)", y="specific growth rate w.mean")
 ```
 
 Statistics:
@@ -308,7 +366,6 @@ normabund_pap <- normabund_pap %>%
   filter(Type=="Growth") %>% 
   select(Sample, Inoculant, Day, ASV, start_day, end_day, norm_abund_corr, grew)
 ```
-
 
 ```{r}
 # Calculate grow:no-grow ratio

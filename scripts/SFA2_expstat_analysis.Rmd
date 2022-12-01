@@ -240,7 +240,7 @@ death_grp %>%
 growth_grp1_ex <- growth_grp %>% 
   filter(ASV==growth[157,]$ASV & Inoculant==growth[157,]$Inoculant) # see growth estimation plots from script 03
 
-# Prepare abudnance table
+# Prepare abudance table
 norm_grp1_ex <- norm_meta %>%
   filter(ASV==growth[157,]$ASV & Inoculant==growth[157,]$Inoculant) %>% 
   group_by(Inoculant, Day) %>% 
@@ -331,7 +331,62 @@ death_grp %>%
             sd = sd(total))
 ```
 
+## Group 3
 
+Started growth after day 9.
+
+```{r}
+# Growth estimates
+growth_grp3 <- growth %>% 
+  mutate(group = if_else(start_day > 9, "grp3", "not"),
+         group = as.factor(group)) %>% 
+  filter(group=="grp3")
+
+# Death estimates
+norm_grp3_prep <- growth_grp3 %>% 
+  inner_join(norm) %>%
+  select(label, Sample, Inoculant, Day, ASV, norm_abund) %>% 
+  group_by(label, Inoculant, Day, ASV) %>% # average technical reps
+  summarize(norm_abund = mean(norm_abund)) %>% 
+  ungroup() %>% 
+  arrange(Inoculant, Day) %>% 
+  filter(norm_abund > 0) %>% # remove drop outs
+  mutate(norm_abund_ln = log(norm_abund))
+
+# Taxonomy
+tax_grp3 <- growth_grp3 %>% 
+  inner_join(norm) %>%
+  select(ASV, Phylum:Genus) %>% 
+  unique()
+```
+
+Visualize:
+
+```{r}
+count <-  0
+for (l in as.character(growth_grp3$label)) {
+  # Subset time series
+  count <- count+1
+  growth_label <- filter(growth_grp3, label==l)
+  norm_label <- filter(norm_grp3_prep, label==l) %>% 
+    arrange(Day)
+  # Title information
+  asv <- growth_label$ASV
+  tax_info <- filter(tax_grp3, ASV == asv)
+  title <- paste0(tax_info$Phylum, ", ", tax_info$Genus)
+  # Graph with estimate
+  graph <- ggplot(norm_label, aes(x=Day, y=norm_abund_ln)) +
+    geom_point(shape=1, size=3, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=norm_label[growth_label$start_pt:growth_label$end_pt,], linetype=2, color="black") +
+    labs(title=paste0(title), x="Day", y="ln Relational abundance") +
+    theme_test() +
+    theme(axis.title = element_blank(),
+        axis.text = element_text(size=10))
+  print(graph)
+  assign(paste0("plot", count, "_grp3"), graph)
+}
+```
 
 # Growth traits
 
@@ -364,11 +419,22 @@ growth_grp %>%
 
 # n16S
 growth_grp %>% 
-  ggplot(aes(x=group, y=n16S)) +
+  ggplot(aes(x=group, y=log(n16S))) +
   geom_boxplot() +
   geom_jitter(size=2, alpha=0.5) +
   theme_test() +
-  labs(y="16S copy number", x="") +
+  labs(y="16S copy number (ln)", x="") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12))
+
+# Lag 
+growth_grp %>% 
+  filter(start_day <= 6) %>% # for group 2 taxa that started same time as group 1
+  ggplot(aes(x=group, y=start_day)) +
+  geom_boxplot() +
+  geom_jitter(size=2, alpha=0.5) +
+  theme_test() +
+  labs(y="lag", x="") +
   theme(axis.text = element_text(size = 10),
         axis.title = element_text(size = 12))
 ```
@@ -393,8 +459,16 @@ anova(chg_lmer)
 # 16S
 n16s_lmer <- lmer(log(n16S) ~ group + (1 + Inoculant | Inoculant), growth_grp)
 hist(resid(n16s_lmer))
-plot(predict(n16s_lmer), resid(n16s_lmer))
-anova(n16s_lmer)
+plot(predict(n16s_lmer), resid(n16s_lmer)) # heteroskedastic
+# Welch t-test
+t.test(log(n16S) ~ group, data=growth_grp) 
+
+# lag
+lag_lmer <- lmer(start_day ~ group + (1 + Inoculant | Inoculant), filter(growth_grp, start_day <= 6))
+hist(resid(lag_lmer)) # non-normal
+plot(predict(lag_lmer), resid(lag_lmer))
+# Welch t-test
+t.test(start_day ~ group, filter(growth_grp, start_day <= 6))
 ```
 
 # Death Traits
@@ -757,3 +831,44 @@ supp1
 ```{r, eval=FALSE}
 ggsave("../figures/supp_wholegrtotal.svg", supp1, height=180, width=180, units="mm", device="svg")
 ```
+
+Supplement group 3:
+
+```{r}
+count <-  0
+for (l in as.character(growth_grp3$label)) {
+  # Subset time series
+  count <- count+1
+  growth_label <- filter(growth_grp3, label==l)
+  norm_label <- filter(norm_grp3_prep, label==l) %>% 
+    arrange(Day)
+  # Title information
+  asv <- growth_label$ASV
+  tax_info <- filter(tax_grp3, ASV == asv)
+  title <- paste0(tax_info$Phylum, ", ", tax_info$Genus)
+  # Graph with estimate
+  graph <- ggplot(norm_label, aes(x=Day, y=norm_abund_ln)) +
+    geom_point(shape=1, size=3, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=norm_label[growth_label$start_pt:growth_label$end_pt,], linetype=2, color="black") +
+    labs(title=paste0(title), x="Day", y="ln Relational abundance") +
+    theme_test() +
+    theme(title = element_text(size=12),
+        axis.title = element_blank(),
+          axis.text = element_text(size=10))
+  print(graph)
+  assign(paste0("plot", count, "_grp3"), graph)
+}
+```
+
+Combine:
+
+```{r}
+supp_grp3 <- plot_grid(plot1_grp3, plot2_grp3, plot3_grp3, plot4_grp3, plot5_grp3, plot6_grp3, nrow=2)
+supp_grp3
+```
+
+```{r, eval=FALSE}
+ggsave("../figures/supp_grp3.svg", supp_grp3, height=120, width=210, units="mm", device="svg")
+```
+
