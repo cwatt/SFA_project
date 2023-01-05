@@ -134,9 +134,10 @@ Summary statistics:
 Minimum (not including 0s), maximum, average.
 
 ```{r}
-aqui_prop %>% filter(prop > 0) %>% arrange(prop) %>% slice(1) %>% .$prop
-max(aqui_prop$prop)
-mean(aqui_prop$prop)
+aqui_prop %>% filter(prop > 0) %>% arrange(prop) %>% slice(1) %>% .$prop*100
+max(aqui_prop$prop)*100
+mean(aqui_prop$prop)*100
+sd(aqui_prop$prop)*100
 ```
 
 How many samples have no spike-in? Which ones?

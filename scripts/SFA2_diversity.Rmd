@@ -181,7 +181,51 @@ alpha_day %>%
 set.seed(2)
 ```
 
-### All data
+## Overall
+
+# COPYPASTED
+
+NMDS ordination:
+
+```{r}
+# Graph formatting to color time points
+meta_format <- data.frame(sample_data(physeq)) %>% 
+  mutate(leveloff = if_else(Day >=9, "pre", "post"),
+         firstlast = if_else(Day==0, "start", if_else(Day==30, "end", "between")))
+physeq_format <- phyloseq(physeq@otu_table, physeq@tax_table, physeq@phy_tree, sample_data(meta_format))
+
+# Ordinate 
+# Using pcoa because no convergence with nmds
+ord_pcoa <- ordinate(physeq_format, method="PCoA", distance=wuni_dist)
+
+# Visualize
+plot_ordination(physeq_format, ord_pcoa, color="Inoculant") +
+  facet_wrap(~Day) +
+  theme_test()
+
+plot_ordination(physeq_format, ord_pcoa, color="firstlast") +
+  facet_wrap(~Inoculant) +
+  theme_test()
+```
+
+PermANOVA:
+
+```{r}
+# Overall 
+adonis(wuni_dist~Inoculant*Day, data=meta, permutations=999)
+
+# TP 0
+meta_day0 <- meta %>% filter(Day==0)
+physeq_day0 <- subset_samples(physeq, Day==0)
+wuni_day0 <- distance(physeq_day0, method="wunifrac")
+adonis(wuni_day0~Inoculant, data=meta_day0, permutations=999)
+
+# TP 30
+meta_day30 <- meta %>% filter(Day==30)
+physeq_day30 <- subset_samples(physeq, Day==30)
+wuni_day30 <- distance(physeq_day30, method="wunifrac")
+adonis(wuni_day30~Inoculant, data=meta_day30, permutations=999)
+```
 
 ```{r}
 # Calculate weighted unifrac
@@ -338,6 +382,62 @@ resp_axis2 %>%
   geom_point() +
   geom_text(aes(label=Inoculant), hjust=1.2, vjust=1.2) +
   theme_test()
+```
+
+## Effect of time on each innoculant
+
+### COPY/PASTED MAY NOT WORK
+
+```{r}
+# Inoculant 10
+meta_inoc10 <- meta %>% filter(Inoculant==10)
+physeq_inoc10 <- subset_samples(physeq, Inoculant==10)
+wuni_inoc10 <- distance(physeq_inoc10, method="wunifrac")
+ad10 <- adonis(wuni_inoc10~Day, data=meta_inoc10, permutations=999)
+p10 <- ad10$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 41
+meta_inoc41 <- meta %>% filter(Inoculant==41)
+physeq_inoc41 <- subset_samples(physeq, Inoculant==41)
+wuni_inoc41 <- distance(physeq_inoc41, method="wunifrac")
+ad41 <- adonis(wuni_inoc41~Day, data=meta_inoc41, permutations=999)
+p41 <- ad41$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 12
+meta_inoc12 <- meta %>% filter(Inoculant==12)
+physeq_inoc12 <- subset_samples(physeq, Inoculant==12)
+wuni_inoc12 <- distance(physeq_inoc12, method="wunifrac")
+adonis(wuni_inoc12~Day, data=meta_inoc12, permutations=999)
+ad12 <- adonis(wuni_inoc12~Day, data=meta_inoc12, permutations=999)
+p12 <- ad12$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 2
+meta_inoc2 <- meta %>% filter(Inoculant==2)
+physeq_inoc2 <- subset_samples(physeq, Inoculant==2)
+wuni_inoc2 <- distance(physeq_inoc2, method="wunifrac")
+adonis(wuni_inoc2~Day, data=meta_inoc2, permutations=999)
+ad2 <- adonis(wuni_inoc2~Day, data=meta_inoc2, permutations=999)
+p2 <- ad2$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 19
+meta_inoc19 <- meta %>% filter(Inoculant==19)
+physeq_inoc19 <- subset_samples(physeq, Inoculant==19)
+wuni_inoc19 <- distance(physeq_inoc19, method="wunifrac")
+adonis(wuni_inoc19~Day, data=meta_inoc19, permutations=999)
+ad19 <- adonis(wuni_inoc19~Day, data=meta_inoc19, permutations=999)
+p19 <- ad19$aov.tab$`Pr(>F)`[1]
+
+# Inoculant 47
+meta_inoc47 <- meta %>% filter(Inoculant==47)
+physeq_inoc47 <- subset_samples(physeq, Inoculant==47)
+wuni_inoc47 <- distance(physeq_inoc47, method="wunifrac")
+adonis(wuni_inoc47~Day, data=meta_inoc47, permutations=999)
+ad47 <- adonis(wuni_inoc47~Day, data=meta_inoc47, permutations=999)
+p47 <- ad47$aov.tab$`Pr(>F)`[1]
+
+# P adjust
+p.adjust(c(p10, p2, p41, p47, p12, p19), method="fdr", n=6)
+
 ```
 
 ### Beta diversity variance

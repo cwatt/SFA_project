@@ -728,6 +728,30 @@ for (l in as.character(unique(growth_estimates$label))) {
 }
 ```
 
+## Generation times
+
+Formula: g = ln2/k
+
+Where g is generation or doubling time and k is specific growth rate (per day).
+
+```{r}
+# Calculate doubling time based on k
+g.df <- data.frame()
+for (l in as.character(unique(growth_final$label))) {
+        data_sub <- filter(growth_final, label==l)
+        k <- data_sub$k
+        g <- log(2)/k
+        thisrow <- cbind(data_sub, g)
+        g.df <- rbind(g.df, thisrow)
+}
+g.df
+
+mean(g.df$g)
+sd(g.df$g)
+min(g.df$g)
+max(g.df$g)
+```
+
 # Tidy up and save data
 
 Relational abundances:
@@ -782,6 +806,10 @@ write_tsv(growth_asvs, file="../paprica_analysis/growth_asvs.txt")
 Number of estimates per inoculant:
 
 ```{r}
+# Number of ASVs with estimates
+length(unique(growth_tidy$ASV))
+
+# Estimates per inoculant
 growth_summary <- growth_tidy %>% 
   group_by(Inoculant) %>% 
   summarize(num = n())
@@ -789,6 +817,9 @@ growth_summary <- growth_tidy %>%
 growth_summary %>% 
   group_by() %>% 
   summarize(num_avg = mean(num), num_sd=sd(num))
+
+# Min, max and mean k
+
 ```
 
 # Plot growth estimates

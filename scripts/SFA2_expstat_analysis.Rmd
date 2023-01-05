@@ -182,7 +182,7 @@ growth_grp <- growth %>%
 
 # Death
 death_grp <- death %>% 
-  mutate(group = if_else(end_day <= 9, "grp 1", "grp2"),
+  mutate(group = if_else(end_day <= 9, "grp1", "grp2"),
          group = as.factor(group))
 ```
 
@@ -231,6 +231,35 @@ death_grp %>%
   ungroup() %>% 
   arrange(group, desc(total_mean))
 ```
+
+Summary of k, lag, change abund for each group:
+
+```{r}
+growth_grp %>% 
+  mutate(g = log(2)/abs(k)) %>% # calculate generation time
+  group_by(group) %>% 
+  summarize(g_mean = mean(g, na.rm=TRUE),
+            g_df = sd(g, na.rm=TRUE),
+            lag_mean = mean(start_day, na.rm=TRUE),
+            lag_sd = sd(start_day, na.rm=TRUE),
+            chgabund_mean = mean(change_abund_corr, na.rm=TRUE),
+            chgabund_sd = sd(change_abund_corr, na.rm=TRUE)) %>% 
+  ungroup()
+```
+
+```{r}
+death_grp %>% 
+  mutate(h = log(2)/abs(k)) %>% # calculate halving time
+  group_by(group) %>% 
+  summarize(h_mean = mean(h, na.rm=TRUE),
+            h_df = sd(h, na.rm=TRUE),
+            lag_mean = mean(start_day, na.rm=TRUE),
+            lag_sd = sd(start_day, na.rm=TRUE),
+            chgabund_mean = mean(change_abund_corr, na.rm=TRUE),
+            chgabund_sd = sd(change_abund_corr, na.rm=TRUE)) %>% 
+  ungroup()
+```
+
 
 ## Growth group examples
 
@@ -329,6 +358,88 @@ death_grp %>%
   group_by(group) %>% 
   summarize(mean = mean(total),
             sd = sd(total))
+```
+
+## Phylogenetic memberships
+
+relative abundances down to order level for each inoculant
+
+By number of estimates.
+
+Growth:
+
+```{r}
+# Phylum-level makeup of ASV estimates
+growth_phyla <- growth_grp %>% 
+  group_by(Phylum, ASV) %>% 
+  summarize(total=n())
+
+# total number of growth estimates
+growth_ests <- nrow(growth_grp)
+
+# Calculate % estimates of each phylum
+growth_phyla %>%
+  group_by(Phylum) %>% 
+  summarize(total=n()) %>% 
+  arrange(desc(total)) %>% 
+  add_column(all = growth_ests) %>% 
+  mutate(perc = (total/all)*100)
+```
+
+
+```{r}
+# Total ASVs estimated per inoculant/group
+gr_inocgrp_totals <- growth_grp %>% 
+  group_by(Inoculant, group) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
+
+# Order level
+gr_ord_relabund <- growth_grp %>% 
+  group_by(Inoculant, group, Phylum, Order) %>% 
+  summarize(order_total = n()) %>% 
+  ungroup() %>% 
+  inner_join(gr_inocgrp_totals) %>% 
+  mutate(relabund = order_total/total)
+gr_ord_relabund
+```
+
+Death: 
+
+```{r}
+# Phylum-level makeup of ASV estimates
+death_phyla <- death_grp %>% 
+  group_by(Phylum, ASV) %>% 
+  summarize(total=n())
+
+# total number of death estimates
+death_ests <- nrow(death_grp)
+
+# Calculate % estimates of each phylum
+death_phyla %>%
+  group_by(Phylum) %>% 
+  summarize(total=n()) %>% 
+  arrange(desc(total)) %>% 
+  add_column(all = death_ests) %>% 
+  mutate(perc = (total/all)*100)
+```
+
+Visualize:
+
+```{r}
+gr_ord_relabund %>% 
+  ggplot(aes(x=group, y=order_total, color=Phylum)) +
+  geom_jitter() +
+  geom_vline(xintercept=1.5) +
+  facet_wrap(~Inoculant) +
+  theme_test()
+
+gr_ord_relabund %>% 
+  mutate(border = if_else(Phylum=="Actinobacteriota", "yes", "no")) %>% 
+  ggplot(aes(x=group, y=relabund, fill=Order, color=Phylum)) +
+  geom_col() +
+  facet_wrap(~Inoculant) +
+  theme_test()
 ```
 
 ## Group 3
@@ -529,6 +640,223 @@ n16S_lmer <- lmer(n16S ~ group + (1 + Inoculant | Inoculant), death_grp)
 hist(resid(chgdeath_lmer))
 plot(predict(chgdeath_lmer), resid(chgdeath_lmer))
 anova(chgdeath_lmer)
+```
+
+# Abundance gains during exp and stat
+
+# TROUBLESHOOT
+
+N0 = normalized abundance of taxon at start of time interval (not log transformed)
+g = generation time of taxon (days)
+t = days in time frame
+n = t/g, number of generations
+Nt = N0*2^n, biomass at end of time frame
+deltaN = Nt - N0, change in biomass
+
+Full equation:
+deltaN = N0*2^((end-start)/g) - N0
+
+## Growth
+
+```{r}
+# Prepare data
+growth_slim <- growth %>% 
+  select(Inoculant, ASV, k, start_day, end_day, n16S)
+
+growth_norm <- norm %>% 
+  filter(Type=="Growth") %>% 
+  select(Inoculant, Day, ASV, norm_abund) %>% 
+  inner_join(growth_slim) %>%
+  mutate(norm_abund_corr = norm_abund/n16S, # normalized abundance corrected
+         g = log(2)/k) %>%  # generation time
+  select(Inoculant, Day, ASV, start_day, end_day, g, norm_abund_corr)
+```
+
+```{r}
+# Exponential phase
+
+# Group 1
+exp_gain1 <- filter(growth_norm, end_day <= 9) %>% # grew only during exponential
+  filter(start_day==Day) %>% # abundance at start of growth (N0)
+  mutate(deltaN = norm_abund_corr*2^((end_day-start_day)/g) - norm_abund_corr) %>% # gained during growth
+  group_by(Inoculant) %>% 
+  summarize(deltaN = sum(deltaN)) %>% 
+  ungroup()
+
+# Group 2
+exp_gain2 <- filter(growth_norm, end_day >= 9 & start_day <= 9) %>% # grew after exponential too
+  filter(start_day==Day) %>% # starting abundance at start day
+  mutate(deltaN = norm_abund_corr*2^((9-start_day)/g) - norm_abund_corr) %>% # gained prior to day 9 
+  group_by(Inoculant) %>% 
+  summarize(deltaN = sum(deltaN)) %>% 
+  ungroup()
+
+# Stationary phase
+
+# Group 2
+stat_gain1 <- filter(growth_norm, end_day >= 9 & start_day <= 9) %>% # started growing in exponential
+  filter(Day==9) %>% # starting abundnace will be abundance on day 9
+  mutate(deltaN = norm_abund_corr*2^((end_day-9)/g) - norm_abund_corr) %>% # gained after day 9
+  group_by(Inoculant) %>% 
+  summarize(deltaN = sum(deltaN)) %>% 
+  ungroup()
+
+# Group 3
+stat_gain2 <- filter(growth_norm, end_day >= 9 & start_day >= 9) %>% # started growing in stationary
+  filter(Day==start_day) %>% # abundance at start of growth
+  mutate(deltaN = norm_abund_corr*2^((end_day-start_day)/g) - norm_abund_corr) %>%
+  group_by(Inoculant) %>% 
+  summarize(deltaN = sum(deltaN)) %>% 
+  ungroup() %>% 
+  add_row(Inoculant="41", deltaN=0) %>% # add missing incoulants (no observed estiamtes)
+  add_row(Inoculant="19", deltaN=0)
+  
+
+# Combine
+expstat_gain <- bind_cols(exp_gain1, exp_gain2) %>% 
+  bind_cols(stat_gain1) %>%
+  bind_cols(stat_gain2) %>% 
+  select(Inoculant=`Inoculant...1`, deltaN_exp1=`deltaN...2`, deltaN_exp2=`deltaN...4`, deltaN_stat=`deltaN...6`) %>% 
+  mutate(deltaN_exp = deltaN_exp1 + deltaN_exp2)
+
+expstat_gain %>% 
+  summarize(exp_mean = mean(deltaN_exp),
+            exp_sd = sd(deltaN_exp),
+            stat_mean = mean(deltaN_stat),
+            stat_sd = sd(deltaN_stat))
+```
+
+## Death
+
+```{r}
+# Prepare data
+death_slim <- death %>% 
+  select(Inoculant, ASV, k, start_day, end_day, n16S)
+
+death_norm <- norm %>% 
+  filter(Type=="Growth") %>% 
+  select(Inoculant, Day, ASV, norm_abund) %>% 
+  inner_join(death_slim) %>%
+  mutate(norm_abund_corr = norm_abund/n16S, # normalized abundance corrected
+         h = log(2)/abs(k)) %>%  # halving time
+  select(Inoculant, Day, ASV, start_day, end_day, h, norm_abund_corr)
+```
+
+```{r}
+# Exponential phase
+
+# Group 1
+exp_loss1 <- filter(death_norm, end_day <= 9) %>% # died only during exponential
+  filter(start_day==Day) %>% # abundance at start of death (N0)
+  mutate(deltaN = norm_abund_corr*2^(abs(end_day-start_day)/h) - norm_abund_corr) %>% # lost during death
+  group_by(Inoculant) %>% 
+  summarize(deltaN = sum(deltaN)) %>% 
+  ungroup()
+
+# Group 2
+exp_loss2 <- filter(death_norm, end_day >= 9 & start_day < 9) %>% # died after exponential too
+  filter(start_day==Day) %>% # starting abundance will be start day
+  mutate(deltaN = norm_abund_corr*2^(abs(9-start_day)/h) - norm_abund_corr) %>% # lost prior to day 9 
+  group_by(Inoculant) %>% 
+  summarize(deltaN = sum(deltaN)) %>% 
+  ungroup() %>% 
+  add_row(Inoculant="41", deltaN=0) # missing incoulants
+
+# Stationary phase
+
+# Group 2
+stat_loss1 <- filter(death_norm, end_day >= 9 & start_day <= 9) %>% # started growing in exponential
+  filter(Day==9) %>% # starting abundnace will be abundance on day 9
+  mutate(deltaN = norm_abund_corr*2^(abs(end_day-9)/h) - norm_abund_corr) %>% # lost after day 9
+  group_by(Inoculant) %>% 
+  summarize(deltaN = sum(deltaN)) %>% 
+  ungroup() %>% 
+  add_row(Inoculant="41", deltaN=0) # missing incoulants
+
+# Group 3
+stat_loss2 <- filter(death_norm, end_day >= 9 & start_day >= 9) %>% # started dying in stationary
+  filter(Day==start_day) %>% # abundance at start of death
+  mutate(deltaN = norm_abund_corr*2^(abs(end_day-start_day)/h) - norm_abund_corr) %>%
+  group_by(Inoculant) %>% 
+  summarize(deltaN = sum(deltaN)) %>% 
+  ungroup() %>% 
+  add_row(Inoculant="47", deltaN=0) %>% # add missing incoulants (no observed estiamtes)
+  add_row(Inoculant="10", deltaN=0)
+  
+
+# Combine
+expstat_loss <- bind_cols(exp_loss1, exp_loss2) %>% 
+  bind_cols(stat_loss1) %>%
+  bind_cols(stat_loss2) %>% 
+  select(Inoculant=`Inoculant...1`, deltaN_exp1=`deltaN...2`, deltaN_exp2=`deltaN...4`, deltaN_stat=`deltaN...6`) %>% 
+  mutate(deltaN_exp = deltaN_exp1 + deltaN_exp2)
+
+expstat_loss %>% 
+  summarize(exp_mean = mean(deltaN_exp),
+            exp_sd = sd(deltaN_exp),
+            stat_mean = mean(deltaN_stat),
+            stat_sd = sd(deltaN_stat))
+```
+
+Visualize:
+
+```{r}
+# Combine gains and losses
+expstat_gain2 <- expstat_gain %>% 
+  select(Inoculant, deltaN_exp, deltaN_stat) %>% 
+  pivot_longer(cols=!Inoculant, names_to="phase", values_to="deltaN") %>% 
+  mutate(phase = gsub("deltaN_", "", phase),
+         type="growth")
+
+expstat_loss2 <- expstat_loss %>% 
+  select(Inoculant, deltaN_exp, deltaN_stat) %>% 
+  pivot_longer(cols=!Inoculant, names_to="phase", values_to="deltaN") %>% 
+  mutate(phase = gsub("deltaN_", "", phase),
+         type="death")
+
+expstat_gainloss <- bind_rows(expstat_gain2, expstat_loss2)
+
+# Plot
+expstat_gainloss %>% 
+  ggplot(aes(x=phase, y=log(deltaN), color=type)) +
+  geom_boxplot() +
+  theme_test()
+```
+
+# Group 1 : Group 2
+
+How does ratio of biomass in each group change with time?
+
+# TROUBLESHOOT Inf values
+## need to impute value in place of 0s in group 1 and 2
+
+```{r}
+death_grp_slim <- death_grp %>% 
+  select(Inoculant, ASV, group)
+
+norm_grp_ratio <- norm %>% 
+  filter(Type=="Growth") %>% 
+  select(Inoculant, Day, ASV, norm_abund) %>% 
+  inner_join(pap_slim) %>% 
+  inner_join(death_grp_slim) %>% 
+  mutate(norm_abund_corr = norm_abund/n16S) %>%
+  group_by(Inoculant, Day, group) %>% 
+  summarize(total = sum(norm_abund_corr)) %>% 
+  ungroup() %>%
+  pivot_wider(names_from = group, values_from = total) %>% 
+  mutate(ratio = grp1/grp2)
+```
+
+Visualize:
+
+```{r}
+norm_grp_ratio %>% 
+  ggplot(aes(x=Day, y=ratio, color=Inoculant)) +
+  geom_point() +
+  geom_line(aes(group=Inoculant)) +
+  geom_vline(xintercept = 9, linetype=2) +
+  theme_test()
+  
 ```
 
 # MESS BELOW
@@ -813,8 +1141,17 @@ Supplemental: Whole vs growth only total abundances
 norm_whole_avg <- add_column(type="whole", norm_whole_avg)
 norm_growth_avg <- add_column(type="growth", norm_growth_avg)
 
-norm_avg <- groupd_rows(norm_whole_avg, norm_growth_avg)
+norm_avg <- bind_rows(norm_whole_avg, norm_growth_avg)
 ```
+
+```{r}
+# Total averaged abundances by phase, compraing whole to growing
+norm_avg %>% 
+  mutate(phase = if_else(Day <= 9, "exp", "stat")) %>% 
+  group_by(phase, type) %>% 
+  summarize(total = mean(total))
+```
+
 
 ```{r}
 supp1 <- norm_avg %>% 

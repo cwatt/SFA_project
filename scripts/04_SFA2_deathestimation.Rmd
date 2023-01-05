@@ -407,6 +407,30 @@ for (l in as.character(unique(death_falsepos10$label))) {
 }
 ```
 
+## Half times
+
+Formula: h = ln2/k
+
+Where h is halving time and k is specific growth rate (per day).
+
+```{r}
+# Calculate doubling time based on k
+h.df <- data.frame()
+for (l in as.character(unique(death_final$label))) {
+        data_sub <- filter(death_final, label==l)
+        k <- abs(data_sub$k)
+        h <- log(2)/k
+        thisrow <- cbind(data_sub, h)
+        h.df <- rbind(h.df, thisrow)
+}
+h.df
+
+mean(h.df$h)
+sd(h.df$h)
+min(h.df$h)
+max(h.df$h)
+```
+
 # Tidy up and save data
 
 Relational abundances:
@@ -453,6 +477,10 @@ write_tsv(death_asvs, file="../paprica_analysis/death_asvs.txt")
 Number of estimates per inoculant:
 
 ```{r}
+# ASVs with death esimates
+length(unique(death_tidy$ASV))
+
+# Inoculant avg
 death_summary <- death_tidy %>% 
   group_by(Inoculant) %>% 
   summarize(num = n())
