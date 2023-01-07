@@ -137,12 +137,13 @@ Create growth parameter saving function:
 # Function: Saves chosen growth estimate from below algorhithm
 save_fit <- function(label, start, end, df_sub, output) {
   # Save estimate info
-  est <- NULL; coeff <- NULL; residuals <- NULL; pval <- NULL; thisrow <- data.frame() # clear previous
+  est <- NULL; coeff <- NULL; yint <- NULL; residuals <- NULL; pval <- NULL; thisrow <- data.frame() # clear previous
   est <- lm(abund ~ time, data=df_sub[start:end,])
   coeff <- as.numeric(est$coefficients[2])
+  yint <- as.numeric(est$coefficients[1])
   residuals <- sum(abs(resid(est)))
   pval <- summary(est)$coefficients[2,4]
-  thisrow <- data.frame(label, start, end, coeff, pval, residuals)
+  thisrow <- data.frame(label, start, end, coeff, yint, pval, residuals)
   output <- bind_rows(output, thisrow)
   return(output)
 }
@@ -687,15 +688,14 @@ I found this guide helpful: http://miller-lab.net/MillerLab/protocols/general-ba
 
 ```{r}
 # Generate abundances over time interval based on estimated slope
-growth_estimates <- data.frame()
+growth_estimates2 <- data.frame()
 B <- 1 # Start with one bacteria
 for (l in growth_falsepos10$label) {
   growth_label <- filter(growth_falsepos10, label==l)
-  slope <- growth_label$coeff
-  b <- (slope*3)+1 # abundance three days later
+  b <- (growth_label$coeff*3)+1 # abundance three days later
   k <- (log10(b)-log10(B))*(2.303/3) # calculate k
-  this_row <- cbind(growth_label, slope, k)
-  growth_estimates <- rbind(growth_estimates, this_row)
+  this_row <- cbind(growth_label, k)
+  growth_estimates2 <- rbind(growth_estimates2, this_row)
 }
 ```
 
@@ -704,12 +704,12 @@ for (l in growth_falsepos10$label) {
 ```{r}
 # Convert start and end to actual day
 growth_final <- data.frame()
-for (l in as.character(unique(growth_estimates$label))) {
+for (l in as.character(unique(growth_estimates2$label))) {
   # Isolate timeseries
   norm_label <- norm_prepped %>% 
     filter(label==l) %>% 
     arrange(time)
-  growth_label <- filter(growth_estimates, label==l)
+  growth_label <- filter(growth_estimates2, label==l)
   start <- growth_label$start
   end <- growth_label$end
   # Start and end day of growth
@@ -720,8 +720,8 @@ for (l in as.character(unique(growth_estimates$label))) {
   end_abund <- norm_label[end,]$norm_abund_avg
   change_abund <- end_abund - start_abund
   # Save output
-  this_row <- bind_cols(label = as.character(growth_label$label), slope = growth_label$slope,
-                        k = growth_label$k,
+  this_row <- bind_cols(label = as.character(growth_label$label), 
+                        slope = growth_label$coeff, yint = growth_label$yint, k = growth_label$k,
                         start_pt = growth_label$start, end_pt = growth_label$end,
                         start_day = start_day, end_day = end_day, 
                         start_abund = start_abund, end_abund = end_abund, change_abund = change_abund)
@@ -769,7 +769,7 @@ norm_tidy <- norm_prepped %>%
 ```
 
 ```{r, eval=FALSE}
-saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_grestimated.rds")
+saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_grestimated2.rds")
 ```
 
 Growth estimates:
@@ -783,7 +783,7 @@ growth_tidy <- growth_final %>%
 ```
 
 ```{r, eval=FALSE}
-saveRDS(growth_tidy, file="../data_intermediate/SFA2_growth_estimates.rds")
+saveRDS(growth_tidy, file="../data_intermediate/SFA2_growth_estimates2.rds")
 ```
 
 # Number of estimates per inoculant
@@ -799,7 +799,7 @@ growth_tidy %>%
 
 ```{r, eval=FALSE}
 growth_asvs <- select(growth_tidy, ASV)
-write_tsv(growth_asvs, file="../paprica_analysis/growth_asvs.txt")
+write_tsv(growth_asvs, file="../paprica_analysis/growth_asvs2.txt")
 ```
 
 # Summary of growth

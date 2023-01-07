@@ -1,7 +1,7 @@
 ---
 title: "SFA2 - Death estimations"
 author: "Cassandra Wattenburger"
-date: "11/15/2021"
+date: "1/6/2023"
 output: html_document
 ---
 
@@ -38,31 +38,27 @@ tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
 meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
 ```
 
-# Estimate death - from start of incubation
+# Estimate death
 
-I noticed many time series where taxa seemed to die off immediately during the incubation.
-
-Create saving function:
+Create death parameter saving function:
 
 ```{r}
-# Function: Saves chosen estimate from below algorhithm
+# Function: Saves chosen death estimate from below algorhithm
 save_fit <- function(label, start, end, df_sub, output) {
   # Save estimate info
-  est <- NULL; coeff <- NULL; residuals <- NULL; pval <- NULL; thisrow <- data.frame() # clear previous
+  est <- NULL; coeff <- NULL; yint <- NULL; residuals <- NULL; pval <- NULL; thisrow <- data.frame() # clear previous
   est <- lm(abund ~ time, data=df_sub[start:end,])
   coeff <- as.numeric(est$coefficients[2])
+  yint <- as.numeric(est$coefficients[1])
   residuals <- sum(abs(resid(est)))
   pval <- summary(est)$coefficients[2,4]
-  thisrow <- data.frame(label, start, end, coeff, pval, residuals)
+  thisrow <- data.frame(label, start, end, coeff, yint, pval, residuals)
   output <- bind_rows(output, thisrow)
   return(output)
 }
 ```
 
-Estimate death:
-
-* Same as algorhithm from 03_SFA2_deathestimation.Rmd but looking for negative slopes instead (indicate death)
-* Only estimating on data for taxa with estimated growth, 
+Estimate:
 
 ```{r}
 ## Requires a dataframe with columns containing a unique label for each data point, abundance values, time points
@@ -181,15 +177,43 @@ Histogram of quality filtered p-values from actual estimates:
 hist(death_estimates$pval, xlab="P-values", main="Histogram of quality filtered p-values")
 ```
 
-This doesn't look great.
+This p-value distribution is anti-conservative based on the trailing right tail (this is a good thing). However, it appears that there must be some proportion of false positives based on how high that right tail is compared to the initial spike at the beginning of the distribution. We must do some form of multiple comparison control.
 
 See: http://varianceexplained.org/statistics/interpreting-pvalue-histogram/
 
-I'm choosing to use a permutation approach where I use my estimating algorhithmhmhm on randomly generated data with characteristics of the real data. I'll use this false positive information to filter my real estimates. Traditional false positive control methods are far too conservative for my dataset.
+I'm choosing to use a permutation approach where I use my death estimating algorhithm on randomly generated data with characteristics of the real data. I'll use this false positive information to filter my real estimates. Traditional false positive control methods are far too conservative for my dataset.
 
 ### Simulate random data
 
 Completely random data designed to reflect actual data, if we detect "significant" death rate estimates from this, we must control for that, because the same thing can happen in our actual data.
+
+Information about real dataset to use for simulating random data:
+
+* number of time points
+* min and max of abundance
+
+```{r, results="show"}
+# Minimum and maximum relational abundances
+min_abund <- min(norm_prepped$abund)
+max_abund <- max(norm_prepped$abund)
+avg_abund <- mean(norm_prepped$abund)
+sd_abund <- sd(norm_prepped$abund)
+
+hist(norm_prepped$abund)
+
+# Number of time points
+num_tps <- norm_prepped %>% 
+  group_by(label) %>% 
+  summarize(num_points = n()) %>% 
+  ungroup()
+
+min_pts <- min(num_tps$num_points)
+max_pts <- max(num_tps$num_points)
+avg_pts <- mean(num_tps$num_points)
+sd_pts <- sd(num_tps$num_points)
+
+hist(num_tps$num_points)
+```
 
 Import previously generated simulated time series, see 03_SFA2_deathestimation.Rmd
 
@@ -198,6 +222,8 @@ sim_data <- readRDS("../data_intermediate/SFA2_simulated.rds")
 ```
 
 ### Estimate "death" on simulated data
+
+Same method. I really need to turn this into a function.
 
 ```{r}
 # Prep simulated data (rename columns)
@@ -322,9 +348,10 @@ colnames(false_pos)=c("pvalue","false")
 
 ggplot(false_pos, aes(x=pvalue, y=false)) +
   geom_point() +
-  geom_smooth(method="lm") +
-  theme_test() +
-  labs(title="Relationship between p-value and number of false positives", x="P-value", y="False positives")
+  geom_smooth(method="lm", linetype=2) +
+  labs(title="Relationship between p-value and number of false positives", x="P-value", y="False positives") +
+  theme_test()
+  
 ```
 
 Find 10%, 5%, 2.5%, 1% false positive allowance p-value thresholds
@@ -354,9 +381,11 @@ false2.5_pval <- (25 - intercept)/slope
 false1_pval <- (10 - intercept)/slope
 ```
 
-Filter p-values based on cut-offs determined (10%, 5%, 2.5%, 1%):
+### Filter by false positive rate
 
-```{r}
+Number of estimates in each category:
+
+```{r, restuls="show"}
 # ~10% false positives
 death_falsepos10 <- subset(death_estimates, pval <= false10_pval)
 nrow(death_falsepos10)
@@ -374,16 +403,94 @@ death_falsepos1 <- subset(death_estimates, pval <= false1_pval)
 nrow(death_falsepos1)
 ```
 
-Going with 10% again to match growth estimations and conserve largest number of estimates.
+# Choose FPR
+
+10% false positive rate:
+
+```{r}
+set.seed(10)
+
+# 10% false positive rate
+labels10 <- as.character(death_falsepos10$label)
+
+# Randomly plot 10 w/death estimate
+for (n in 1:10) {
+  # Choose randomly
+  rand_num <- sample(1:nrow(death_falsepos10), 1)
+  l <- labels10[rand_num]
+  
+  # Estimated death window
+  start <- death_falsepos10 %>% 
+    filter(label==l) %>% 
+    .$start
+  
+  end <- death_falsepos10 %>% 
+    filter(label==l) %>% 
+    .$end
+  
+  # Plot
+  data_sub <- norm_prepped %>% 
+    filter(label == l)
+  plot <- data_sub %>% 
+    ggplot(aes(x=time, y=abund)) +
+    geom_smooth(method="lm", data=data_sub[start:end,], linetype=2) +
+    geom_point() +
+    geom_line() +
+    theme_test()
+  print(plot)
+}
+    
+```
+
+5% false positive rate:
+
+```{r}
+set.seed(5)
+
+# 10% false positive rate
+labels5 <- as.character(death_falsepos5$label)
+
+# Randomly plot 10 w/death estimate
+for (n in 1:10) {
+  # Choose randomly
+  rand_num <- sample(1:nrow(death_falsepos5), 1)
+  l <- labels5[rand_num]
+  
+  # Estimated death window
+  start <- death_falsepos5 %>% 
+    filter(label==l) %>% 
+    .$start
+  
+  end <- death_falsepos10 %>% 
+    filter(label==l) %>% 
+    .$end
+  
+  # Plot
+  data_sub <- norm_prepped %>% 
+    filter(label == l)
+  plot <- data_sub %>% 
+    ggplot(aes(x=time, y=abund)) +
+    geom_smooth(method="lm", data=data_sub[start:end,], linetype=2) +
+    geom_point() +
+    geom_line() +
+    theme_test()
+  print(plot)
+}
+    
+```
+
+Look similarly trustworthy. I'll go with 10% false positive rate because it retains more estimates.
 
 # Calculate death metrics
 
 ### Calculate specific death rate (k)
 
+Calculating the same as growth rate, but assuming loss instead of gain.
+
 Steps:
 
-* Use estimated slope from growth curves to simulate growth over a time interval
-* Use simulated abundances to solve for d
+* Use estimated slope from death curves to simulate death over a time interval
+* Use simulated abundances to solve for k
 
 Using estimates filtered at 10% false positives.
 
@@ -395,15 +502,14 @@ I found this guide helpful: http://miller-lab.net/MillerLab/protocols/general-ba
 
 ```{r}
 # Generate abundances over time interval based on estimated slope
-death_estimates <- data.frame()
+death_estimates2 <- data.frame()
 B <- 1 # Start with one bacteria
 for (l in death_falsepos10$label) {
   death_label <- filter(death_falsepos10, label==l)
-  slope <- death_label$coeff
-  b <- (abs(slope)*3)+1 # abundance three days later
+  b <- (abs(death_label$coeff)*3)+1 # abundance three days later
   k <- (log10(b)-log10(B))*(2.303/3) # calculate k
-  this_row <- cbind(death_label, slope, k)
-  death_estimates <- rbind(death_estimates, this_row)
+  this_row <- cbind(death_label, k)
+  death_estimates2 <- rbind(death_estimates2, this_row)
 }
 ```
 
@@ -412,12 +518,12 @@ for (l in death_falsepos10$label) {
 ```{r}
 # Convert start and end to actual day
 death_final <- data.frame()
-for (l in as.character(unique(death_estimates$label))) {
+for (l in as.character(unique(death_estimates2$label))) {
   # Isolate timeseries
   norm_label <- norm_prepped %>% 
     filter(label==l) %>% 
     arrange(time)
-  death_label <- filter(death_estimates, label==l)
+  death_label <- filter(death_estimates2, label==l)
   start <- death_label$start
   end <- death_label$end
   # Start and end day of death
@@ -428,8 +534,8 @@ for (l in as.character(unique(death_estimates$label))) {
   end_abund <- norm_label[end,]$norm_abund_avg
   change_abund <- end_abund - start_abund
   # Save output
-  this_row <- bind_cols(label = as.character(death_label$label), slope = death_label$slope,
-                        k = death_label$k,
+  this_row <- bind_cols(label = as.character(death_label$label), 
+                        slope = death_label$coeff, yint = death_label$yint, k = death_label$k,
                         start_pt = death_label$start, end_pt = death_label$end,
                         start_day = start_day, end_day = end_day, 
                         start_abund = start_abund, end_abund = end_abund, change_abund = change_abund)
@@ -441,14 +547,14 @@ for (l in as.character(unique(death_estimates$label))) {
 
 Formula: h = ln2/k
 
-Where h is halving time and k is specific growth rate (per day).
+Where h is halving time and k is specific death rate (per day).
 
 ```{r}
 # Calculate doubling time based on k
 h.df <- data.frame()
 for (l in as.character(unique(death_final$label))) {
         data_sub <- filter(death_final, label==l)
-        k <- abs(data_sub$k)
+        k <- data_sub$k
         h <- log(2)/k
         thisrow <- cbind(data_sub, h)
         h.df <- rbind(h.df, thisrow)
@@ -472,12 +578,12 @@ est_labels <- as.character(death_estimates$label)
 # Extract from relational abundance table and clean up
 norm_tidy <- norm_prepped %>% 
   filter(label %in% est_labels) %>% 
-  select(label, everything(), ln_norm_abund_avg=abund, Day=time) %>% 
+  select(label, everything(), norm_abund_avg, ln_norm_abund_avg=abund, Day=time) %>% 
   select(label, Inoculant, ASV, Day, norm_abund_avg, ln_norm_abund_avg)
 ```
 
 ```{r, eval=FALSE}
-saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_deestimated.rds")
+saveRDS(norm_tidy, file="../data_intermediate/SFA2_norm_deestimated2.rds")
 ```
 
 Death estimates:
@@ -485,21 +591,29 @@ Death estimates:
 ```{r}
 # Add back metadata
 death_tidy <- death_final %>% 
-  mutate(DOC = if_else(grepl("high", label), "high", "low"),
-         Inoculant = gsub("([0-9]+)_.+", "\\1", label),
+  mutate(Inoculant = gsub("([0-9]+)_.+", "\\1", label),
          ASV = gsub("[0-9]+_(.+)", "\\1", label)) %>% 
   select(label, Inoculant, ASV, slope:change_abund)
 ```
 
 ```{r, eval=FALSE}
-saveRDS(death_tidy, file="../data_intermediate/SFA2_death_estimates.rds")
+saveRDS(death_tidy, file="../data_intermediate/SFA2_death_estimates2.rds")
+```
+
+# Number of estimates per inoculant
+
+```{r}
+death_tidy %>% 
+  group_by(Inoculant) %>% 
+  summarize(total = n()) %>% 
+  ungroup()
 ```
 
 # Create list of ASVs for PAPRICA
 
 ```{r, eval=FALSE}
 death_asvs <- select(death_tidy, ASV)
-write_tsv(death_asvs, file="../paprica_analysis/death_asvs.txt")
+write_tsv(death_asvs, file="../paprica_analysis/death_asvs2.txt")
 ```
 
 # Summary of death
@@ -507,10 +621,10 @@ write_tsv(death_asvs, file="../paprica_analysis/death_asvs.txt")
 Number of estimates per inoculant:
 
 ```{r}
-# ASVs with death esimates
+# Number of ASVs with estimates
 length(unique(death_tidy$ASV))
 
-# Inoculant avg
+# Estimates per inoculant
 death_summary <- death_tidy %>% 
   group_by(Inoculant) %>% 
   summarize(num = n())
@@ -518,6 +632,9 @@ death_summary <- death_tidy %>%
 death_summary %>% 
   group_by() %>% 
   summarize(num_avg = mean(num), num_sd=sd(num))
+
+# Min, max and mean k
+
 ```
 
 # Plot death estimates
@@ -550,18 +667,14 @@ for (l in as.character(death_tidy$label)) {
         axis.title = element_text(size=16),
         axis.text = element_text(size=14))
   
-  # Print/save
+  # Print
   print(graph)
-  #path <- "../figures/grestimates_10fpr3window/"
-  #filename <- paste0(count, "_", tax_info$Phylum, "_", tax_info$Genus, ".png")
-  #ggsave(plot=graph, filename=paste0(path, filename), device="png")
-
   }
 ```
 
 ```{r, eval=FALSE, echo=FALSE}
 # Plotting for presentations/posters
-example_est <- death_tidy[61,]
+example_est <- death_tidy[129,]
 example_dat <- filter(norm_tidy, label==example_est$label) %>% 
   mutate(startend = if_else(Day==example_est$start_day | Day==example_est$end_day, "yes", "no"))
 example_tax <- filter(tax, ASV == example_est$ASV)
@@ -584,98 +697,75 @@ example_plot
 ggsave("../figures/ISME18_deathexample.png", example_plot, width=5.3, height=3, units="in")
 ```
 
-# Growth and death
-
-## Visualize
-
-```{r}
-# Import growth estimates and relational abundances
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds") %>% 
-  select(everything(), growth_k=k, growth_start_pt=start_pt, growth_end_pt=end_pt,
-         growth_start_day=start_day, growth_end_day=end_day,
-         growth_start_abund=start_abund, growth_end_abund=end_abund, growth_change_abund=change_abund)
-norm_growth <- readRDS("../data_intermediate/SFA2_norm_grestimated.rds")
-
-# Rename death columns
-death_rename <- death_tidy %>% 
-  select(everything(), death_k=k, death_start_pt=start_pt, death_end_pt=end_pt,
-         death_start_day=start_day, death_end_day=end_day,
-         death_start_abund=start_abund, death_end_abund=end_abund, death_change_abund=change_abund)
-
-# Combine growth and death
-both <- inner_join(growth, death_rename)
-norm_both<- filter(norm_growth, label %in% unique(as.character(norm_tidy$label)))
-
-# Plot
-
-# For messing with graphs
-both_testing <- head(both)
-
-for (l in as.character(both$label)) {
-  # Subset time series
-  both_label <- filter(both, label==l)
-  norm_label <- filter(norm_both, label==l) %>% 
-    arrange(Day)
-  # Title information
-  asv <- death_label$ASV
-  tax_info <- filter(tax, ASV == asv)
-  title <- paste0(tax_info$Phylum, ", ", tax_info$Genus)
-  # Graph with estimate
-  graph <- ggplot(norm_label, aes(x=Day, y=ln_norm_abund_avg)) +
-    geom_point(shape=1, size=2, color="#6F7378") +
+```{r, eval=FALSE, echo=FALSE}
+# Plotting for presentations/posters
+example_est <- death_tidy[157,]
+example_dat <- filter(norm_tidy, label==example_est$label) %>% 
+  mutate(startend = if_else(Day==example_est$start_day | Day==example_est$end_day, "yes", "no"))
+example_tax <- filter(tax, ASV == example_est$ASV)
+example_title <- paste0(example_tax$Phylum, ", ", example_tax$Genus)
+  
+bin1_plot <- ggplot(example_dat, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(aes(shape=startend), size=4, color="#6F7378") +
     geom_line(color="#6F7378") +
-    geom_smooth(method="lm", data=norm_label[both_label$growth_start_pt:both_label$growth_end_pt,], linetype=2, color="#005427") +
-    geom_smooth(method="lm", data=norm_label[both_label$death_start_pt:both_label$death_end_pt,], linetype=2, color="#8C0500") +
-    labs(title=title, x="Day", y="ln Relational abundance") +
+    geom_smooth(method="lm", data=example_dat[example_est$start_pt:example_est$end_pt,],
+                linetype=2, color="black") +
+  geom_vline(xintercept = 9, linetype=2) +
+    labs(title=example_title, x="", y="") +
+    scale_shape_manual(values=c(1, 16)) +
     theme_test() +
     theme(title = element_text(size=18),
-        axis.title = element_text(size=16),
-        axis.text = element_text(size=14))
-  print(graph)
-}
+        axis.text = element_text(size=16),
+        legend.position = "none")
 
-```
+bin1_plot
 
-## Death after growth
+ggsave("../figures/ISME18_bin1example.png", bin1_plot, width=7.5, height=5, units="in")
 
-```{r}
-# how many estimates with both growth and death?
-nrow(both)
+example_est <- death_tidy[79,]
+example_dat <- filter(norm_tidy, label==example_est$label) %>% 
+  mutate(startend = if_else(Day==example_est$start_day | Day==example_est$end_day, "yes", "no"))
+example_tax <- filter(tax, ASV == example_est$ASV)
+example_title <- paste0(example_tax$Phylum, ", ", example_tax$Genus)
+  
+bin2_plot <- ggplot(example_dat, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(aes(shape=startend), size=4, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=example_dat[example_est$start_pt:example_est$end_pt,],
+                linetype=2, color="black") +
+  geom_vline(xintercept = 9, linetype=2) +
+    labs(title=example_title, x="", y="") +
+    scale_shape_manual(values=c(1, 16)) +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "none")
 
-# how many estimates with death after growth?
-both_after <-  both %>% 
-  mutate(death_after = if_else(death_end_day >= growth_end_day, 1, 0)) %>%
-  filter(death_after==1)
+bin2_plot
 
-nrow(both_after)
+ggsave("../figures/ISME18_bin2example.png", bin2_plot, width=7.5, height=5, units="in")
 
-# How many death after growth estimates per phase?
-both_after_phase <- both_after %>% 
-  mutate(phase = case_when(death_end_day <= 9 ~ "bin1",
-                           death_start_day <= 9 & death_end_day >= 9 ~ "bin2",
-                           death_start_day >= 9 ~ "bin3"))
+example_est <- death_tidy[162,]
+example_dat <- filter(norm_tidy, label==example_est$label) %>% 
+  mutate(startend = if_else(Day==example_est$start_day | Day==example_est$end_day, "yes", "no"))
+example_tax <- filter(tax, ASV == example_est$ASV)
+example_title <- paste0(example_tax$Phylum, ", ", example_tax$Genus)
+  
+bin3_plot <- ggplot(example_dat, aes(x=Day, y=ln_norm_abund_avg)) +
+    geom_point(aes(shape=startend), size=4, color="#6F7378") +
+    geom_line(color="#6F7378") +
+    geom_smooth(method="lm", data=example_dat[example_est$start_pt:example_est$end_pt,],
+                linetype=2, color="black") +
+  geom_vline(xintercept = 9, linetype=2) +
+    labs(title=example_title, x="", y="") +
+    scale_shape_manual(values=c(1, 16)) +
+    theme_test() +
+    theme(title = element_text(size=18),
+        axis.text = element_text(size=16),
+        legend.position = "none")
 
-both_after_phase_total <- both_after_phase %>% 
-  group_by(Inoculant, phase) %>% 
-  summarize(total = n()) %>% 
-  ungroup()
+bin3_plot
 
-# Add empty bins
-for (i in unique(both$Inoculant)) {
-  for (b in c("bin1", "bin2", "bin3")) {
-    dat <- filter(both_after_phase_total, Inoculant==i & phase==b)
-    if (nrow(dat)==0) { # if no estimates, create bin with 0
-      add_row <- bind_cols(Inoculant=i, phase=b, total=0)
-      both_after_phase_total <- bind_rows(both_after_phase_total, add_row)
-    }
-    else (next)
-  }
-}
-
-# Average total per bin
-both_after_phase_total %>% 
-  group_by(phase) %>% 
-  summarize(mean_total = mean(total, na.rm=TRUE), sd_total = sd(total)) %>% 
-  ungroup()
+ggsave("../figures/ISME18_bin3example.png", bin3_plot, width=7.5, height=5, units="in")
 ```
 

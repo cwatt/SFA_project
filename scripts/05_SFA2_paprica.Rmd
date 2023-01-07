@@ -35,8 +35,8 @@ pap_arc <- read_csv("../paprica_analysis/asvs_all/SFA2_full.rep-seqs-merged.arch
 place_arc <- read_csv("../paprica_analysis/asvs_all/SFA2_full.rep-seqs-merged.archaea.combined_16S.archaea.tax.placements.csv")
 
 # Growth and death estimates
-growth <- readRDS("../data_intermediate/SFA2_growth_estimates.rds")
-death <- readRDS("../data_intermediate/SFA2_death_estimates.rds")
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates2.rds")
+death <- readRDS("../data_intermediate/SFA2_death_estimates2.rds")
 
 # Taxonomy
 tax <- readRDS("../data_intermediate/SFA2_taxonomy.rds")
@@ -159,7 +159,7 @@ death_pap <- death_pap %>%
 Save:
 
 ```{r, eval=FALSE}
-saveRDS(pap_impute, "../data_intermediate/SFA2_paprica_all.rds")
-saveRDS(growth_pap, "../data_intermediate/SFA2_growth_estimates_pap.rds")
-saveRDS(death_pap, "../data_intermediate/SFA2_death_estimates_pap.rds")
+saveRDS(pap_impute, "../data_intermediate/SFA2_paprica_all2.rds")
+saveRDS(growth_pap, "../data_intermediate/SFA2_growth_estimates_pap2.rds")
+saveRDS(death_pap, "../data_intermediate/SFA2_death_estimates_pap2.rds")
 ```

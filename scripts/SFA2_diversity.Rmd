@@ -181,9 +181,7 @@ alpha_day %>%
 set.seed(2)
 ```
 
-## Overall
-
-# COPYPASTED
+## Overall (copy/paste)
 
 NMDS ordination:
 
@@ -374,7 +372,7 @@ Combine total respiration and axis 2:
 resp_axis2 <- inner_join(resp_total, pcoa_day0_ax2)
 ```
 
-Visaulze:
+Visualize:
 
 ```{r}
 resp_axis2 %>% 
@@ -384,9 +382,7 @@ resp_axis2 %>%
   theme_test()
 ```
 
-## Effect of time on each innoculant
-
-### COPY/PASTED MAY NOT WORK
+## Effect of time on each innoculant (copy/paste)
 
 ```{r}
 # Inoculant 10
