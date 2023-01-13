@@ -590,10 +590,10 @@ Death estimates:
 
 ```{r}
 # Add back metadata
-death_tidy <- death_final %>% 
+death_tidy <- h.df %>% 
   mutate(Inoculant = gsub("([0-9]+)_.+", "\\1", label),
          ASV = gsub("[0-9]+_(.+)", "\\1", label)) %>% 
-  select(label, Inoculant, ASV, slope:change_abund)
+  select(label, Inoculant, ASV, slope:k, h, start_pt:change_abund)
 ```
 
 ```{r, eval=FALSE}

@@ -776,10 +776,10 @@ Growth estimates:
 
 ```{r}
 # Add back metadata
-growth_tidy <- growth_final %>% 
+growth_tidy <- g.df %>% 
   mutate(Inoculant = gsub("([0-9]+)_.+", "\\1", label),
          ASV = gsub("[0-9]+_(.+)", "\\1", label)) %>% 
-  select(label, Inoculant, ASV, slope:change_abund)
+  select(label, Inoculant, ASV, slope:yint, k, g, start_pt:change_abund)
 ```
 
 ```{r, eval=FALSE}

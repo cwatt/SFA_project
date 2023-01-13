@@ -258,7 +258,10 @@ Nt = N0*2^n, biomass at end of time frame
 deltaN = Nt - N0, change in biomass
 r*t = the mg CO2 produced in that time frame
 
-growth efficiency = ΣdeltaN/(r*t), the sum of gained abundance over mg CO2 produced
+growth efficiency = ΣdeltaN/(r*t), ie sum of gained abundance divided by mg CO2 produced
+
+#BOOKMARK
+# TROUBLESHOOT
 
 ```{r}
 growth_eff <- data.frame()
@@ -288,7 +291,7 @@ for (i in unique(growth_abund$Inoculant)) {
              t = t, # timeframe
              n = t/g, # number of generations
              Nt = norm_abund_corr*2^n,
-             deltaN = Nt - norm_abund_corr) %>% # biomass at end of timeframe
+             deltaN = Nt - norm_abund_corr) %>% # biomass at end of timeframe ######################## WHAT IF NEGATIVE???
       summarize(total = sum(deltaN)) %>% 
       select(total) %>% 
       as.numeric()
