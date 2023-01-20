@@ -316,29 +316,74 @@ meta_day030 <- data.frame(sample_data(physeq_day030))
 adonis(wuni_day030 ~ Inoculant+Day+Inoculant*Day, data=meta_day030, strata=meta_day030$Inoculant, permutations = 9999)
 ```
 
-## Day 9 vs day 30
-
-Is there a change? Would indicate a dynamic community despite steady biomass.
+## Day 0 vs 9
 
 ```{r}
 # Isolate beginning and last time point measured of stationary phase
-physeq_stat930 <- subset_samples(physeq_expstat, Day==9 | Day==30)
+physeq_day09 <- subset_samples(physeq_expstat, Day==0 | Day==9)
 
 # Calculate weighted unifrac
-wuni_stat930 <- distance(physeq_stat930, method="wunifrac")
+wuni_day09 <- distance(physeq_day09, method="wunifrac")
 
 # PCoA ordination
-pcoa_stat930 <- ordinate(physeq_stat930, method="PCoA")
-plot_ordination(physeq_stat930, pcoa_stat930, color="Day") +
+pcoa_day09 <- ordinate(physeq_day09, method="PCoA")
+plot_ordination(physeq_day09, pcoa_day09, color="Day") +
   theme_test()
 ```
 
-Statistics:
+Permanova:
 
 ```{r}
-meta_stat930 <- data.frame(sample_data(physeq_stat930))
-adonis(wuni_stat930 ~ Day, data=meta_stat930, strata=meta_stat930$Inoculant, permutations = 9999)
+meta_day09 <- data.frame(sample_data(physeq_day09))
+adonis(wuni_day09 ~ Day, data=meta_day09, strata=meta_day09$Inoculant, permutations = 9999)
 ```
+
+## Day 9 vs 30
+
+```{r}
+# Isolate beginning and last time point measured of dayionary phase
+physeq_day930 <- subset_samples(physeq_expstat, Day==9 | Day==30)
+
+# Calculate weighted unifrac
+wuni_day930 <- distance(physeq_day930, method="wunifrac")
+
+# PCoA ordination
+pcoa_day930 <- ordinate(physeq_day930, method="PCoA")
+plot_ordination(physeq_day930, pcoa_day930, color="Day") +
+  theme_test()
+```
+
+Permanova:
+
+```{r}
+meta_day930 <- data.frame(sample_data(physeq_day930))
+adonis(wuni_day930 ~ Day, data=meta_day930, strata=meta_day930$Inoculant, permutations = 9999)
+```
+
+## Days 0, 9, 30
+
+```{r}
+# Isolate beginning and last time point measured of day0ionary phase
+physeq_day0930 <- subset_samples(physeq_expstat, Day==0 | Day==9 | Day==30)
+
+# Calculate weighted unifrac
+wuni_day0930 <- distance(physeq_day0930, method="wunifrac")
+
+# PCoA ordination
+pcoa_day0930 <- ordinate(physeq_day0930, method="PCoA")
+plot_ordination(physeq_day0930, pcoa_day0930, color="Day") +
+  theme_test()
+```
+
+Permanova:
+
+```{r}
+meta_day0930 <- data.frame(sample_data(physeq_day0930))
+adonis(wuni_day0930 ~ Day, data=meta_day0930, strata=meta_day0930$Inoculant, permutations = 9999)
+```
+
+
+
 
 ## Day 0 vs. total respiration
 
@@ -451,7 +496,7 @@ Weighted unifrac distances:
 
 SLOW
 
-```{r}
+```{r, eval=FALSE}
 # Calculate wunifrac distance
 wuni_dist <- distance(physeq, method="wunifrac")
 
@@ -537,6 +582,15 @@ wuni_within %>%
   labs(y="Weighted unifrac distance (between replicates)") +
   theme_test()
 
+wuni_within %>% 
+  ggplot(aes(x=Day, y=wuni_dist)) +
+  geom_point() +
+  geom_line(aes(group=Day)) +
+  geom_vline(xintercept=9, linetype=2) +
+  labs(y="Weighted unifrac distance (between replicates)") +
+  theme_test()
+
+
 wuni_within_avg %>% 
   mutate(phase = if_else(Day <= 9, "exp", "stat")) %>% 
   ggplot(aes(x=Day, y=wuni_dist)) +
@@ -596,17 +650,9 @@ wuni_day0_all %>%
   theme(legend.position = "none")
 ```
 
-## Coefficient of variation
+## Coefficient of variation (reps)
 
-within replicate variation
-
-Import previously generated weighted unifrac distances:
-
-* self-comparisons already removed (slow)
-
-```{r}
-wuni_dist <- readRDS("../data_intermediate/SFA2_wunidist_slim.rds")
-```
+Within replicate variation
 
 Calculate coeff. of variation for each timepoint:
 
@@ -617,7 +663,7 @@ for (i in unique(meta_expstat$Inoculant)) {
   for (d in unique(meta_expstat[meta_expstat$Inoculant==i,]$Day)) {
     sams <- filter(meta, Inoculant==i & Day==d) 
     sams <- sams$SampleID
-    wuni_sub <- filter(wuni_dist, Sample1 %in% sams & Sample2 %in% sams) # isolate reps
+    wuni_sub <- filter(wuni_df, Sample1 %in% sams & Sample2 %in% sams) # isolate reps
     wuni_cv <- (sd(wuni_sub$wuni_dist)/mean(wuni_sub$wuni_dist))*100 # calc coeff of var
     this_row <- bind_cols(Inoculant=i, Day=d, wuni_cv=wuni_cv)
     wuni_cv_df <- bind_rows(wuni_cv_df, this_row)
@@ -634,8 +680,6 @@ wuni_cv_prepost <- wuni_cv_df %>%
 ```
 
 Visualize:
-
-# TURN INTO FIGURE?
 
 ```{r}
 # All time points
@@ -660,7 +704,7 @@ wuni_cv_prepost %>%
 
 # Figures
 
-Alpha diversity:
+## Alpha diversity
 
 ```{r}
 # richness
@@ -695,7 +739,61 @@ plot_comb12
 ggsave("../figures/supp_alpha.svg", height=120, width=90, units="mm", device="svg")
 ```
 
-Beta diversity:
+## Beta diversity
+
+Supplement day 0, 9, 30:
+
+```{r}
+# Extract ordination from pcoa class object
+pcoa0930_df <- pcoa_day0930$vectors %>% 
+  data.frame() %>% 
+  select(Axis.1, Axis.2) %>% 
+  rownames_to_column(var="SampleID") %>% 
+  left_join(meta)
+
+# Calculate ellipse
+# Taken from: https://stackoverflow.com/questions/2397097/how-can-a-data-ellipse-be-superimposed-on-a-ggplot2-scatterplot
+library(ellipse)
+ell0930_df <- data.frame()
+for(d in unique(pcoa0930_df$Day)){
+    ell0930_df <- rbind(ell0930_df, cbind(as.data.frame(
+      with(pcoa0930_df[pcoa0930_df$Day==d,],
+           ellipse(cor(Axis.1, Axis.2), scale=c(sd(Axis.1),sd(Axis.2)), centre=c(mean(Axis.1), mean(Axis.2)))
+           )), 
+      Day=d))
+}
+
+# Visualize
+pcoa0930_df <- pcoa0930_df %>% 
+  mutate(Day=as.character(Day))
+
+ell0930_df <- ell0930_df %>% 
+  mutate(Day=as.character(Day))
+
+day_colors <- c(`0`="#bcbcbc", `9`="#5b5b5b", `30`="black")
+
+pcoa0930_df %>%
+  ggplot(aes(x=Axis.1, y=Axis.2, color=Day, shape=Day)) +
+  geom_path(data=ell0930_df, aes(x=x, y=y, colour=Day), size=1, linetype=2) +
+  geom_point() +
+  scale_color_manual(values=day_colors) +
+  theme_test()
+```
+
+```{r}
+ggsave("../figures/supp_beta0930.svg", height=90, width=120, units="mm", device="svg")
+```
+
+
+
+
+
+
+
+
+# SCRAP
+
+Supplement day 0 vs 30:
 
 ```{r}
 plot3 <- plot_ordination(physeq_day030, pcoa_day030, color="Inoculant", shape="phase") +
@@ -729,52 +827,13 @@ pcoa030_df <- pcoa030_df %>%
 df_ell <- df_ell %>% 
   mutate(Day=as.character(Day))
 
-ggplot(data=pcoa030_df, aes(x=Axis.1, y=Axis.2, color=Day, shape=Day)) +
-  geom_path(data=df_ell, aes(x=x, y=y, colour=Day), size=1, linetype=2) +
+ggplot(data=pcoa030_df, aes(x=Axis.1, y=Axis.2, shape=Day)) +
+  geom_path(data=df_ell, aes(x=x, y=y, group=Day), color="gray", size=1, linetype=2) +
   geom_point() +
   theme_test()
-
-
 ```
 
 ```{r, eval=FALSE}
 ggsave("../figures/supp_beta.svg", height=90, width=120, units="mm", device="svg")
-```
-
-Supplemental beta div day 9 vs day 30:
-
-```{r}
-# PCoA ordination
-pcoa_stat930 <- ordinate(physeq_stat930, method="PCoA")
-
-# Extract ordination from pcoa class object
-pcoa930_df <- pcoa_stat930$vectors %>% 
-  data.frame() %>% 
-  select(Axis.1, Axis.2) %>% 
-  rownames_to_column(var="SampleID") %>% 
-  left_join(meta)
-
-# Calculate ellipse
-# Stolen from: https://stackoverflow.com/questions/2397097/how-can-a-data-ellipse-be-superimposed-on-a-ggplot2-scatterplot
-library(ellipse)
-df_ell <- data.frame()
-for(d in unique(pcoa930_df$Day)){
-    df_ell <- rbind(df_ell, cbind(as.data.frame(with(pcoa930_df[pcoa930_df$Day==d,],
-                                           ellipse(cor(Axis.1, Axis.2),
-                                                           scale=c(sd(Axis.1),sd(Axis.2)),                                                                   centre=c(mean(Axis.1), mean(Axis.2)))
-                                           )), Day=d))
-}
-
-# Visualize
-pcoa930_df <- pcoa930_df %>% 
-  mutate(Day=as.character(Day))
-
-df_ell <- df_ell %>% 
-  mutate(Day=as.character(Day))
-
-ggplot(data=pcoa930_df, aes(x=Axis.1, y=Axis.2, color=Day, shape=Day)) +
-  geom_path(data=df_ell, aes(x=x, y=y, colour=Day), size=1, linetype=2) +
-  geom_point() +
-  theme_test()
 ```
 
