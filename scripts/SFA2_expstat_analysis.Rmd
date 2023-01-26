@@ -559,12 +559,70 @@ plot(predict(n16s_lmer), resid(n16s_lmer)) # heteroskedastic
 # Welch t-test
 t.test(log(n16S) ~ group, data=growth_grp) 
 
-# lag
-lag_lmer <- lmer(start_day ~ group + (1 + Inoculant | Inoculant), filter(growth_grp, start_day <= 6))
-hist(resid(lag_lmer)) # non-normal
-plot(predict(lag_lmer), resid(lag_lmer))
-# Welch t-test
-t.test(start_day ~ group, filter(growth_grp, start_day <= 6))
+# length
+growth_grp <- mutate(growth_grp, length = end_day-start_day)
+length_lmer <- lmer(log(length) ~ group + (1 + Inoculant | Inoculant), growth_grp)
+hist(resid(length_lmer))
+plot(predict(length_lmer), resid(length_lmer))
+anova(length_lmer)
+```
+
+## Correlations
+
+Length vs. gain in abudance: 
+
+# MAKE FIGURE
+
+```{r}
+growth_grp %>% 
+  ggplot(aes(x=length, y=log(change_abund_corr))) + #, color=group
+  geom_point() +
+  geom_smooth(method="lm") + #, aes(group=group)
+  theme_test()
+
+growth_grp %>% 
+  ggplot(aes(x=length, y=log(change_abund_corr), color=group)) + 
+  geom_point() +
+  geom_smooth(method="lm", aes(group=group)) + 
+  theme_test()
+```
+
+Pearson test:
+
+```{r}
+# All
+cor.test(growth_grp$length, log(growth_grp$change_abund_corr), method="pearson")
+
+# Group 2 only
+cor.test(growth_grp[growth_grp$group=="grp2",]$length, log(growth_grp[growth_grp$group=="grp2",]$change_abund_corr), method="pearson")
+```
+
+Rate vs. gain in abudance: 
+
+# MAKE FIGURE
+
+```{r}
+growth_grp %>% 
+  ggplot(aes(x=k, y=log(change_abund_corr))) + #, color=group
+  geom_point() +
+  geom_smooth(method="lm") + #, aes(group=group)
+  theme_test()
+
+growth_grp %>% 
+  ggplot(aes(x=k, y=log(change_abund_corr), color=group)) + 
+  geom_point() +
+  geom_smooth(method="lm", aes(group=group)) + 
+  theme_test()
+```
+
+Pearson test:
+
+```{r}
+# All
+cor.test(growth_grp$k, log(growth_grp$change_abund_corr), method="pearson")
+
+# Group 2 only
+cor.test(growth_grp[growth_grp$group=="grp2",]$length, log(growth_grp[growth_grp$group=="grp2",]$change_abund_corr), method="pearson")
 ```
 
 # Death Traits
@@ -766,6 +824,8 @@ write_csv(dan_df2, "../SFA_growthphase.csv")
 
 # Figures
 
+## Community curve 
+
 Total normalized abundance:
 
 ```{r}
@@ -811,7 +871,7 @@ plot_comb12
 ggsave("../figures/fig_totalnorm_ex.svg", plot_comb12, height=180, width=180, units="mm", device="svg")
 ```
 
-Groups growth and death traits:
+## Groups growth and death traits
 
 ```{r}
 # growth k
@@ -875,7 +935,7 @@ plot_comb36
 ggsave("../figures/fig_growthdeathgroups.svg", plot_comb36, height=180, width=180, units="mm", device="svg")
 ```
 
-Supplemental: Whole vs growth only total abundances
+## Supplemental: Whole vs growth total curve
 
 ```{r}
 # Comgroupe whole and growing only data averages
@@ -893,7 +953,6 @@ norm_avg %>%
   summarize(total = mean(total))
 ```
 
-
 ```{r}
 supp1 <- norm_avg %>% 
   mutate(type = as_factor(type),
@@ -910,7 +969,7 @@ supp1
 ggsave("../figures/supp_wholegrtotal.svg", supp1, height=180, width=180, units="mm", device="svg")
 ```
 
-Supplement group 3:
+## Supplement group 3
 
 ```{r}
 count <-  0
@@ -950,6 +1009,103 @@ supp_grp3
 ggsave("../figures/supp_grp3.svg", supp_grp3, height=120, width=210, units="mm", device="svg")
 ```
 
+## Length/k x deltaNg
+
+# WIP
+
+Length:
+
+```{r}
+plot_length1 <- growth_grp %>% 
+  ggplot(aes(x=length, y=log(change_abund_corr))) + #, color=group
+  geom_point(aes(shape=group)) +
+  geom_smooth(method="lm", linetype=2, color="#444444", alpha=0.5) +
+  theme_test() +
+  theme(title = element_text(size=12),
+        axis.title = element_blank(),
+          axis.text = element_text(size=10),
+        legend.position = "none")
+plot_length1
+
+
+#day_colors <- c(`0`="#bcbcbc", `9`="#5b5b5b", `30`="black")
+grp_colors <- c(grp1="#5b5b5b", grp2="black")
+
+plot_length2 <- growth_grp %>% 
+  ggplot(aes(x=length, y=log(change_abund_corr), color=group, shape=group)) + 
+  geom_point() +
+  geom_smooth(method="lm", linetype=2, alpha=0.5, aes(group=group)) + 
+  scale_color_manual(values=grp_colors) +
+  theme_test() +
+  theme(title = element_text(size=12),
+        axis.title = element_blank(),
+        axis.text = element_text(size=10),
+        legend.position = "none")
+plot_length2
+```
+
+k: 
+
+```{r}
+plot_k1 <- growth_grp %>% 
+  ggplot(aes(x=k, y=log(change_abund_corr))) + #, color=group
+  geom_point(aes(shape=group)) +
+  geom_smooth(method="lm", linetype=2, alpha=0.5, color="#444444") +
+  theme_test() +
+  theme(title = element_text(size=12),
+        axis.title = element_blank(),
+        axis.text = element_text(size=10),
+        legend.position = "none")
+plot_k1
+
+
+#day_colors <- c(`0`="#bcbcbc", `9`="#5b5b5b", `30`="black")
+grp_colors <- c(grp1="#5b5b5b", grp2="black")
+
+plot_k2 <- growth_grp %>% 
+  ggplot(aes(x=k, y=log(change_abund_corr), color=group, shape=group)) + 
+  geom_point() +
+  geom_smooth(method="lm", linetype=2, alpha=0.5, aes(group=group)) + 
+  scale_color_manual(values=grp_colors) +
+  theme_test() +
+  theme(title = element_text(size=12),
+        axis.title = element_blank(),
+        axis.text = element_text(size=10),
+        legend.position = "none")
+plot_k2
+```
+
+```{r}
+# Combine
+plot_lengthk <- plot_grid(plot_length1, plot_length2, plot_k1, plot_k2, nrow=2)
+plot_lengthk
+```
+
+```{r, eval=FALSE}
+# save
+ggsave("../figures/fig_lengthkxdeltang.svg", plot_lengthk, height=180, width=180, units="mm", device="svg")
+```
+
+## Abundance gain/loss by phase
+
+```{r}
+plotx <- imputed_deltaN %>% 
+  mutate(phase2 = if_else(phase=="exp", "Exponential", "Stationary"),
+         type2 = if_else(type=="death", "Death", "Growth")) %>% 
+  ggplot(aes(x=phase2, y=log(deltaN))) +
+  geom_boxplot() +
+  theme_test() +
+  facet_wrap(~type2) +
+  theme_test() +
+  theme(title = element_text(size=12),
+        axis.title = element_blank(),
+          axis.text = element_text(size=10))
+plotx
+```
+
+```{r}
+ggsave("../figures/fig_deltaexpstat.svg", plotx, height=120, width=210, units="mm", device="svg")
+```
 
 
 

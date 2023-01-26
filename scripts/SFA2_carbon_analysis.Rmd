@@ -274,7 +274,7 @@ drop_outs/total
 
 95% of estimates are missing at least one time point, impute all data during growth period.
 
-Impute:
+## Impute
 
 Imputing abundance at time points when respiration measurement was taken.
 
@@ -367,6 +367,7 @@ Statistics:
 # Spearman correlation
 cor.test(log(greff_df$Day), log(greff_df$greff), method="spearman")
 ```
+
 
 # Abundance gain vs respiration
 
@@ -516,10 +517,6 @@ plot3 <- greff_df %>%
 plot3
 
 # Trying to make box plot width proportional to time interval
-
-# examples
-#geom_boxplot(width=0.5/length(unique(df1$region)))
-
 # WIP
 time_intervals <- data.frame()
 for (i in 1:(nrow(resp_tps)-1)) {
@@ -537,18 +534,14 @@ greff_df2 <- greff_df %>%
   arrange(Inoculant, Day) %>% 
   bind_cols(time_int_rep)
 
-plot3 <- greff_df %>% 
+greff_df2 %>% 
   ggplot(aes(x=Day, y=log(greff))) +
   geom_boxplot(aes(group=Day)) +
   #geom_point() +
   geom_smooth(linetype=2, color="#444444") +
-  scale_size_manual(values=time_intervals) +
   theme_test() +
   theme(axis.text=element_text(size=10),
         axis.title=element_blank())
-plot3
-
-
 ```
 
 ```{r}
