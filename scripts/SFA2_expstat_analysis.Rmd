@@ -162,6 +162,41 @@ plot_grow_total<- norm_growth_total %>%
 plot_grow_total 
 ```
 
+## Contribution growing taxa
+
+End of exponential and end of incubation:
+
+```{r}
+# norm_whole_total
+# norm_growth_total
+
+# Day 9
+whole_day30 <- norm_whole_total %>% 
+  filter(Day==9) %>% 
+  select(Inoculant, wh_total=total)
+
+norm_growth_total %>% 
+  filter(Day==9) %>% 
+  select(Inoculant, gr_total=total) %>% 
+  inner_join(whole_day30) %>% 
+  mutate(prop = gr_total/wh_total) %>% 
+  summarize(prop_mean = mean(prop),
+            prop_sd = sd(prop))
+
+# Day 30
+whole_day30 <- norm_whole_total %>% 
+  filter(Day==30) %>% 
+  select(Inoculant, wh_total=total)
+
+norm_growth_total %>% 
+  filter(Day==30) %>% 
+  select(Inoculant, gr_total=total) %>% 
+  inner_join(whole_day30) %>% 
+  mutate(prop = gr_total/wh_total) %>% 
+  summarize(prop_mean = mean(prop),
+            prop_sd = sd(prop))
+```
+
 # Group ASVs
 
 Group 1: start_day end_day <= 9 (grew during exponential phase only)
@@ -184,6 +219,7 @@ death_grp <- death %>%
 Summary of number ASVs per group:
 
 ```{r}
+# Growth
 growth_grp %>% 
   group_by(Inoculant, group) %>% 
   summarize(total = n()) %>% 
@@ -192,6 +228,7 @@ growth_grp %>%
   summarize(total_mean = mean(total), total_sd = sd(total)) %>% 
   ungroup()
 
+# Death
 death_grp %>% 
   group_by(Inoculant, group) %>% 
   summarize(total = n()) %>% 
@@ -200,6 +237,29 @@ death_grp %>%
   summarize(total_mean = mean(total), total_sd = sd(total)) %>% 
   ungroup()
 ```
+
+Proportion of total estimates:
+
+```{r}
+# Total growth estimates per inoculant
+all_ests <- growth_grp %>% 
+  group_by(Inoculant) %>% 
+  summarize(both = n()) %>% 
+  ungroup()
+
+# Group 2
+growth_grp %>% 
+  group_by(Inoculant, group) %>% 
+  summarize(total = n()) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from=group, values_from=total) %>% 
+  inner_join(all_ests) %>% 
+  mutate(grp2_prop = grp2/both) %>% 
+  summarize(grp2_prop_mean = mean(grp2_prop),
+            grp2_prop_sd = sd(grp2_prop))
+```
+
+
 
 Summary of phylogenetic placements in groups:
 
@@ -511,7 +571,7 @@ growth_grp %>%
   theme(axis.text = element_text(size = 10),
         axis.title = element_text(size = 12))
 
-# Below are baked into definitions, so not super informative
+# Below baked into definition, so not super informative but good to know
 # Length
 growth_grp %>% 
   mutate(length=end_day-start_day) %>% 
@@ -520,17 +580,6 @@ growth_grp %>%
   geom_jitter(size=2, alpha=0.5) +
   theme_test() +
   labs(y="length of growth", x="") +
-  theme(axis.text = element_text(size = 10),
-        axis.title = element_text(size = 12))
-
-# Lag 
-growth_grp %>% 
-  filter(start_day <= 6) %>% # for group 2 taxa that started same time as group 1
-  ggplot(aes(x=group, y=start_day)) +
-  geom_boxplot() +
-  geom_jitter(size=2, alpha=0.5) +
-  theme_test() +
-  labs(y="lag", x="") +
   theme(axis.text = element_text(size = 10),
         axis.title = element_text(size = 12))
 ```
@@ -571,16 +620,22 @@ anova(length_lmer)
 
 Length vs. gain in abudance: 
 
-# MAKE FIGURE
-
 ```{r}
-growth_grp %>% 
+# Average ASVs across inoculant (independence issue)
+growth_grp_avg <- growth_grp %>% 
+  group_by(ASV, group) %>% 
+  summarize(k = mean(k),
+            length = mean(length),
+            change_abund_corr = mean(change_abund_corr)) %>%
+  ungroup()
+
+growth_grp_avg %>% 
   ggplot(aes(x=length, y=log(change_abund_corr))) + #, color=group
   geom_point() +
   geom_smooth(method="lm") + #, aes(group=group)
   theme_test()
 
-growth_grp %>% 
+growth_grp_avg %>% 
   ggplot(aes(x=length, y=log(change_abund_corr), color=group)) + 
   geom_point() +
   geom_smooth(method="lm", aes(group=group)) + 
@@ -591,24 +646,22 @@ Pearson test:
 
 ```{r}
 # All
-cor.test(growth_grp$length, log(growth_grp$change_abund_corr), method="pearson")
+cor.test(growth_grp_avg$length, log(growth_grp_avg$change_abund_corr), method="pearson")
 
 # Group 2 only
-cor.test(growth_grp[growth_grp$group=="grp2",]$length, log(growth_grp[growth_grp$group=="grp2",]$change_abund_corr), method="pearson")
+cor.test(growth_grp_avg[growth_grp_avg$group=="grp2",]$length, log(growth_grp_avg[growth_grp_avg$group=="grp2",]$change_abund_corr), method="pearson")
 ```
 
 Rate vs. gain in abudance: 
 
-# MAKE FIGURE
-
 ```{r}
-growth_grp %>% 
+growth_grp_avg %>% 
   ggplot(aes(x=k, y=log(change_abund_corr))) + #, color=group
   geom_point() +
   geom_smooth(method="lm") + #, aes(group=group)
   theme_test()
 
-growth_grp %>% 
+growth_grp_avg %>% 
   ggplot(aes(x=k, y=log(change_abund_corr), color=group)) + 
   geom_point() +
   geom_smooth(method="lm", aes(group=group)) + 
@@ -622,7 +675,7 @@ Pearson test:
 cor.test(growth_grp$k, log(growth_grp$change_abund_corr), method="pearson")
 
 # Group 2 only
-cor.test(growth_grp[growth_grp$group=="grp2",]$length, log(growth_grp[growth_grp$group=="grp2",]$change_abund_corr), method="pearson")
+cor.test(growth_grp[growth_grp$group=="grp2",]$k, log(growth_grp[growth_grp$group=="grp2",]$change_abund_corr), method="pearson")
 ```
 
 # Death Traits
@@ -1009,17 +1062,38 @@ supp_grp3
 ggsave("../figures/supp_grp3.svg", supp_grp3, height=120, width=210, units="mm", device="svg")
 ```
 
-## Length/k x deltaNg
+## Length trait
 
-# WIP
+```{r}
+plot_lt <- growth_grp %>% 
+  mutate(length=end_day-start_day) %>% 
+  ggplot(aes(x=group, y=length)) +
+  geom_boxplot() +
+  geom_jitter(size=2, alpha=0.5) +
+  theme_test() +
+  theme(title = element_text(size=12),
+        axis.title = element_blank(),
+        axis.text = element_text(size=10),
+        legend.position = "none")
+plot_lt
+```
+
+```{r, eval=FALSE}
+ggsave("../figures/supp_lengthtrait.svg", plot_lt, height=180, width=180, units="mm", device="svg")
+```
+
+## Length/k x deltaNg
 
 Length:
 
 ```{r}
-plot_length1 <- growth_grp %>% 
-  ggplot(aes(x=length, y=log(change_abund_corr))) + #, color=group
-  geom_point(aes(shape=group)) +
-  geom_smooth(method="lm", linetype=2, color="#444444", alpha=0.5) +
+grp_colors <- c(grp1="#5b5b5b", grp2="black")
+
+plot_length1 <- growth_grp_avg %>% 
+  ggplot(aes(x=length, y=log(change_abund_corr))) +
+  geom_point(aes(color=group, shape=group)) +
+  geom_smooth(method="lm", linetype=2, color="black", alpha=0.5) +
+  scale_color_manual(values=grp_colors) +
   theme_test() +
   theme(title = element_text(size=12),
         axis.title = element_blank(),
@@ -1027,11 +1101,7 @@ plot_length1 <- growth_grp %>%
         legend.position = "none")
 plot_length1
 
-
-#day_colors <- c(`0`="#bcbcbc", `9`="#5b5b5b", `30`="black")
-grp_colors <- c(grp1="#5b5b5b", grp2="black")
-
-plot_length2 <- growth_grp %>% 
+plot_length2 <- growth_grp_avg %>% 
   ggplot(aes(x=length, y=log(change_abund_corr), color=group, shape=group)) + 
   geom_point() +
   geom_smooth(method="lm", linetype=2, alpha=0.5, aes(group=group)) + 
@@ -1048,19 +1118,16 @@ k:
 
 ```{r}
 plot_k1 <- growth_grp %>% 
-  ggplot(aes(x=k, y=log(change_abund_corr))) + #, color=group
-  geom_point(aes(shape=group)) +
-  geom_smooth(method="lm", linetype=2, alpha=0.5, color="#444444") +
+  ggplot(aes(x=k, y=log(change_abund_corr))) + 
+  geom_point(aes(color=group, shape=group)) +
+  geom_smooth(method="lm", linetype=2, alpha=0.5, color="black") +
+  scale_color_manual(values=grp_colors) +
   theme_test() +
   theme(title = element_text(size=12),
         axis.title = element_blank(),
         axis.text = element_text(size=10),
         legend.position = "none")
 plot_k1
-
-
-#day_colors <- c(`0`="#bcbcbc", `9`="#5b5b5b", `30`="black")
-grp_colors <- c(grp1="#5b5b5b", grp2="black")
 
 plot_k2 <- growth_grp %>% 
   ggplot(aes(x=k, y=log(change_abund_corr), color=group, shape=group)) + 
@@ -1077,7 +1144,7 @@ plot_k2
 
 ```{r}
 # Combine
-plot_lengthk <- plot_grid(plot_length1, plot_length2, plot_k1, plot_k2, nrow=2)
+plot_lengthk <- plot_grid(plot_length1,  plot_k1, plot_length2, plot_k2, nrow=2)
 plot_lengthk
 ```
 

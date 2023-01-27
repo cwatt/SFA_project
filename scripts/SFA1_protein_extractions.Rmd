@@ -1,0 +1,208 @@
+---
+title: "Protein extractions"
+author: "Cassandra Wattenburger"
+date: "11/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = "show")
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("tidyverse")
+library("broom")
+
+sessionInfo()
+```
+
+# Import and reformat raw data
+
+```{r}
+# Import raw data
+raw1 <- read_csv("../data_protein/SFA1_prot_1.1-20.2_091219_edit.csv")
+raw2 <- read.csv("../data_protein/SFA1_prot_21.1-40.2_091219_edit.csv")
+raw3 <- read.csv("../data_protein/SFA1_prot_41.1-cntrls_091219_edit.csv")
+
+raw.list <- list(raw1, raw2, raw3)
+
+# Substract blank (Standard I) average from other standards and unknowns
+
+blank.list <- list()
+  
+for (i in 1:length(raw.list)) {
+  blank.list[[i]] <- filter(raw.list[[i]], ID=="I")
+}
+
+for (i in 1:length(blank.list)) {
+  blank.list[[i]] <- summarize(blank.list[[i]], avg=mean(OD_Values))
+}
+
+for (i in 1:length(raw.list)) {
+  raw.list[[i]] <- mutate(raw.list[[i]], corrected=OD_Values-blank.list[[i]]$avg)
+}
+
+# Average technical replicates for protein conc. measurement
+
+raw.summary <- list()
+
+for (i in 1:length(raw.list)) {
+  raw.summary[[i]] <- raw.list[[i]] %>% group_by(Sample, ID, Type) %>% summarize(avg=mean(corrected), sd=sd(corrected))
+}
+```
+
+# Standards
+
+```{r}
+std.list <- list()
+
+for (i in 1:length(raw.summary)) {
+  std.list[[i]] <- subset(raw.summary[[i]], Type=="Standard")
+}
+
+for (i in 1:length(std.list)) { 
+  std.list[[i]]["Actual"] <- c(1500, 1000, 750, 500, 250, 125, 25, 0) # actual conc. values of standards
+}
+
+# Std linear regressions
+
+model.list <- list() 
+
+for (i in 1:length(std.list)) {
+  model.list[[i]] <- lm(avg ~ Actual, data=std.list[[i]])
+}
+
+r2.list <- list() # store R2 of models
+
+for (i in 1:length(model.list)) {
+  r2.list[[i]] <- summary(model.list[[i]])$r.squared 
+}
+
+for (i in 1:length(model.list)) {
+  model.list[[i]] <- as.data.frame(tidy(model.list[[i]])) # store intercept and slope
+}
+
+# Graph stds
+
+title.list <- list("Standards for samples 1-20", "Standards for samples 21-40", "Standards for samples 41-51 and controls")
+
+stdgraph.list <- list()
+
+for (i in 1:length(std.list)) {
+  stdgraph.list[[i]] <- ggplot(std.list[[i]], aes(x=Actual, y=avg)) +
+    geom_point() +
+    geom_errorbar(aes(ymin=avg-sd, ymax=avg+sd)) +
+    geom_smooth(method="lm", linetype=2) +
+    labs(x="Measurement", y="Actual conc. (ug/mL)", title=title.list[[i]]) +
+    geom_text(aes(label=ID, hjust=-0.5, vjust=1)) +
+    annotate("text", x=50, y=2.1, label="R2=") +
+    annotate("text", x=200, y=2, label=r2.list[[i]])
+}
+
+stdgraph.list
+```
+
+# Samples
+
+```{r}
+unk.list <- list()
+
+for (i in 1:length(raw.summary)) {
+  unk.list[[i]] <- filter(raw.summary[[i]], Type=="Sample" | Type=="Positive" | Type=="Negative")
+}
+
+# calculate conc. protein based on standards
+
+protconc.list <- list()
+
+for (i in 1:length(unk.list)) {
+  protconc.list[[i]] <- mutate(unk.list[[i]], Conc = (avg-model.list[[i]]$estimate[1])/model.list[[i]]$estimate[2]) # DOUBLE CHECK THIS
+}
+
+# average extraction duplicates
+
+for (i in 1:length(protconc.list)) {
+  protconc.list[[i]] <- protconc.list[[i]] %>% group_by(ID, Type) %>% summarize(concavg=mean(Conc), sd=sd(Conc))
+}
+
+# combine data frames
+
+prot.data <- do.call('rbind', protconc.list)
+prot.data$ID <- as.numeric(prot.data$ID)
+
+# Average positive and negative controls
+negavg <- mean(filter(prot.data, Type=="Negative")$concavg)
+posavg <- mean(filter(prot.data, Type=="Positive")$concavg)
+
+prot.data2 <- filter(prot.data, Type=="Sample")
+prot.data2$ID <- as.numeric(prot.data2$ID)
+
+# Graph protein concentrations
+
+prot_graph <- prot.data2 %>% 
+  filter(Type =="Sample") %>% 
+  mutate(Type = if_else(ID == 51, "Negative control", Type)) %>%
+           ggplot(aes(x=ID, y=concavg, color=Type)) +
+           geom_point(size=2) +
+           geom_errorbar(aes(ymin=concavg-sd, ymax=concavg+sd), width=0.2) +
+           labs(title="Soil protein extraction - Bradford assay", y="Protein conc. (ug/mL)", x="Innoculant") +
+           #geom_hline(yintercept=negavg, linetype=2, color="red") +
+           #geom_hline(yintercept=posavg, color="blue") +
+           scale_x_continuous(breaks = seq(1, 51, by = 1)) +
+           theme_test() +
+  theme(title = element_text(size=18),
+        axis.title = element_text(size=16),
+        axis.text = element_text(size=14),
+        axis.text.x = element_blank())
+prot_graph
+
+# Save figure
+ggsave("../figures/protein_extractions.png", prot_graph, units="mm", width=300, height=150)
+```
+
+# SFA2 only protein extractions
+
+```{r}
+plot_prot <- prot.data2 %>% 
+  filter(ID %in% c(2, 10, 12, 19, 41, 47)) %>% 
+  mutate(ID = as_factor(ID),
+         ID = case_when(ID==2 ~ "a",
+                        ID==10 ~ "b",
+                        ID==12 ~ "c",
+                        ID==19 ~ "d",
+                        ID==41 ~ "e",
+                        ID==47 ~ "f")) %>% 
+  ggplot(aes(x=ID, y=concavg)) +
+  geom_point() +
+  geom_hline(yintercept = 68, linetype=2) +
+  geom_errorbar(aes(ymin=concavg-sd, ymax=concavg+sd), width=0.2) +
+  scale_y_continuous(limits=c(0,160)) +
+  theme_test() +  
+  theme(axis.text = element_text(size=10),
+        axis.title = element_blank())
+plot_prot
+```
+
+```{r, eval=FALSE}
+ggsave("../figures/supp_protein.svg", plot_prot, height=180, width=180, units="mm", device="svg")
+```
+
+
+# Normalization dilution calculations
+
+Samples will be diluted so that final protein concentrations are approximately equal.
+
+```{r}
+# remove sample 51 (protein extraction blank)
+prot.data3 <- prot.data2[!prot.data2$ID==51,]
+  
+# lowest sample concentration
+min <- tapply(prot.data3$concavg, prot.data3$Type, min)
+min <- as.numeric(min)
+```
+

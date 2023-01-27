@@ -77,8 +77,6 @@ mean(resp_total$total_mgC)
 sd(resp_total$total_mgC)
 ```
 
-
-
 Statistics:
 
 Are there any differences in total respiration between inoculants?
