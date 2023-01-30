@@ -672,10 +672,10 @@ Pearson test:
 
 ```{r}
 # All
-cor.test(growth_grp$k, log(growth_grp$change_abund_corr), method="pearson")
+cor.test(growth_grp_avg$k, log(growth_grp_avg$change_abund_corr), method="pearson")
 
 # Group 2 only
-cor.test(growth_grp[growth_grp$group=="grp2",]$k, log(growth_grp[growth_grp$group=="grp2",]$change_abund_corr), method="pearson")
+cor.test(growth_grp_avg[growth_grp_avg$group=="grp2",]$k, log(growth_grp_avg[growth_grp_avg$group=="grp2",]$change_abund_corr), method="pearson")
 ```
 
 # Death Traits
@@ -1041,11 +1041,11 @@ for (l in as.character(growth_grp3$label)) {
     geom_point(shape=1, size=3, color="#6F7378") +
     geom_line(color="#6F7378") +
     geom_smooth(method="lm", data=norm_label[growth_label$start_pt:growth_label$end_pt,], linetype=2, color="black") +
-    labs(title=paste0(title), x="Day", y="ln Relational abundance") +
+    scale_x_continuous(limits=c(0,30)) +
     theme_test() +
     theme(title = element_text(size=12),
         axis.title = element_blank(),
-          axis.text = element_text(size=10))
+        axis.text = element_text(size=10))
   print(graph)
   assign(paste0("plot", count, "_grp3"), graph)
 }

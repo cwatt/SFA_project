@@ -460,7 +460,24 @@ ratio_resp %>%
 
 # Figures
 
-W. mean growth rates vs. respiration rates:
+## Respiration rates over time
+
+```{r}
+plot_resp <- resp_rate_inoc %>% 
+  filter(!(Inoculant %in% c(0, 51))) %>%  # remove controls
+  ggplot(aes(x=Day, y=mgCO2_day)) +
+  geom_boxplot(aes(group=Day)) +
+  theme_test() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_blank())
+plot_resp
+```
+
+```{r, eval=FALSE}
+ggsave("../figures/supp_resprate.svg", plot_resp, height=90, width=180, units="mm", device="svg")
+```
+
+## W. mean growth rates vs. respiration rates
 
 ```{r}
 plot1 <- growth_resprate %>% 
@@ -498,9 +515,7 @@ plot_comb12
 ggsave("../figures/fig_grnCO2.svg", plot_comb12, height=180, width=180, units="mm", device="svg")
 ```
 
-Growth efficiency over time:
-
-# WIP
+## Growth efficiency over time
 
 ```{r}
 # original
