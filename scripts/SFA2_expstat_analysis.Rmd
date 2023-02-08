@@ -1174,13 +1174,6 @@ plotx
 ggsave("../figures/fig_deltaexpstat.svg", plotx, height=120, width=210, units="mm", device="svg")
 ```
 
-
-
-
-
-
-
-
 # SCRAP
 
 Growth old
