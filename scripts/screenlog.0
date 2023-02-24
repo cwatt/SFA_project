@@ -11692,3 +11692,739 @@ ls
 [33m[W 20:45:01.452 NotebookApp][m 403 GET /api/sessions?_=1675785538705 (127.0.0.1) 1.360000ms referer=http://localhost:3331/tree
 [33m[W 20:45:01.457 NotebookApp][m Forbidden
 [33m[W 20:45:01.458 NotebookApp][m 403 GET /api/terminals?_=1675785538706 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 13:13:24.571 NotebookApp][m Forbidden
+[33m[W 13:13:24.571 NotebookApp][m 403 GET /api/sessions?_=1675878744385 (127.0.0.1) 1.580000ms referer=http://localhost:3331/tree
+[33m[W 13:13:24.573 NotebookApp][m Forbidden
+[33m[W 13:13:24.574 NotebookApp][m 403 GET /api/terminals?_=1675878744386 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 13:14:24.573 NotebookApp][m Forbidden
+[33m[W 13:14:24.574 NotebookApp][m 403 GET /api/sessions?_=1675878744387 (127.0.0.1) 2.230000ms referer=http://localhost:3331/tree
+[33m[W 13:14:24.574 NotebookApp][m Forbidden
+[33m[W 13:14:24.575 NotebookApp][m 403 GET /api/terminals?_=1675878744388 (127.0.0.1) 2.350000ms referer=http://localhost:3331/tree
+[33m[W 13:15:24.580 NotebookApp][m Forbidden
+[33m[W 13:15:24.580 NotebookApp][m 403 GET /api/sessions?_=1675878744389 (127.0.0.1) 2.170000ms referer=http://localhost:3331/tree
+[33m[W 13:15:24.581 NotebookApp][m Forbidden
+[33m[W 13:15:24.581 NotebookApp][m 403 GET /api/terminals?_=1675878744390 (127.0.0.1) 2.270000ms referer=http://localhost:3331/tree
+[33m[W 13:16:24.581 NotebookApp][m Forbidden
+[33m[W 13:16:24.582 NotebookApp][m 403 GET /api/sessions?_=1675878744391 (127.0.0.1) 2.230000ms referer=http://localhost:3331/tree
+[33m[W 13:16:24.582 NotebookApp][m Forbidden
+[33m[W 13:16:24.583 NotebookApp][m 403 GET /api/terminals?_=1675878744392 (127.0.0.1) 2.350000ms referer=http://localhost:3331/tree
+[33m[W 13:17:24.581 NotebookApp][m Forbidden
+[33m[W 13:17:24.582 NotebookApp][m 403 GET /api/sessions?_=1675878744393 (127.0.0.1) 1.460000ms referer=http://localhost:3331/tree
+[33m[W 13:17:24.583 NotebookApp][m Forbidden
+[33m[W 13:17:24.584 NotebookApp][m 403 GET /api/terminals?_=1675878744394 (127.0.0.1) 1.210000ms referer=http://localhost:3331/tree
+[33m[W 13:18:24.586 NotebookApp][m Forbidden
+[33m[W 13:18:24.587 NotebookApp][m 403 GET /api/sessions?_=1675878744395 (127.0.0.1) 1.500000ms referer=http://localhost:3331/tree
+[33m[W 13:18:24.588 NotebookApp][m Forbidden
+[33m[W 13:18:24.588 NotebookApp][m 403 GET /api/terminals?_=1675878744396 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 13:19:24.595 NotebookApp][m Forbidden
+[33m[W 13:19:24.596 NotebookApp][m 403 GET /api/sessions?_=1675878744397 (127.0.0.1) 1.410000ms referer=http://localhost:3331/tree
+[33m[W 13:19:24.597 NotebookApp][m Forbidden
+[33m[W 13:19:24.597 NotebookApp][m 403 GET /api/terminals?_=1675878744398 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 13:20:24.601 NotebookApp][m Forbidden
+[33m[W 13:20:24.602 NotebookApp][m 403 GET /api/sessions?_=1675878744399 (127.0.0.1) 2.060000ms referer=http://localhost:3331/tree
+[33m[W 13:20:24.602 NotebookApp][m Forbidden
+[33m[W 13:20:24.603 NotebookApp][m 403 GET /api/terminals?_=1675878744400 (127.0.0.1) 2.250000ms referer=http://localhost:3331/tree
+[33m[W 13:21:24.612 NotebookApp][m Forbidden
+[33m[W 13:21:24.613 NotebookApp][m 403 GET /api/sessions?_=1675878744401 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 13:21:24.615 NotebookApp][m Forbidden
+[33m[W 13:21:24.615 NotebookApp][m 403 GET /api/terminals?_=1675878744402 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 13:22:24.631 NotebookApp][m Forbidden
+[33m[W 13:22:24.632 NotebookApp][m 403 GET /api/sessions?_=1675878744403 (127.0.0.1) 1.920000ms referer=http://localhost:3331/tree
+[33m[W 13:22:24.632 NotebookApp][m Forbidden
+[33m[W 13:22:24.632 NotebookApp][m 403 GET /api/terminals?_=1675878744404 (127.0.0.1) 2.090000ms referer=http://localhost:3331/tree
+[33m[W 13:23:24.631 NotebookApp][m Forbidden
+[33m[W 13:23:24.632 NotebookApp][m 403 GET /api/sessions?_=1675878744405 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 13:23:24.633 NotebookApp][m Forbidden
+[33m[W 13:23:24.634 NotebookApp][m 403 GET /api/terminals?_=1675878744406 (127.0.0.1) 1.190000ms referer=http://localhost:3331/tree
+[33m[W 13:24:24.648 NotebookApp][m Forbidden
+[33m[W 13:24:24.649 NotebookApp][m 403 GET /api/sessions?_=1675878744407 (127.0.0.1) 1.410000ms referer=http://localhost:3331/tree
+[33m[W 13:24:24.650 NotebookApp][m Forbidden
+[33m[W 13:24:24.651 NotebookApp][m 403 GET /api/terminals?_=1675878744408 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 13:25:24.651 NotebookApp][m Forbidden
+[33m[W 13:25:24.652 NotebookApp][m 403 GET /api/sessions?_=1675878744409 (127.0.0.1) 1.360000ms referer=http://localhost:3331/tree
+[33m[W 13:25:24.653 NotebookApp][m Forbidden
+[33m[W 13:25:24.653 NotebookApp][m 403 GET /api/terminals?_=1675878744410 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 13:33:08.339 NotebookApp][m Forbidden
+[33m[W 13:33:08.340 NotebookApp][m 403 GET /api/sessions?_=1675878744411 (127.0.0.1) 2.120000ms referer=http://localhost:3331/tree
+[33m[W 13:33:08.341 NotebookApp][m Forbidden
+[33m[W 13:33:08.341 NotebookApp][m 403 GET /api/terminals?_=1675878744412 (127.0.0.1) 2.260000ms referer=http://localhost:3331/tree
+[33m[W 13:34:06.351 NotebookApp][m Forbidden
+[33m[W 13:34:06.352 NotebookApp][m 403 GET /api/sessions?_=1675878744413 (127.0.0.1) 2.020000ms referer=http://localhost:3331/tree
+[33m[W 13:34:06.352 NotebookApp][m Forbidden
+[33m[W 13:34:06.353 NotebookApp][m 403 GET /api/terminals?_=1675878744414 (127.0.0.1) 2.150000ms referer=http://localhost:3331/tree
+[33m[W 13:35:06.210 NotebookApp][m Forbidden
+[33m[W 13:35:06.210 NotebookApp][m 403 GET /api/sessions?_=1675878744415 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 13:35:06.211 NotebookApp][m Forbidden
+[33m[W 13:35:06.212 NotebookApp][m 403 GET /api/terminals?_=1675878744416 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 13:36:06.217 NotebookApp][m Forbidden
+[33m[W 13:36:06.217 NotebookApp][m 403 GET /api/sessions?_=1675878744417 (127.0.0.1) 1.650000ms referer=http://localhost:3331/tree
+[33m[W 13:36:06.219 NotebookApp][m Forbidden
+[33m[W 13:36:06.219 NotebookApp][m 403 GET /api/terminals?_=1675878744418 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 13:37:06.216 NotebookApp][m Forbidden
+[33m[W 13:37:06.217 NotebookApp][m 403 GET /api/sessions?_=1675878744419 (127.0.0.1) 1.400000ms referer=http://localhost:3331/tree
+[33m[W 13:37:06.218 NotebookApp][m Forbidden
+[33m[W 13:37:06.219 NotebookApp][m 403 GET /api/terminals?_=1675878744420 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 13:38:06.222 NotebookApp][m Forbidden
+[33m[W 13:38:06.222 NotebookApp][m 403 GET /api/sessions?_=1675878744421 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 13:38:06.223 NotebookApp][m Forbidden
+[33m[W 13:38:06.224 NotebookApp][m 403 GET /api/terminals?_=1675878744422 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 13:39:06.226 NotebookApp][m Forbidden
+[33m[W 13:39:06.226 NotebookApp][m 403 GET /api/sessions?_=1675878744423 (127.0.0.1) 1.950000ms referer=http://localhost:3331/tree
+[33m[W 13:39:06.227 NotebookApp][m Forbidden
+[33m[W 13:39:06.227 NotebookApp][m 403 GET /api/terminals?_=1675878744424 (127.0.0.1) 2.150000ms referer=http://localhost:3331/tree
+[33m[W 13:40:06.233 NotebookApp][m Forbidden
+[33m[W 13:40:06.234 NotebookApp][m 403 GET /api/sessions?_=1675878744425 (127.0.0.1) 1.980000ms referer=http://localhost:3331/tree
+[33m[W 13:40:06.235 NotebookApp][m Forbidden
+[33m[W 13:40:06.235 NotebookApp][m 403 GET /api/terminals?_=1675878744426 (127.0.0.1) 2.160000ms referer=http://localhost:3331/tree
+[33m[W 13:41:06.247 NotebookApp][m Forbidden
+[33m[W 13:41:06.248 NotebookApp][m 403 GET /api/sessions?_=1675878744427 (127.0.0.1) 1.950000ms referer=http://localhost:3331/tree
+[33m[W 13:41:06.248 NotebookApp][m Forbidden
+[33m[W 13:41:06.249 NotebookApp][m 403 GET /api/terminals?_=1675878744428 (127.0.0.1) 2.110000ms referer=http://localhost:3331/tree
+[33m[W 13:42:06.249 NotebookApp][m Forbidden
+[33m[W 13:42:06.249 NotebookApp][m 403 GET /api/sessions?_=1675878744429 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 13:42:06.251 NotebookApp][m Forbidden
+[33m[W 13:42:06.251 NotebookApp][m 403 GET /api/terminals?_=1675878744430 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 13:43:06.255 NotebookApp][m Forbidden
+[33m[W 13:43:06.255 NotebookApp][m 403 GET /api/sessions?_=1675878744431 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 13:43:06.257 NotebookApp][m Forbidden
+[33m[W 13:43:06.257 NotebookApp][m 403 GET /api/terminals?_=1675878744432 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 13:44:06.263 NotebookApp][m Forbidden
+[33m[W 13:44:06.263 NotebookApp][m 403 GET /api/sessions?_=1675878744433 (127.0.0.1) 1.480000ms referer=http://localhost:3331/tree
+[33m[W 13:44:06.265 NotebookApp][m Forbidden
+[33m[W 13:44:06.265 NotebookApp][m 403 GET /api/terminals?_=1675878744434 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 13:45:06.277 NotebookApp][m Forbidden
+[33m[W 13:45:06.278 NotebookApp][m 403 GET /api/sessions?_=1675878744435 (127.0.0.1) 1.640000ms referer=http://localhost:3331/tree
+[33m[W 13:45:06.279 NotebookApp][m Forbidden
+[33m[W 13:45:06.279 NotebookApp][m 403 GET /api/terminals?_=1675878744436 (127.0.0.1) 1.290000ms referer=http://localhost:3331/tree
+[33m[W 13:46:06.290 NotebookApp][m Forbidden
+[33m[W 13:46:06.291 NotebookApp][m 403 GET /api/sessions?_=1675878744437 (127.0.0.1) 1.460000ms referer=http://localhost:3331/tree
+[33m[W 13:46:06.292 NotebookApp][m Forbidden
+[33m[W 13:46:06.293 NotebookApp][m 403 GET /api/terminals?_=1675878744438 (127.0.0.1) 1.210000ms referer=http://localhost:3331/tree
+[33m[W 13:47:06.301 NotebookApp][m Forbidden
+[33m[W 13:47:06.301 NotebookApp][m 403 GET /api/sessions?_=1675878744439 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 13:47:06.303 NotebookApp][m Forbidden
+[33m[W 13:47:06.303 NotebookApp][m 403 GET /api/terminals?_=1675878744440 (127.0.0.1) 1.180000ms referer=http://localhost:3331/tree
+[33m[W 13:48:06.297 NotebookApp][m Forbidden
+[33m[W 13:48:06.298 NotebookApp][m 403 GET /api/sessions?_=1675878744441 (127.0.0.1) 1.350000ms referer=http://localhost:3331/tree
+[33m[W 13:48:06.299 NotebookApp][m Forbidden
+[33m[W 13:48:06.300 NotebookApp][m 403 GET /api/terminals?_=1675878744442 (127.0.0.1) 1.210000ms referer=http://localhost:3331/tree
+[33m[W 13:49:06.305 NotebookApp][m Forbidden
+[33m[W 13:49:06.306 NotebookApp][m 403 GET /api/sessions?_=1675878744443 (127.0.0.1) 1.340000ms referer=http://localhost:3331/tree
+[33m[W 13:49:06.308 NotebookApp][m Forbidden
+[33m[W 13:49:06.308 NotebookApp][m 403 GET /api/terminals?_=1675878744444 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 13:50:06.310 NotebookApp][m Forbidden
+[33m[W 13:50:06.311 NotebookApp][m 403 GET /api/sessions?_=1675878744445 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 13:50:06.312 NotebookApp][m Forbidden
+[33m[W 13:50:06.313 NotebookApp][m 403 GET /api/terminals?_=1675878744446 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 13:51:06.325 NotebookApp][m Forbidden
+[33m[W 13:51:06.326 NotebookApp][m 403 GET /api/sessions?_=1675878744447 (127.0.0.1) 1.400000ms referer=http://localhost:3331/tree
+[33m[W 13:51:06.327 NotebookApp][m Forbidden
+[33m[W 13:51:06.327 NotebookApp][m 403 GET /api/terminals?_=1675878744448 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 13:52:06.328 NotebookApp][m Forbidden
+[33m[W 13:52:06.329 NotebookApp][m 403 GET /api/sessions?_=1675878744449 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 13:52:06.330 NotebookApp][m Forbidden
+[33m[W 13:52:06.331 NotebookApp][m 403 GET /api/terminals?_=1675878744450 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 13:53:06.332 NotebookApp][m Forbidden
+[33m[W 13:53:06.333 NotebookApp][m 403 GET /api/sessions?_=1675878744451 (127.0.0.1) 1.370000ms referer=http://localhost:3331/tree
+[33m[W 13:53:06.334 NotebookApp][m Forbidden
+[33m[W 13:53:06.335 NotebookApp][m 403 GET /api/terminals?_=1675878744452 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 13:54:06.342 NotebookApp][m Forbidden
+[33m[W 13:54:06.343 NotebookApp][m 403 GET /api/sessions?_=1675878744453 (127.0.0.1) 1.660000ms referer=http://localhost:3331/tree
+[33m[W 13:54:06.344 NotebookApp][m Forbidden
+[33m[W 13:54:06.345 NotebookApp][m 403 GET /api/terminals?_=1675878744454 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 13:55:06.351 NotebookApp][m Forbidden
+[33m[W 13:55:06.352 NotebookApp][m 403 GET /api/sessions?_=1675878744455 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 13:55:06.354 NotebookApp][m Forbidden
+[33m[W 13:55:06.354 NotebookApp][m 403 GET /api/terminals?_=1675878744456 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 13:56:06.360 NotebookApp][m Forbidden
+[33m[W 13:56:06.361 NotebookApp][m 403 GET /api/sessions?_=1675878744457 (127.0.0.1) 1.340000ms referer=http://localhost:3331/tree
+[33m[W 13:56:06.362 NotebookApp][m Forbidden
+[33m[W 13:56:06.363 NotebookApp][m 403 GET /api/terminals?_=1675878744458 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 13:57:06.372 NotebookApp][m Forbidden
+[33m[W 13:57:06.372 NotebookApp][m 403 GET /api/sessions?_=1675878744459 (127.0.0.1) 2.010000ms referer=http://localhost:3331/tree
+[33m[W 13:57:06.373 NotebookApp][m Forbidden
+[33m[W 13:57:06.373 NotebookApp][m 403 GET /api/terminals?_=1675878744460 (127.0.0.1) 2.170000ms referer=http://localhost:3331/tree
+[33m[W 13:58:06.371 NotebookApp][m Forbidden
+[33m[W 13:58:06.371 NotebookApp][m 403 GET /api/sessions?_=1675878744461 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 13:58:06.373 NotebookApp][m Forbidden
+[33m[W 13:58:06.373 NotebookApp][m 403 GET /api/terminals?_=1675878744462 (127.0.0.1) 1.190000ms referer=http://localhost:3331/tree
+[33m[W 13:59:06.369 NotebookApp][m Forbidden
+[33m[W 13:59:06.370 NotebookApp][m 403 GET /api/sessions?_=1675878744463 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 13:59:06.371 NotebookApp][m Forbidden
+[33m[W 13:59:06.371 NotebookApp][m 403 GET /api/terminals?_=1675878744464 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:00:06.389 NotebookApp][m Forbidden
+[33m[W 14:00:06.389 NotebookApp][m 403 GET /api/sessions?_=1675878744465 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 14:00:06.391 NotebookApp][m Forbidden
+[33m[W 14:00:06.391 NotebookApp][m 403 GET /api/terminals?_=1675878744466 (127.0.0.1) 1.210000ms referer=http://localhost:3331/tree
+[33m[W 14:01:06.395 NotebookApp][m Forbidden
+[33m[W 14:01:06.395 NotebookApp][m 403 GET /api/sessions?_=1675878744467 (127.0.0.1) 1.370000ms referer=http://localhost:3331/tree
+[33m[W 14:01:06.397 NotebookApp][m Forbidden
+[33m[W 14:01:06.398 NotebookApp][m 403 GET /api/terminals?_=1675878744468 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 14:02:06.401 NotebookApp][m Forbidden
+[33m[W 14:02:06.401 NotebookApp][m 403 GET /api/sessions?_=1675878744469 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 14:02:06.403 NotebookApp][m Forbidden
+[33m[W 14:02:06.403 NotebookApp][m 403 GET /api/terminals?_=1675878744470 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 14:03:06.424 NotebookApp][m Forbidden
+[33m[W 14:03:06.425 NotebookApp][m 403 GET /api/sessions?_=1675878744471 (127.0.0.1) 1.360000ms referer=http://localhost:3331/tree
+[33m[W 14:03:06.426 NotebookApp][m Forbidden
+[33m[W 14:03:06.427 NotebookApp][m 403 GET /api/terminals?_=1675878744472 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 14:04:06.421 NotebookApp][m Forbidden
+[33m[W 14:04:06.422 NotebookApp][m 403 GET /api/sessions?_=1675878744473 (127.0.0.1) 1.920000ms referer=http://localhost:3331/tree
+[33m[W 14:04:06.422 NotebookApp][m Forbidden
+[33m[W 14:04:06.423 NotebookApp][m 403 GET /api/terminals?_=1675878744474 (127.0.0.1) 2.140000ms referer=http://localhost:3331/tree
+[33m[W 14:05:06.436 NotebookApp][m Forbidden
+[33m[W 14:05:06.437 NotebookApp][m 403 GET /api/sessions?_=1675878744475 (127.0.0.1) 1.370000ms referer=http://localhost:3331/tree
+[33m[W 14:05:06.439 NotebookApp][m Forbidden
+[33m[W 14:05:06.439 NotebookApp][m 403 GET /api/terminals?_=1675878744476 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 14:06:06.445 NotebookApp][m Forbidden
+[33m[W 14:06:06.446 NotebookApp][m 403 GET /api/sessions?_=1675878744477 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:06:06.447 NotebookApp][m Forbidden
+[33m[W 14:06:06.448 NotebookApp][m 403 GET /api/terminals?_=1675878744478 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 14:07:06.450 NotebookApp][m Forbidden
+[33m[W 14:07:06.450 NotebookApp][m 403 GET /api/sessions?_=1675878744479 (127.0.0.1) 1.430000ms referer=http://localhost:3331/tree
+[33m[W 14:07:06.451 NotebookApp][m Forbidden
+[33m[W 14:07:06.452 NotebookApp][m 403 GET /api/terminals?_=1675878744480 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:08:06.461 NotebookApp][m Forbidden
+[33m[W 14:08:06.461 NotebookApp][m 403 GET /api/sessions?_=1675878744481 (127.0.0.1) 1.910000ms referer=http://localhost:3331/tree
+[33m[W 14:08:06.462 NotebookApp][m Forbidden
+[33m[W 14:08:06.462 NotebookApp][m 403 GET /api/terminals?_=1675878744482 (127.0.0.1) 2.130000ms referer=http://localhost:3331/tree
+[33m[W 14:09:06.465 NotebookApp][m Forbidden
+[33m[W 14:09:06.465 NotebookApp][m 403 GET /api/sessions?_=1675878744483 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 14:09:06.467 NotebookApp][m Forbidden
+[33m[W 14:09:06.467 NotebookApp][m 403 GET /api/terminals?_=1675878744484 (127.0.0.1) 1.190000ms referer=http://localhost:3331/tree
+[33m[W 14:10:06.462 NotebookApp][m Forbidden
+[33m[W 14:10:06.462 NotebookApp][m 403 GET /api/sessions?_=1675878744485 (127.0.0.1) 2.030000ms referer=http://localhost:3331/tree
+[33m[W 14:10:06.463 NotebookApp][m Forbidden
+[33m[W 14:10:06.463 NotebookApp][m 403 GET /api/terminals?_=1675878744486 (127.0.0.1) 2.200000ms referer=http://localhost:3331/tree
+[33m[W 14:11:06.480 NotebookApp][m Forbidden
+[33m[W 14:11:06.480 NotebookApp][m 403 GET /api/sessions?_=1675878744487 (127.0.0.1) 1.440000ms referer=http://localhost:3331/tree
+[33m[W 14:11:06.482 NotebookApp][m Forbidden
+[33m[W 14:11:06.482 NotebookApp][m 403 GET /api/terminals?_=1675878744488 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 14:12:06.485 NotebookApp][m Forbidden
+[33m[W 14:12:06.485 NotebookApp][m 403 GET /api/sessions?_=1675878744489 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:12:06.487 NotebookApp][m Forbidden
+[33m[W 14:12:06.488 NotebookApp][m 403 GET /api/terminals?_=1675878744490 (127.0.0.1) 1.210000ms referer=http://localhost:3331/tree
+[33m[W 14:13:06.495 NotebookApp][m Forbidden
+[33m[W 14:13:06.496 NotebookApp][m 403 GET /api/sessions?_=1675878744491 (127.0.0.1) 1.410000ms referer=http://localhost:3331/tree
+[33m[W 14:13:06.497 NotebookApp][m Forbidden
+[33m[W 14:13:06.498 NotebookApp][m 403 GET /api/terminals?_=1675878744492 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:14:06.499 NotebookApp][m Forbidden
+[33m[W 14:14:06.499 NotebookApp][m 403 GET /api/sessions?_=1675878744493 (127.0.0.1) 1.440000ms referer=http://localhost:3331/tree
+[33m[W 14:14:06.501 NotebookApp][m Forbidden
+[33m[W 14:14:06.501 NotebookApp][m 403 GET /api/terminals?_=1675878744494 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 14:15:06.506 NotebookApp][m Forbidden
+[33m[W 14:15:06.507 NotebookApp][m 403 GET /api/sessions?_=1675878744495 (127.0.0.1) 1.430000ms referer=http://localhost:3331/tree
+[33m[W 14:15:06.508 NotebookApp][m Forbidden
+[33m[W 14:15:06.509 NotebookApp][m 403 GET /api/terminals?_=1675878744496 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 14:16:06.523 NotebookApp][m Forbidden
+[33m[W 14:16:06.523 NotebookApp][m 403 GET /api/sessions?_=1675878744497 (127.0.0.1) 1.370000ms referer=http://localhost:3331/tree
+[33m[W 14:16:06.525 NotebookApp][m Forbidden
+[33m[W 14:16:06.525 NotebookApp][m 403 GET /api/terminals?_=1675878744498 (127.0.0.1) 1.170000ms referer=http://localhost:3331/tree
+[33m[W 14:17:06.516 NotebookApp][m Forbidden
+[33m[W 14:17:06.516 NotebookApp][m 403 GET /api/sessions?_=1675878744499 (127.0.0.1) 2.010000ms referer=http://localhost:3331/tree
+[33m[W 14:17:06.517 NotebookApp][m Forbidden
+[33m[W 14:17:06.517 NotebookApp][m 403 GET /api/terminals?_=1675878744500 (127.0.0.1) 2.170000ms referer=http://localhost:3331/tree
+[33m[W 14:18:06.540 NotebookApp][m Forbidden
+[33m[W 14:18:06.541 NotebookApp][m 403 GET /api/sessions?_=1675878744501 (127.0.0.1) 1.410000ms referer=http://localhost:3331/tree
+[33m[W 14:18:06.543 NotebookApp][m Forbidden
+[33m[W 14:18:06.543 NotebookApp][m 403 GET /api/terminals?_=1675878744502 (127.0.0.1) 1.220000ms referer=http://localhost:3331/tree
+[33m[W 14:19:06.541 NotebookApp][m Forbidden
+[33m[W 14:19:06.542 NotebookApp][m 403 GET /api/sessions?_=1675878744503 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 14:19:06.543 NotebookApp][m Forbidden
+[33m[W 14:19:06.544 NotebookApp][m 403 GET /api/terminals?_=1675878744504 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:20:06.544 NotebookApp][m Forbidden
+[33m[W 14:20:06.544 NotebookApp][m 403 GET /api/sessions?_=1675878744505 (127.0.0.1) 1.400000ms referer=http://localhost:3331/tree
+[33m[W 14:20:06.546 NotebookApp][m Forbidden
+[33m[W 14:20:06.546 NotebookApp][m 403 GET /api/terminals?_=1675878744506 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 14:21:06.567 NotebookApp][m Forbidden
+[33m[W 14:21:06.567 NotebookApp][m 403 GET /api/sessions?_=1675878744507 (127.0.0.1) 1.450000ms referer=http://localhost:3331/tree
+[33m[W 14:21:06.569 NotebookApp][m Forbidden
+[33m[W 14:21:06.569 NotebookApp][m 403 GET /api/terminals?_=1675878744508 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 14:22:06.571 NotebookApp][m Forbidden
+[33m[W 14:22:06.572 NotebookApp][m 403 GET /api/sessions?_=1675878744509 (127.0.0.1) 1.420000ms referer=http://localhost:3331/tree
+[33m[W 14:22:06.573 NotebookApp][m Forbidden
+[33m[W 14:22:06.574 NotebookApp][m 403 GET /api/terminals?_=1675878744510 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:23:06.594 NotebookApp][m Forbidden
+[33m[W 14:23:06.595 NotebookApp][m 403 GET /api/sessions?_=1675878744511 (127.0.0.1) 1.430000ms referer=http://localhost:3331/tree
+[33m[W 14:23:06.597 NotebookApp][m Forbidden
+[33m[W 14:23:06.597 NotebookApp][m 403 GET /api/terminals?_=1675878744512 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 14:24:06.591 NotebookApp][m Forbidden
+[33m[W 14:24:06.591 NotebookApp][m 403 GET /api/sessions?_=1675878744513 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 14:24:06.593 NotebookApp][m Forbidden
+[33m[W 14:24:06.593 NotebookApp][m 403 GET /api/terminals?_=1675878744514 (127.0.0.1) 1.180000ms referer=http://localhost:3331/tree
+[33m[W 14:25:06.614 NotebookApp][m Forbidden
+[33m[W 14:25:06.614 NotebookApp][m 403 GET /api/sessions?_=1675878744515 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 14:25:06.616 NotebookApp][m Forbidden
+[33m[W 14:25:06.617 NotebookApp][m 403 GET /api/terminals?_=1675878744516 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 14:26:06.604 NotebookApp][m Forbidden
+[33m[W 14:26:06.605 NotebookApp][m 403 GET /api/sessions?_=1675878744517 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 14:26:06.609 NotebookApp][m Forbidden
+[33m[W 14:26:06.609 NotebookApp][m 403 GET /api/terminals?_=1675878744518 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 14:27:06.618 NotebookApp][m Forbidden
+[33m[W 14:27:06.619 NotebookApp][m 403 GET /api/sessions?_=1675878744519 (127.0.0.1) 1.400000ms referer=http://localhost:3331/tree
+[33m[W 14:27:06.620 NotebookApp][m Forbidden
+[33m[W 14:27:06.621 NotebookApp][m 403 GET /api/terminals?_=1675878744520 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 14:28:06.625 NotebookApp][m Forbidden
+[33m[W 14:28:06.626 NotebookApp][m 403 GET /api/sessions?_=1675878744521 (127.0.0.1) 1.420000ms referer=http://localhost:3331/tree
+[33m[W 14:28:06.627 NotebookApp][m Forbidden
+[33m[W 14:28:06.627 NotebookApp][m 403 GET /api/terminals?_=1675878744522 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:29:06.637 NotebookApp][m Forbidden
+[33m[W 14:29:06.637 NotebookApp][m 403 GET /api/sessions?_=1675878744523 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:29:06.639 NotebookApp][m Forbidden
+[33m[W 14:29:06.639 NotebookApp][m 403 GET /api/terminals?_=1675878744524 (127.0.0.1) 1.210000ms referer=http://localhost:3331/tree
+[33m[W 14:30:06.653 NotebookApp][m Forbidden
+[33m[W 14:30:06.654 NotebookApp][m 403 GET /api/sessions?_=1675878744525 (127.0.0.1) 1.430000ms referer=http://localhost:3331/tree
+[33m[W 14:30:06.655 NotebookApp][m Forbidden
+[33m[W 14:30:06.655 NotebookApp][m 403 GET /api/terminals?_=1675878744526 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 14:31:06.679 NotebookApp][m Forbidden
+[33m[W 14:31:06.679 NotebookApp][m 403 GET /api/sessions?_=1675878744527 (127.0.0.1) 1.430000ms referer=http://localhost:3331/tree
+[33m[W 14:31:06.681 NotebookApp][m Forbidden
+[33m[W 14:31:06.681 NotebookApp][m 403 GET /api/terminals?_=1675878744528 (127.0.0.1) 1.200000ms referer=http://localhost:3331/tree
+[33m[W 14:32:06.681 NotebookApp][m Forbidden
+[33m[W 14:32:06.681 NotebookApp][m 403 GET /api/sessions?_=1675878744529 (127.0.0.1) 1.370000ms referer=http://localhost:3331/tree
+[33m[W 14:32:06.683 NotebookApp][m Forbidden
+[33m[W 14:32:06.683 NotebookApp][m 403 GET /api/terminals?_=1675878744530 (127.0.0.1) 1.170000ms referer=http://localhost:3331/tree
+[33m[W 14:33:14.536 NotebookApp][m Forbidden
+[33m[W 14:33:14.536 NotebookApp][m 403 GET /api/sessions?_=1675878744531 (127.0.0.1) 1.450000ms referer=http://localhost:3331/tree
+[33m[W 14:33:14.540 NotebookApp][m Forbidden
+[33m[W 14:33:14.541 NotebookApp][m 403 GET /api/terminals?_=1675878744532 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 14:34:06.696 NotebookApp][m Forbidden
+[33m[W 14:34:06.696 NotebookApp][m 403 GET /api/sessions?_=1675878744533 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 14:34:06.700 NotebookApp][m Forbidden
+[33m[W 14:34:06.700 NotebookApp][m 403 GET /api/terminals?_=1675878744534 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:29:23.938 NotebookApp][m Forbidden
+[33m[W 14:29:23.939 NotebookApp][m 403 GET /api/sessions?_=1675961541763 (127.0.0.1) 1.600000ms referer=http://localhost:3331/tree
+[33m[W 14:29:23.944 NotebookApp][m Forbidden
+[33m[W 14:29:23.944 NotebookApp][m 403 GET /api/terminals?_=1675961541764 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 14:30:23.913 NotebookApp][m Forbidden
+[33m[W 14:30:23.914 NotebookApp][m 403 GET /api/sessions?_=1675961541765 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:30:23.918 NotebookApp][m Forbidden
+[33m[W 14:30:23.919 NotebookApp][m 403 GET /api/terminals?_=1675961541766 (127.0.0.1) 1.290000ms referer=http://localhost:3331/tree
+[33m[W 14:31:23.919 NotebookApp][m Forbidden
+[33m[W 14:31:23.919 NotebookApp][m 403 GET /api/sessions?_=1675961541767 (127.0.0.1) 1.320000ms referer=http://localhost:3331/tree
+[33m[W 14:31:23.925 NotebookApp][m Forbidden
+[33m[W 14:31:23.926 NotebookApp][m 403 GET /api/terminals?_=1675961541768 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 14:32:23.925 NotebookApp][m Forbidden
+[33m[W 14:32:23.926 NotebookApp][m 403 GET /api/terminals?_=1675961541770 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 14:32:24.047 NotebookApp][m Forbidden
+[33m[W 14:32:24.048 NotebookApp][m 403 GET /api/sessions?_=1675961541769 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 14:33:23.929 NotebookApp][m Forbidden
+[33m[W 14:33:23.929 NotebookApp][m 403 GET /api/sessions?_=1675961541771 (127.0.0.1) 1.340000ms referer=http://localhost:3331/tree
+[33m[W 14:33:23.935 NotebookApp][m Forbidden
+[33m[W 14:33:23.935 NotebookApp][m 403 GET /api/terminals?_=1675961541772 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:34:23.952 NotebookApp][m Forbidden
+[33m[W 14:34:23.952 NotebookApp][m 403 GET /api/sessions?_=1675961541773 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 14:34:23.957 NotebookApp][m Forbidden
+[33m[W 14:34:23.957 NotebookApp][m 403 GET /api/terminals?_=1675961541774 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:35:23.949 NotebookApp][m Forbidden
+[33m[W 14:35:23.950 NotebookApp][m 403 GET /api/sessions?_=1675961541775 (127.0.0.1) 1.600000ms referer=http://localhost:3331/tree
+[33m[W 14:35:23.955 NotebookApp][m Forbidden
+[33m[W 14:35:23.955 NotebookApp][m 403 GET /api/terminals?_=1675961541776 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 14:36:23.955 NotebookApp][m Forbidden
+[33m[W 14:36:23.955 NotebookApp][m 403 GET /api/sessions?_=1675961541777 (127.0.0.1) 1.460000ms referer=http://localhost:3331/tree
+[33m[W 14:36:23.960 NotebookApp][m Forbidden
+[33m[W 14:36:23.961 NotebookApp][m 403 GET /api/terminals?_=1675961541778 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 14:37:23.957 NotebookApp][m Forbidden
+[33m[W 14:37:23.958 NotebookApp][m 403 GET /api/sessions?_=1675961541779 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 14:37:23.963 NotebookApp][m Forbidden
+[33m[W 14:37:23.964 NotebookApp][m 403 GET /api/terminals?_=1675961541780 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 14:38:23.977 NotebookApp][m Forbidden
+[33m[W 14:38:23.977 NotebookApp][m 403 GET /api/sessions?_=1675961541781 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:38:23.983 NotebookApp][m Forbidden
+[33m[W 14:38:23.984 NotebookApp][m 403 GET /api/terminals?_=1675961541782 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:39:24.832 NotebookApp][m Forbidden
+[33m[W 14:39:24.832 NotebookApp][m 403 GET /api/sessions?_=1675961541783 (127.0.0.1) 1.910000ms referer=http://localhost:3331/tree
+[33m[W 14:39:24.833 NotebookApp][m Forbidden
+[33m[W 14:39:24.833 NotebookApp][m 403 GET /api/terminals?_=1675961541784 (127.0.0.1) 2.100000ms referer=http://localhost:3331/tree
+[33m[W 14:40:23.983 NotebookApp][m Forbidden
+[33m[W 14:40:23.984 NotebookApp][m 403 GET /api/sessions?_=1675961541785 (127.0.0.1) 1.340000ms referer=http://localhost:3331/tree
+[33m[W 14:40:23.989 NotebookApp][m Forbidden
+[33m[W 14:40:23.990 NotebookApp][m 403 GET /api/terminals?_=1675961541786 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:41:23.988 NotebookApp][m Forbidden
+[33m[W 14:41:23.988 NotebookApp][m 403 GET /api/sessions?_=1675961541787 (127.0.0.1) 1.340000ms referer=http://localhost:3331/tree
+[33m[W 14:41:23.993 NotebookApp][m Forbidden
+[33m[W 14:41:23.993 NotebookApp][m 403 GET /api/terminals?_=1675961541788 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:42:23.993 NotebookApp][m Forbidden
+[33m[W 14:42:23.993 NotebookApp][m 403 GET /api/sessions?_=1675961541789 (127.0.0.1) 1.390000ms referer=http://localhost:3331/tree
+[33m[W 14:42:23.999 NotebookApp][m Forbidden
+[33m[W 14:42:24.000 NotebookApp][m 403 GET /api/terminals?_=1675961541790 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 14:43:24.007 NotebookApp][m Forbidden
+[33m[W 14:43:24.007 NotebookApp][m 403 GET /api/sessions?_=1675961541791 (127.0.0.1) 1.410000ms referer=http://localhost:3331/tree
+[33m[W 14:43:24.013 NotebookApp][m Forbidden
+[33m[W 14:43:24.013 NotebookApp][m 403 GET /api/terminals?_=1675961541792 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 14:44:24.019 NotebookApp][m Forbidden
+[33m[W 14:44:24.019 NotebookApp][m 403 GET /api/sessions?_=1675961541793 (127.0.0.1) 1.400000ms referer=http://localhost:3331/tree
+[33m[W 14:44:24.025 NotebookApp][m Forbidden
+[33m[W 14:44:24.025 NotebookApp][m 403 GET /api/terminals?_=1675961541794 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:45:24.032 NotebookApp][m Forbidden
+[33m[W 14:45:24.033 NotebookApp][m 403 GET /api/sessions?_=1675961541795 (127.0.0.1) 1.930000ms referer=http://localhost:3331/tree
+[33m[W 14:45:24.033 NotebookApp][m Forbidden
+[33m[W 14:45:24.034 NotebookApp][m 403 GET /api/terminals?_=1675961541796 (127.0.0.1) 2.100000ms referer=http://localhost:3331/tree
+[33m[W 14:46:24.038 NotebookApp][m Forbidden
+[33m[W 14:46:24.038 NotebookApp][m 403 GET /api/sessions?_=1675961541797 (127.0.0.1) 1.360000ms referer=http://localhost:3331/tree
+[33m[W 14:46:24.044 NotebookApp][m Forbidden
+[33m[W 14:46:24.045 NotebookApp][m 403 GET /api/terminals?_=1675961541798 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:47:24.041 NotebookApp][m Forbidden
+[33m[W 14:47:24.041 NotebookApp][m 403 GET /api/sessions?_=1675961541799 (127.0.0.1) 1.340000ms referer=http://localhost:3331/tree
+[33m[W 14:47:24.047 NotebookApp][m Forbidden
+[33m[W 14:47:24.048 NotebookApp][m 403 GET /api/terminals?_=1675961541800 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:48:24.052 NotebookApp][m Forbidden
+[33m[W 14:48:24.053 NotebookApp][m 403 GET /api/sessions?_=1675961541801 (127.0.0.1) 1.960000ms referer=http://localhost:3331/tree
+[33m[W 14:48:24.053 NotebookApp][m Forbidden
+[33m[W 14:48:24.053 NotebookApp][m 403 GET /api/terminals?_=1675961541802 (127.0.0.1) 2.130000ms referer=http://localhost:3331/tree
+[33m[W 14:49:24.065 NotebookApp][m Forbidden
+[33m[W 14:49:24.065 NotebookApp][m 403 GET /api/sessions?_=1675961541803 (127.0.0.1) 1.340000ms referer=http://localhost:3331/tree
+[33m[W 14:49:24.072 NotebookApp][m Forbidden
+[33m[W 14:49:24.072 NotebookApp][m 403 GET /api/terminals?_=1675961541804 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:50:24.065 NotebookApp][m Forbidden
+[33m[W 14:50:24.065 NotebookApp][m 403 GET /api/sessions?_=1675961541805 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:50:24.072 NotebookApp][m Forbidden
+[33m[W 14:50:24.072 NotebookApp][m 403 GET /api/terminals?_=1675961541806 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:51:24.073 NotebookApp][m Forbidden
+[33m[W 14:51:24.074 NotebookApp][m 403 GET /api/sessions?_=1675961541807 (127.0.0.1) 1.360000ms referer=http://localhost:3331/tree
+[33m[W 14:51:24.079 NotebookApp][m Forbidden
+[33m[W 14:51:24.080 NotebookApp][m 403 GET /api/terminals?_=1675961541808 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:52:24.073 NotebookApp][m Forbidden
+[33m[W 14:52:24.074 NotebookApp][m 403 GET /api/sessions?_=1675961541809 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:52:24.080 NotebookApp][m Forbidden
+[33m[W 14:52:24.081 NotebookApp][m 403 GET /api/terminals?_=1675961541810 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:53:24.086 NotebookApp][m Forbidden
+[33m[W 14:53:24.087 NotebookApp][m 403 GET /api/sessions?_=1675961541811 (127.0.0.1) 1.400000ms referer=http://localhost:3331/tree
+[33m[W 14:53:24.092 NotebookApp][m Forbidden
+[33m[W 14:53:24.093 NotebookApp][m 403 GET /api/terminals?_=1675961541812 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:54:24.098 NotebookApp][m Forbidden
+[33m[W 14:54:24.098 NotebookApp][m 403 GET /api/sessions?_=1675961541813 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:54:24.103 NotebookApp][m Forbidden
+[33m[W 14:54:24.103 NotebookApp][m 403 GET /api/terminals?_=1675961541814 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 14:55:24.105 NotebookApp][m Forbidden
+[33m[W 14:55:24.105 NotebookApp][m 403 GET /api/sessions?_=1675961541815 (127.0.0.1) 1.350000ms referer=http://localhost:3331/tree
+[33m[W 14:55:24.110 NotebookApp][m Forbidden
+[33m[W 14:55:24.111 NotebookApp][m 403 GET /api/terminals?_=1675961541816 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 14:56:24.109 NotebookApp][m Forbidden
+[33m[W 14:56:24.109 NotebookApp][m 403 GET /api/sessions?_=1675961541817 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:56:24.114 NotebookApp][m Forbidden
+[33m[W 14:56:24.115 NotebookApp][m 403 GET /api/terminals?_=1675961541818 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 14:57:24.694 NotebookApp][m Forbidden
+[33m[W 14:57:24.694 NotebookApp][m 403 GET /api/sessions?_=1675961541819 (127.0.0.1) 1.970000ms referer=http://localhost:3331/tree
+[33m[W 14:57:24.695 NotebookApp][m Forbidden
+[33m[W 14:57:24.695 NotebookApp][m 403 GET /api/terminals?_=1675961541820 (127.0.0.1) 2.150000ms referer=http://localhost:3331/tree
+[33m[W 14:58:24.696 NotebookApp][m Forbidden
+[33m[W 14:58:24.697 NotebookApp][m 403 GET /api/sessions?_=1675961541821 (127.0.0.1) 2.030000ms referer=http://localhost:3331/tree
+[33m[W 14:58:24.697 NotebookApp][m Forbidden
+[33m[W 14:58:24.698 NotebookApp][m 403 GET /api/terminals?_=1675961541822 (127.0.0.1) 2.170000ms referer=http://localhost:3331/tree
+[33m[W 14:59:24.130 NotebookApp][m Forbidden
+[33m[W 14:59:24.131 NotebookApp][m 403 GET /api/sessions?_=1675961541823 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 14:59:24.135 NotebookApp][m Forbidden
+[33m[W 14:59:24.136 NotebookApp][m 403 GET /api/terminals?_=1675961541824 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 15:00:24.146 NotebookApp][m Forbidden
+[33m[W 15:00:24.147 NotebookApp][m 403 GET /api/sessions?_=1675961541825 (127.0.0.1) 1.450000ms referer=http://localhost:3331/tree
+[33m[W 15:00:24.151 NotebookApp][m Forbidden
+[33m[W 15:00:24.152 NotebookApp][m 403 GET /api/terminals?_=1675961541826 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 15:01:24.153 NotebookApp][m Forbidden
+[33m[W 15:01:24.153 NotebookApp][m 403 GET /api/sessions?_=1675961541827 (127.0.0.1) 1.360000ms referer=http://localhost:3331/tree
+[33m[W 15:01:24.158 NotebookApp][m Forbidden
+[33m[W 15:01:24.158 NotebookApp][m 403 GET /api/terminals?_=1675961541828 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 15:02:24.167 NotebookApp][m Forbidden
+[33m[W 15:02:24.168 NotebookApp][m 403 GET /api/sessions?_=1675961541829 (127.0.0.1) 1.410000ms referer=http://localhost:3331/tree
+[33m[W 15:02:24.173 NotebookApp][m Forbidden
+[33m[W 15:02:24.173 NotebookApp][m 403 GET /api/terminals?_=1675961541830 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 15:03:24.195 NotebookApp][m Forbidden
+[33m[W 15:03:24.196 NotebookApp][m 403 GET /api/sessions?_=1675961541831 (127.0.0.1) 1.350000ms referer=http://localhost:3331/tree
+[33m[W 15:03:24.201 NotebookApp][m Forbidden
+[33m[W 15:03:24.201 NotebookApp][m 403 GET /api/terminals?_=1675961541832 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 15:04:24.182 NotebookApp][m Forbidden
+[33m[W 15:04:24.183 NotebookApp][m 403 GET /api/sessions?_=1675961541833 (127.0.0.1) 1.440000ms referer=http://localhost:3331/tree
+[33m[W 15:04:24.188 NotebookApp][m Forbidden
+[33m[W 15:04:24.188 NotebookApp][m 403 GET /api/terminals?_=1675961541834 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 15:05:24.205 NotebookApp][m Forbidden
+[33m[W 15:05:24.205 NotebookApp][m 403 GET /api/sessions?_=1675961541835 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 15:05:24.210 NotebookApp][m Forbidden
+[33m[W 15:05:24.211 NotebookApp][m 403 GET /api/terminals?_=1675961541836 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 15:06:24.197 NotebookApp][m Forbidden
+[33m[W 15:06:24.198 NotebookApp][m 403 GET /api/sessions?_=1675961541837 (127.0.0.1) 1.340000ms referer=http://localhost:3331/tree
+[33m[W 15:06:24.203 NotebookApp][m Forbidden
+[33m[W 15:06:24.203 NotebookApp][m 403 GET /api/terminals?_=1675961541838 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 15:07:24.212 NotebookApp][m Forbidden
+[33m[W 15:07:24.212 NotebookApp][m 403 GET /api/sessions?_=1675961541839 (127.0.0.1) 1.380000ms referer=http://localhost:3331/tree
+[33m[W 15:07:24.218 NotebookApp][m Forbidden
+[33m[W 15:07:24.218 NotebookApp][m 403 GET /api/terminals?_=1675961541840 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 16:25:58.338 NotebookApp][m Forbidden
+[33m[W 16:25:58.339 NotebookApp][m 403 GET /api/sessions?_=1676040894961 (127.0.0.1) 1.480000ms referer=http://localhost:3331/tree
+[33m[W 16:25:58.344 NotebookApp][m Forbidden
+[33m[W 16:25:58.345 NotebookApp][m 403 GET /api/terminals?_=1676040894962 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 16:26:58.326 NotebookApp][m Forbidden
+[33m[W 16:26:58.327 NotebookApp][m 403 GET /api/sessions?_=1676040894963 (127.0.0.1) 1.600000ms referer=http://localhost:3331/tree
+[33m[W 16:26:58.328 NotebookApp][m Forbidden
+[33m[W 16:26:58.328 NotebookApp][m 403 GET /api/terminals?_=1676040894964 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 16:27:58.330 NotebookApp][m Forbidden
+[33m[W 16:27:58.331 NotebookApp][m 403 GET /api/sessions?_=1676040894965 (127.0.0.1) 1.600000ms referer=http://localhost:3331/tree
+[33m[W 16:27:58.335 NotebookApp][m Forbidden
+[33m[W 16:27:58.336 NotebookApp][m 403 GET /api/terminals?_=1676040894966 (127.0.0.1) 1.320000ms referer=http://localhost:3331/tree
+[33m[W 16:28:58.340 NotebookApp][m Forbidden
+[33m[W 16:28:58.341 NotebookApp][m 403 GET /api/sessions?_=1676040894967 (127.0.0.1) 1.590000ms referer=http://localhost:3331/tree
+[33m[W 16:28:58.345 NotebookApp][m Forbidden
+[33m[W 16:28:58.346 NotebookApp][m 403 GET /api/terminals?_=1676040894968 (127.0.0.1) 1.290000ms referer=http://localhost:3331/tree
+[33m[W 16:29:58.340 NotebookApp][m Forbidden
+[33m[W 16:29:58.341 NotebookApp][m 403 GET /api/sessions?_=1676040894969 (127.0.0.1) 1.560000ms referer=http://localhost:3331/tree
+[33m[W 16:29:58.345 NotebookApp][m Forbidden
+[33m[W 16:29:58.346 NotebookApp][m 403 GET /api/terminals?_=1676040894970 (127.0.0.1) 1.290000ms referer=http://localhost:3331/tree
+[33m[W 16:30:58.360 NotebookApp][m Forbidden
+[33m[W 16:30:58.360 NotebookApp][m 403 GET /api/sessions?_=1676040894971 (127.0.0.1) 1.540000ms referer=http://localhost:3331/tree
+[33m[W 16:30:58.364 NotebookApp][m Forbidden
+[33m[W 16:30:58.365 NotebookApp][m 403 GET /api/terminals?_=1676040894972 (127.0.0.1) 1.290000ms referer=http://localhost:3331/tree
+[33m[W 16:31:58.365 NotebookApp][m Forbidden
+[33m[W 16:31:58.365 NotebookApp][m 403 GET /api/sessions?_=1676040894973 (127.0.0.1) 1.500000ms referer=http://localhost:3331/tree
+[33m[W 16:31:58.370 NotebookApp][m Forbidden
+[33m[W 16:31:58.370 NotebookApp][m 403 GET /api/terminals?_=1676040894974 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 16:32:58.379 NotebookApp][m Forbidden
+[33m[W 16:32:58.379 NotebookApp][m 403 GET /api/sessions?_=1676040894975 (127.0.0.1) 1.500000ms referer=http://localhost:3331/tree
+[33m[W 16:32:58.384 NotebookApp][m Forbidden
+[33m[W 16:32:58.384 NotebookApp][m 403 GET /api/terminals?_=1676040894976 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 16:33:58.389 NotebookApp][m Forbidden
+[33m[W 16:33:58.390 NotebookApp][m 403 GET /api/sessions?_=1676040894977 (127.0.0.1) 1.460000ms referer=http://localhost:3331/tree
+[33m[W 16:33:58.395 NotebookApp][m Forbidden
+[33m[W 16:33:58.395 NotebookApp][m 403 GET /api/terminals?_=1676040894978 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 16:34:58.399 NotebookApp][m Forbidden
+[33m[W 16:34:58.400 NotebookApp][m 403 GET /api/sessions?_=1676040894979 (127.0.0.1) 2.110000ms referer=http://localhost:3331/tree
+[33m[W 16:34:58.400 NotebookApp][m Forbidden
+[33m[W 16:34:58.401 NotebookApp][m 403 GET /api/terminals?_=1676040894980 (127.0.0.1) 2.170000ms referer=http://localhost:3331/tree
+[33m[W 16:35:58.408 NotebookApp][m Forbidden
+[33m[W 16:35:58.408 NotebookApp][m 403 GET /api/sessions?_=1676040894981 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 16:35:58.412 NotebookApp][m Forbidden
+[33m[W 16:35:58.413 NotebookApp][m 403 GET /api/terminals?_=1676040894982 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 16:36:58.428 NotebookApp][m Forbidden
+[33m[W 16:36:58.428 NotebookApp][m 403 GET /api/sessions?_=1676040894983 (127.0.0.1) 1.470000ms referer=http://localhost:3331/tree
+[33m[W 16:36:58.433 NotebookApp][m Forbidden
+[33m[W 16:36:58.434 NotebookApp][m 403 GET /api/terminals?_=1676040894984 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 16:37:58.442 NotebookApp][m Forbidden
+[33m[W 16:37:58.443 NotebookApp][m 403 GET /api/sessions?_=1676040894985 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 16:37:58.449 NotebookApp][m Forbidden
+[33m[W 16:37:58.450 NotebookApp][m 403 GET /api/terminals?_=1676040894986 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 16:38:58.440 NotebookApp][m Forbidden
+[33m[W 16:38:58.441 NotebookApp][m 403 GET /api/sessions?_=1676040894987 (127.0.0.1) 1.480000ms referer=http://localhost:3331/tree
+[33m[W 16:38:58.445 NotebookApp][m Forbidden
+[33m[W 16:38:58.446 NotebookApp][m 403 GET /api/terminals?_=1676040894988 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 16:39:58.450 NotebookApp][m Forbidden
+[33m[W 16:39:58.451 NotebookApp][m 403 GET /api/sessions?_=1676040894989 (127.0.0.1) 1.600000ms referer=http://localhost:3331/tree
+[33m[W 16:39:58.457 NotebookApp][m Forbidden
+[33m[W 16:39:58.457 NotebookApp][m 403 GET /api/terminals?_=1676040894990 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 16:40:58.455 NotebookApp][m Forbidden
+[33m[W 16:40:58.455 NotebookApp][m 403 GET /api/sessions?_=1676040894991 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 16:40:58.460 NotebookApp][m Forbidden
+[33m[W 16:40:58.461 NotebookApp][m 403 GET /api/terminals?_=1676040894992 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 16:41:58.458 NotebookApp][m Forbidden
+[33m[W 16:41:58.459 NotebookApp][m 403 GET /api/sessions?_=1676040894993 (127.0.0.1) 1.500000ms referer=http://localhost:3331/tree
+[33m[W 16:41:58.464 NotebookApp][m Forbidden
+[33m[W 16:41:58.464 NotebookApp][m 403 GET /api/terminals?_=1676040894994 (127.0.0.1) 1.220000ms referer=http://localhost:3331/tree
+[33m[W 16:42:58.466 NotebookApp][m Forbidden
+[33m[W 16:42:58.467 NotebookApp][m 403 GET /api/sessions?_=1676040894995 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 16:42:58.471 NotebookApp][m Forbidden
+[33m[W 16:42:58.471 NotebookApp][m 403 GET /api/terminals?_=1676040894996 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 16:43:58.467 NotebookApp][m Forbidden
+[33m[W 16:43:58.468 NotebookApp][m 403 GET /api/sessions?_=1676040894997 (127.0.0.1) 1.460000ms referer=http://localhost:3331/tree
+[33m[W 16:43:58.472 NotebookApp][m Forbidden
+[33m[W 16:43:58.473 NotebookApp][m 403 GET /api/terminals?_=1676040894998 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 16:44:58.470 NotebookApp][m Forbidden
+[33m[W 16:44:58.471 NotebookApp][m 403 GET /api/sessions?_=1676040894999 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 16:44:58.476 NotebookApp][m Forbidden
+[33m[W 16:44:58.477 NotebookApp][m 403 GET /api/terminals?_=1676040895000 (127.0.0.1) 1.220000ms referer=http://localhost:3331/tree
+[33m[W 16:45:58.476 NotebookApp][m Forbidden
+[33m[W 16:45:58.477 NotebookApp][m 403 GET /api/sessions?_=1676040895001 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 16:45:58.482 NotebookApp][m Forbidden
+[33m[W 16:45:58.482 NotebookApp][m 403 GET /api/terminals?_=1676040895002 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 16:46:58.492 NotebookApp][m Forbidden
+[33m[W 16:46:58.493 NotebookApp][m 403 GET /api/sessions?_=1676040895003 (127.0.0.1) 1.500000ms referer=http://localhost:3331/tree
+[33m[W 16:46:58.494 NotebookApp][m Forbidden
+[33m[W 16:46:58.494 NotebookApp][m 403 GET /api/terminals?_=1676040895004 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 16:47:58.497 NotebookApp][m Forbidden
+[33m[W 16:47:58.497 NotebookApp][m 403 GET /api/sessions?_=1676040895005 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 16:47:58.502 NotebookApp][m Forbidden
+[33m[W 16:47:58.503 NotebookApp][m 403 GET /api/terminals?_=1676040895006 (127.0.0.1) 1.270000ms referer=http://localhost:3331/tree
+[33m[W 16:48:58.494 NotebookApp][m Forbidden
+[33m[W 16:48:58.494 NotebookApp][m 403 GET /api/sessions?_=1676040895007 (127.0.0.1) 1.480000ms referer=http://localhost:3331/tree
+[33m[W 16:48:58.499 NotebookApp][m Forbidden
+[33m[W 16:48:58.500 NotebookApp][m 403 GET /api/terminals?_=1676040895008 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 16:49:58.500 NotebookApp][m Forbidden
+[33m[W 16:49:58.501 NotebookApp][m 403 GET /api/sessions?_=1676040895009 (127.0.0.1) 1.450000ms referer=http://localhost:3331/tree
+[33m[W 16:49:58.505 NotebookApp][m Forbidden
+[33m[W 16:49:58.506 NotebookApp][m 403 GET /api/terminals?_=1676040895010 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 16:50:58.516 NotebookApp][m Forbidden
+[33m[W 16:50:58.517 NotebookApp][m 403 GET /api/sessions?_=1676040895011 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 16:50:58.518 NotebookApp][m Forbidden
+[33m[W 16:50:58.518 NotebookApp][m 403 GET /api/terminals?_=1676040895012 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 16:51:58.518 NotebookApp][m Forbidden
+[33m[W 16:51:58.519 NotebookApp][m 403 GET /api/sessions?_=1676040895013 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 16:51:58.524 NotebookApp][m Forbidden
+[33m[W 16:51:58.524 NotebookApp][m 403 GET /api/terminals?_=1676040895014 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 16:52:58.539 NotebookApp][m Forbidden
+[33m[W 16:52:58.539 NotebookApp][m 403 GET /api/sessions?_=1676040895015 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 16:52:58.544 NotebookApp][m Forbidden
+[33m[W 16:52:58.545 NotebookApp][m 403 GET /api/terminals?_=1676040895016 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 16:53:58.537 NotebookApp][m Forbidden
+[33m[W 16:53:58.537 NotebookApp][m 403 GET /api/sessions?_=1676040895017 (127.0.0.1) 2.070000ms referer=http://localhost:3331/tree
+[33m[W 16:53:58.538 NotebookApp][m Forbidden
+[33m[W 16:53:58.538 NotebookApp][m 403 GET /api/terminals?_=1676040895018 (127.0.0.1) 2.220000ms referer=http://localhost:3331/tree
+[33m[W 16:54:58.552 NotebookApp][m Forbidden
+[33m[W 16:54:58.553 NotebookApp][m 403 GET /api/sessions?_=1676040895019 (127.0.0.1) 2.090000ms referer=http://localhost:3331/tree
+[33m[W 16:54:58.553 NotebookApp][m Forbidden
+[33m[W 16:54:58.554 NotebookApp][m 403 GET /api/terminals?_=1676040895020 (127.0.0.1) 2.190000ms referer=http://localhost:3331/tree
+[33m[W 16:55:58.551 NotebookApp][m Forbidden
+[33m[W 16:55:58.552 NotebookApp][m 403 GET /api/sessions?_=1676040895021 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 16:55:58.556 NotebookApp][m Forbidden
+[33m[W 16:55:58.557 NotebookApp][m 403 GET /api/terminals?_=1676040895022 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 16:56:58.567 NotebookApp][m Forbidden
+[33m[W 16:56:58.568 NotebookApp][m 403 GET /api/sessions?_=1676040895023 (127.0.0.1) 2.100000ms referer=http://localhost:3331/tree
+[33m[W 16:56:58.568 NotebookApp][m Forbidden
+[33m[W 16:56:58.569 NotebookApp][m 403 GET /api/terminals?_=1676040895024 (127.0.0.1) 2.180000ms referer=http://localhost:3331/tree
+[33m[W 16:57:58.582 NotebookApp][m Forbidden
+[33m[W 16:57:58.583 NotebookApp][m 403 GET /api/sessions?_=1676040895025 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 16:57:58.587 NotebookApp][m Forbidden
+[33m[W 16:57:58.587 NotebookApp][m 403 GET /api/terminals?_=1676040895026 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 16:58:58.576 NotebookApp][m Forbidden
+[33m[W 16:58:58.577 NotebookApp][m 403 GET /api/sessions?_=1676040895027 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 16:58:58.582 NotebookApp][m Forbidden
+[33m[W 16:58:58.582 NotebookApp][m 403 GET /api/terminals?_=1676040895028 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 16:59:58.584 NotebookApp][m Forbidden
+[33m[W 16:59:58.584 NotebookApp][m 403 GET /api/sessions?_=1676040895029 (127.0.0.1) 2.070000ms referer=http://localhost:3331/tree
+[33m[W 16:59:58.585 NotebookApp][m Forbidden
+[33m[W 16:59:58.585 NotebookApp][m 403 GET /api/terminals?_=1676040895030 (127.0.0.1) 2.170000ms referer=http://localhost:3331/tree
+[33m[W 17:00:58.609 NotebookApp][m Forbidden
+[33m[W 17:00:58.609 NotebookApp][m 403 GET /api/sessions?_=1676040895031 (127.0.0.1) 1.470000ms referer=http://localhost:3331/tree
+[33m[W 17:00:58.614 NotebookApp][m Forbidden
+[33m[W 17:00:58.614 NotebookApp][m 403 GET /api/terminals?_=1676040895032 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 17:01:58.610 NotebookApp][m Forbidden
+[33m[W 17:01:58.610 NotebookApp][m 403 GET /api/sessions?_=1676040895033 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 17:01:58.615 NotebookApp][m Forbidden
+[33m[W 17:01:58.615 NotebookApp][m 403 GET /api/terminals?_=1676040895034 (127.0.0.1) 1.260000ms referer=http://localhost:3331/tree
+[33m[W 17:02:58.620 NotebookApp][m Forbidden
+[33m[W 17:02:58.621 NotebookApp][m 403 GET /api/sessions?_=1676040895035 (127.0.0.1) 2.060000ms referer=http://localhost:3331/tree
+[33m[W 17:02:58.621 NotebookApp][m Forbidden
+[33m[W 17:02:58.622 NotebookApp][m 403 GET /api/terminals?_=1676040895036 (127.0.0.1) 2.170000ms referer=http://localhost:3331/tree
+[33m[W 17:03:58.620 NotebookApp][m Forbidden
+[33m[W 17:03:58.621 NotebookApp][m 403 GET /api/sessions?_=1676040895037 (127.0.0.1) 1.480000ms referer=http://localhost:3331/tree
+[33m[W 17:03:58.625 NotebookApp][m Forbidden
+[33m[W 17:03:58.626 NotebookApp][m 403 GET /api/terminals?_=1676040895038 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 17:04:58.637 NotebookApp][m Forbidden
+[33m[W 17:04:58.638 NotebookApp][m 403 GET /api/sessions?_=1676040895039 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 17:04:58.643 NotebookApp][m Forbidden
+[33m[W 17:04:58.643 NotebookApp][m 403 GET /api/terminals?_=1676040895040 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 17:05:58.640 NotebookApp][m Forbidden
+[33m[W 17:05:58.640 NotebookApp][m 403 GET /api/terminals?_=1676040895042 (127.0.0.1) 2.070000ms referer=http://localhost:3331/tree
+[33m[W 17:05:58.641 NotebookApp][m Forbidden
+[33m[W 17:05:58.641 NotebookApp][m 403 GET /api/sessions?_=1676040895041 (127.0.0.1) 2.220000ms referer=http://localhost:3331/tree
+[33m[W 17:06:58.674 NotebookApp][m Forbidden
+[33m[W 17:06:58.674 NotebookApp][m 403 GET /api/sessions?_=1676040895043 (127.0.0.1) 2.140000ms referer=http://localhost:3331/tree
+[33m[W 17:06:58.675 NotebookApp][m Forbidden
+[33m[W 17:06:58.675 NotebookApp][m 403 GET /api/terminals?_=1676040895044 (127.0.0.1) 2.220000ms referer=http://localhost:3331/tree
+[33m[W 17:07:58.653 NotebookApp][m Forbidden
+[33m[W 17:07:58.653 NotebookApp][m 403 GET /api/sessions?_=1676040895045 (127.0.0.1) 1.540000ms referer=http://localhost:3331/tree
+[33m[W 17:07:58.658 NotebookApp][m Forbidden
+[33m[W 17:07:58.658 NotebookApp][m 403 GET /api/terminals?_=1676040895046 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 17:08:58.671 NotebookApp][m Forbidden
+[33m[W 17:08:58.671 NotebookApp][m 403 GET /api/sessions?_=1676040895047 (127.0.0.1) 1.610000ms referer=http://localhost:3331/tree
+[33m[W 17:08:58.676 NotebookApp][m Forbidden
+[33m[W 17:08:58.676 NotebookApp][m 403 GET /api/terminals?_=1676040895048 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 17:09:58.670 NotebookApp][m Forbidden
+[33m[W 17:09:58.670 NotebookApp][m 403 GET /api/sessions?_=1676040895049 (127.0.0.1) 1.510000ms referer=http://localhost:3331/tree
+[33m[W 17:09:58.675 NotebookApp][m Forbidden
+[33m[W 17:09:58.675 NotebookApp][m 403 GET /api/terminals?_=1676040895050 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 17:10:58.676 NotebookApp][m Forbidden
+[33m[W 17:10:58.676 NotebookApp][m 403 GET /api/sessions?_=1676040895051 (127.0.0.1) 1.490000ms referer=http://localhost:3331/tree
+[33m[W 17:10:58.681 NotebookApp][m Forbidden
+[33m[W 17:10:58.682 NotebookApp][m 403 GET /api/terminals?_=1676040895052 (127.0.0.1) 1.240000ms referer=http://localhost:3331/tree
+[33m[W 17:11:58.688 NotebookApp][m Forbidden
+[33m[W 17:11:58.689 NotebookApp][m 403 GET /api/sessions?_=1676040895053 (127.0.0.1) 1.470000ms referer=http://localhost:3331/tree
+[33m[W 17:11:58.693 NotebookApp][m Forbidden
+[33m[W 17:11:58.694 NotebookApp][m 403 GET /api/terminals?_=1676040895054 (127.0.0.1) 1.230000ms referer=http://localhost:3331/tree
+[33m[W 17:12:58.685 NotebookApp][m Forbidden
+[33m[W 17:12:58.686 NotebookApp][m 403 GET /api/sessions?_=1676040895055 (127.0.0.1) 1.470000ms referer=http://localhost:3331/tree
+[33m[W 17:12:58.690 NotebookApp][m Forbidden
+[33m[W 17:12:58.690 NotebookApp][m 403 GET /api/terminals?_=1676040895056 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
+[33m[W 16:04:05.084 NotebookApp][m Forbidden
+[33m[W 16:04:05.085 NotebookApp][m 403 GET /api/sessions?_=1676390313572 (127.0.0.1) 3.210000ms referer=http://localhost:3331/tree
+[33m[W 16:04:05.094 NotebookApp][m Forbidden
+[33m[W 16:04:05.094 NotebookApp][m 403 GET /api/terminals?_=1676390313573 (127.0.0.1) 0.880000ms referer=http://localhost:3331/tree
+[33m[W 16:05:05.056 NotebookApp][m Forbidden
+[33m[W 16:05:05.057 NotebookApp][m 403 GET /api/sessions?_=1676390313574 (127.0.0.1) 1.590000ms referer=http://localhost:3331/tree
+[33m[W 16:05:05.062 NotebookApp][m Forbidden
+[33m[W 16:05:05.063 NotebookApp][m 403 GET /api/terminals?_=1676390313575 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 16:06:05.063 NotebookApp][m Forbidden
+[33m[W 16:06:05.063 NotebookApp][m 403 GET /api/sessions?_=1676390313576 (127.0.0.1) 1.640000ms referer=http://localhost:3331/tree
+[33m[W 16:06:05.069 NotebookApp][m Forbidden
+[33m[W 16:06:05.070 NotebookApp][m 403 GET /api/terminals?_=1676390313577 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 16:07:05.066 NotebookApp][m Forbidden
+[33m[W 16:07:05.067 NotebookApp][m 403 GET /api/sessions?_=1676390313578 (127.0.0.1) 1.600000ms referer=http://localhost:3331/tree
+[33m[W 16:07:05.072 NotebookApp][m Forbidden
+[33m[W 16:07:05.072 NotebookApp][m 403 GET /api/terminals?_=1676390313579 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 16:08:05.069 NotebookApp][m Forbidden
+[33m[W 16:08:05.070 NotebookApp][m 403 GET /api/sessions?_=1676390313580 (127.0.0.1) 1.570000ms referer=http://localhost:3331/tree
+[33m[W 16:08:05.075 NotebookApp][m Forbidden
+[33m[W 16:08:05.076 NotebookApp][m 403 GET /api/terminals?_=1676390313581 (127.0.0.1) 1.290000ms referer=http://localhost:3331/tree
+[33m[W 16:09:05.075 NotebookApp][m Forbidden
+[33m[W 16:09:05.076 NotebookApp][m 403 GET /api/sessions?_=1676390313582 (127.0.0.1) 1.560000ms referer=http://localhost:3331/tree
+[33m[W 16:09:05.083 NotebookApp][m Forbidden
+[33m[W 16:09:05.083 NotebookApp][m 403 GET /api/terminals?_=1676390313583 (127.0.0.1) 1.280000ms referer=http://localhost:3331/tree
+[33m[W 16:10:05.082 NotebookApp][m Forbidden
+[33m[W 16:10:05.083 NotebookApp][m 403 GET /api/sessions?_=1676390313584 (127.0.0.1) 1.570000ms referer=http://localhost:3331/tree
+[33m[W 16:10:05.088 NotebookApp][m Forbidden
+[33m[W 16:10:05.088 NotebookApp][m 403 GET /api/terminals?_=1676390313585 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 16:11:05.095 NotebookApp][m Forbidden
+[33m[W 16:11:05.095 NotebookApp][m 403 GET /api/sessions?_=1676390313586 (127.0.0.1) 1.590000ms referer=http://localhost:3331/tree
+[33m[W 16:11:05.101 NotebookApp][m Forbidden
+[33m[W 16:11:05.101 NotebookApp][m 403 GET /api/terminals?_=1676390313587 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 16:12:05.092 NotebookApp][m Forbidden
+[33m[W 16:12:05.093 NotebookApp][m 403 GET /api/sessions?_=1676390313588 (127.0.0.1) 1.570000ms referer=http://localhost:3331/tree
+[33m[W 16:12:05.098 NotebookApp][m Forbidden
+[33m[W 16:12:05.098 NotebookApp][m 403 GET /api/terminals?_=1676390313589 (127.0.0.1) 1.320000ms referer=http://localhost:3331/tree
+[33m[W 16:13:05.102 NotebookApp][m Forbidden
+[33m[W 16:13:05.103 NotebookApp][m 403 GET /api/sessions?_=1676390313590 (127.0.0.1) 1.650000ms referer=http://localhost:3331/tree
+[33m[W 16:13:05.109 NotebookApp][m Forbidden
+[33m[W 16:13:05.109 NotebookApp][m 403 GET /api/terminals?_=1676390313591 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 16:14:05.112 NotebookApp][m Forbidden
+[33m[W 16:14:05.113 NotebookApp][m 403 GET /api/sessions?_=1676390313592 (127.0.0.1) 1.580000ms referer=http://localhost:3331/tree
+[33m[W 16:14:05.117 NotebookApp][m Forbidden
+[33m[W 16:14:05.118 NotebookApp][m 403 GET /api/terminals?_=1676390313593 (127.0.0.1) 1.320000ms referer=http://localhost:3331/tree
+[33m[W 16:15:05.115 NotebookApp][m Forbidden
+[33m[W 16:15:05.116 NotebookApp][m 403 GET /api/sessions?_=1676390313594 (127.0.0.1) 1.580000ms referer=http://localhost:3331/tree
+[33m[W 16:15:05.122 NotebookApp][m Forbidden
+[33m[W 16:15:05.122 NotebookApp][m 403 GET /api/terminals?_=1676390313595 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 16:16:05.124 NotebookApp][m Forbidden
+[33m[W 16:16:05.125 NotebookApp][m 403 GET /api/sessions?_=1676390313596 (127.0.0.1) 1.610000ms referer=http://localhost:3331/tree
+[33m[W 16:16:05.130 NotebookApp][m Forbidden
+[33m[W 16:16:05.131 NotebookApp][m 403 GET /api/terminals?_=1676390313597 (127.0.0.1) 1.350000ms referer=http://localhost:3331/tree
+[33m[W 16:17:05.131 NotebookApp][m Forbidden
+[33m[W 16:17:05.131 NotebookApp][m 403 GET /api/sessions?_=1676390313598 (127.0.0.1) 1.610000ms referer=http://localhost:3331/tree
+[33m[W 16:17:05.136 NotebookApp][m Forbidden
+[33m[W 16:17:05.137 NotebookApp][m 403 GET /api/terminals?_=1676390313599 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 16:18:05.138 NotebookApp][m Forbidden
+[33m[W 16:18:05.139 NotebookApp][m 403 GET /api/sessions?_=1676390313600 (127.0.0.1) 1.630000ms referer=http://localhost:3331/tree
+[33m[W 16:18:05.144 NotebookApp][m Forbidden
+[33m[W 16:18:05.145 NotebookApp][m 403 GET /api/terminals?_=1676390313601 (127.0.0.1) 1.310000ms referer=http://localhost:3331/tree
+[33m[W 16:19:05.156 NotebookApp][m Forbidden
+[33m[W 16:19:05.157 NotebookApp][m 403 GET /api/sessions?_=1676390313602 (127.0.0.1) 1.570000ms referer=http://localhost:3331/tree
+[33m[W 16:19:05.160 NotebookApp][m Forbidden
+[33m[W 16:19:05.161 NotebookApp][m 403 GET /api/terminals?_=1676390313603 (127.0.0.1) 1.290000ms referer=http://localhost:3331/tree
+[33m[W 16:20:05.156 NotebookApp][m Forbidden
+[33m[W 16:20:05.157 NotebookApp][m 403 GET /api/sessions?_=1676390313604 (127.0.0.1) 1.560000ms referer=http://localhost:3331/tree
+[33m[W 16:20:05.162 NotebookApp][m Forbidden
+[33m[W 16:20:05.163 NotebookApp][m 403 GET /api/terminals?_=1676390313605 (127.0.0.1) 1.330000ms referer=http://localhost:3331/tree
+[33m[W 16:21:05.197 NotebookApp][m Forbidden
+[33m[W 16:21:05.198 NotebookApp][m 403 GET /api/sessions?_=1676390313606 (127.0.0.1) 1.580000ms referer=http://localhost:3331/tree
+[33m[W 16:21:05.205 NotebookApp][m Forbidden
+[33m[W 16:21:05.205 NotebookApp][m 403 GET /api/terminals?_=1676390313607 (127.0.0.1) 1.310000ms referer=http://localhost:3331/tree
+[33m[W 16:22:05.170 NotebookApp][m Forbidden
+[33m[W 16:22:05.170 NotebookApp][m 403 GET /api/sessions?_=1676390313608 (127.0.0.1) 1.630000ms referer=http://localhost:3331/tree
+[33m[W 16:22:05.175 NotebookApp][m Forbidden
+[33m[W 16:22:05.176 NotebookApp][m 403 GET /api/terminals?_=1676390313609 (127.0.0.1) 1.290000ms referer=http://localhost:3331/tree
+[33m[W 16:23:05.183 NotebookApp][m Forbidden
+[33m[W 16:23:05.183 NotebookApp][m 403 GET /api/sessions?_=1676390313610 (127.0.0.1) 2.270000ms referer=http://localhost:3331/tree
+[33m[W 16:23:05.184 NotebookApp][m Forbidden
+[33m[W 16:23:05.184 NotebookApp][m 403 GET /api/terminals?_=1676390313611 (127.0.0.1) 2.350000ms referer=http://localhost:3331/tree
+[33m[W 17:04:30.211 NotebookApp][m Forbidden
+[33m[W 17:04:30.212 NotebookApp][m 403 GET /api/sessions?_=1676390313612 (127.0.0.1) 1.520000ms referer=http://localhost:3331/tree
+[33m[W 17:04:30.216 NotebookApp][m Forbidden
+[33m[W 17:04:30.217 NotebookApp][m 403 GET /api/terminals?_=1676390313613 (127.0.0.1) 1.300000ms referer=http://localhost:3331/tree
+[33m[W 17:04:46.615 NotebookApp][m Forbidden
+[33m[W 17:04:46.615 NotebookApp][m 403 GET /api/sessions?_=1676390313614 (127.0.0.1) 1.620000ms referer=http://localhost:3331/tree
+[33m[W 17:04:46.617 NotebookApp][m Forbidden
+[33m[W 17:04:46.617 NotebookApp][m 403 GET /api/terminals?_=1676390313615 (127.0.0.1) 1.250000ms referer=http://localhost:3331/tree
