@@ -1,0 +1,201 @@
+---
+title: "SFA - phylogenetic conservation"
+author: "Cassandra Wattenburger"
+date: "6/15/2023"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(phyloseq)
+library(vegan)
+library(ape)
+
+sessionInfo()
+
+rm(list=ls())
+```
+
+# Import data
+
+```{r}
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap2.rds")
+growth_asv <- growth %>% # average across inoculants
+  group_by(ASV, Phylum, Class, Order, Family, Genus, Species) %>% 
+  summarize(k = mean(k)) %>% 
+  ungroup()
+growth_asvs <- growth_asv$ASV
+
+physeq <- readRDS("../data_intermediate/SFA2_physeq_unrare.rds")
+```
+
+# Taxonomic
+
+Phylum:
+
+```{r}
+growth_asv %>% 
+  ggplot(aes(x=reorder(Phylum, -k), y=k)) +
+  geom_jitter(width=0.1, height=0) +
+  theme_test() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+Order:
+
+```{r}
+growth_asv %>% 
+  ggplot(aes(x=reorder(Class, Phylum), y=k)) +
+  geom_jitter(width=0.1, height=0) +
+  facet_wrap(~Phylum) +
+  theme_test() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+Actinobacteriota:
+
+```{r}
+growth_asv %>% 
+  filter(Phylum=="Actinobacteriota") %>% 
+  ggplot(aes(x=reorder(Order, -k), y=k)) +
+  geom_jitter(width=0.1, height=0) +
+  facet_wrap(~Phylum) +
+  theme_test() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+Steptomycetales:
+
+```{r}
+growth_asv %>% 
+  filter(Order=="Streptomycetales") %>% 
+  ggplot(aes(x=reorder(Genus, -k), y=k)) +
+  geom_jitter(width=0.1, height=0) +
+  facet_wrap(~Phylum) +
+  theme_test() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+Micrococcales:
+
+```{r}
+growth_asv %>% 
+  filter(Order=="Micrococcales") %>% 
+  ggplot(aes(x=reorder(Genus, -k), y=k)) +
+  geom_jitter(width=0.1, height=0) +
+  facet_wrap(~Phylum) +
+  theme_test() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+
+Proteobacteria:
+
+```{r}
+growth_asv %>% 
+  filter(Phylum=="Firmicutes") %>% 
+  ggplot(aes(x=reorder(Genus, -k), y=k)) +
+  geom_jitter(width=0.1, height=0) +
+  facet_wrap(~Phylum) +
+  theme_test() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+
+Firmicutes:
+
+```{r}
+growth_asv %>% 
+  filter(Phylum=="Firmicutes") %>% 
+  ggplot(aes(x=reorder(Genus, -k), y=k)) +
+  geom_jitter(width=0.1, height=0) +
+  facet_wrap(~Phylum) +
+  theme_test() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+# Phylogenetic distance
+
+## Mantel correlogram
+
+```{r}
+# Isolate tree of growth-inferred taxa
+physeq_gr <- subset_taxa(physeq, ASV %in% growth_asvs)
+tree_gr <- phy_tree(physeq_gr)
+
+# Calculate phylogenetic distances
+phylo_dist <- cophenetic(tree_gr)
+phylo_dist[upper.tri(phylo_dist, diag=TRUE)] = NA # remove upper triangle of dist (redundant)
+
+# Calculate growth rate distances
+growth_slim <- select(growth_asv, ASV, k) %>% 
+  column_to_rownames(var="ASV")
+gr_dist <- as.matrix(dist(growth_slim), labels=TRUE)
+gr_dist[upper.tri(gr_dist, diag=TRUE)] = NA # remove upper triangle of dist (redundant)
+
+# Mantel correlog
+gr_phylo_crlg <- mantel.correlog(phylo_dist, gr_dist) # calculate
+gr_phylo_crlg_df <- data.frame(gr_phylo_crlg$mantel.res) %>% 
+  mutate(sig = if_else(Pr.corrected. <= 0.05, "sig", "ns")) %>% 
+  filter(!is.na(Pr.corrected.))
+```
+
+```{r}
+gr_phylo_crlg_df %>% 
+  ggplot(aes(x=class.index, y=Mantel.cor, shape=sig)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype=2, color="gray") +
+  theme_test()
+
+```
+
+## Correlation
+
+```{r}
+# Long format
+phylo_dist_long <- data.frame(phylo_dist) %>% 
+  rownames_to_column(var="ASV1") %>% 
+  pivot_longer(cols=-ASV1, names_to="ASV2", values_to="dist_phylo") %>% 
+  filter(!is.na(dist_phylo)) %>% 
+  mutate(ASV2 = gsub("^X", "", ASV2)) # remove coerced X at start of some ASV names
+phylo_dist_long
+
+
+gr_dist_long <- data.frame(gr_dist) %>% 
+  rownames_to_column(var="ASV1") %>% 
+  pivot_longer(cols=-ASV1, names_to="ASV2", values_to="dist_gr") %>% 
+  filter(!is.na(dist_gr)) %>% 
+  mutate(ASV2 = gsub("^X", "", ASV2)) # remove coerced X at start of some ASV names
+gr_dist_long
+
+# combine
+gr_phylo_dist_long <- inner_join(phylo_dist_long, gr_dist_long)
+gr_phylo_dist_long
+```
+
+Visualize:
+
+All pairwise distances
+
+```{r}
+gr_phylo_dist_long %>% 
+  ggplot(aes(x=dist_phylo, y=dist_gr)) +
+  geom_point() +
+  theme_test()
+```
+
+Correlation:
+
+```{r}
+cor.test(gr_phylo_dist_long$dist_phylo, gr_phylo_dist_long$dist_gr, method="pearson")
+```
+

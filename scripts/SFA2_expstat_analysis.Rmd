@@ -167,18 +167,28 @@ plot_grow_total
 End of exponential and end of incubation:
 
 ```{r}
-# norm_whole_total
-# norm_growth_total
+# Day 0
+whole_day0 <- norm_whole_total %>% 
+  filter(Day==0) %>% 
+  select(Inoculant, wh_total=total)
+
+norm_growth_total %>% 
+  filter(Day==0) %>% 
+  select(Inoculant, gr_total=total) %>% 
+  inner_join(whole_day0) %>% 
+  mutate(prop = gr_total/wh_total) %>% 
+  summarize(prop_mean = mean(prop),
+            prop_sd = sd(prop))
 
 # Day 9
-whole_day30 <- norm_whole_total %>% 
+whole_day9 <- norm_whole_total %>% 
   filter(Day==9) %>% 
   select(Inoculant, wh_total=total)
 
 norm_growth_total %>% 
   filter(Day==9) %>% 
   select(Inoculant, gr_total=total) %>% 
-  inner_join(whole_day30) %>% 
+  inner_join(whole_day9) %>% 
   mutate(prop = gr_total/wh_total) %>% 
   summarize(prop_mean = mean(prop),
             prop_sd = sd(prop))
@@ -259,7 +269,13 @@ growth_grp %>%
             grp2_prop_sd = sd(grp2_prop))
 ```
 
+Group 2 start in exp vs stationary:
 
+```{r}
+filter(growth_grp, group=="grp2") %>% nrow()
+filter(growth_grp, group=="grp2" & start_day < 9) %>% nrow()
+filter(growth_grp, group=="grp2" & start_day >= 9) %>% nrow()
+```
 
 Summary of phylogenetic placements in groups:
 
@@ -648,6 +664,9 @@ Pearson test:
 # All
 cor.test(growth_grp_avg$length, log(growth_grp_avg$change_abund_corr), method="pearson")
 
+# Group 1 only
+cor.test(growth_grp_avg[growth_grp_avg$group=="grp1",]$length, log(growth_grp_avg[growth_grp_avg$group=="grp1",]$change_abund_corr), method="pearson")
+
 # Group 2 only
 cor.test(growth_grp_avg[growth_grp_avg$group=="grp2",]$length, log(growth_grp_avg[growth_grp_avg$group=="grp2",]$change_abund_corr), method="pearson")
 ```
@@ -673,6 +692,9 @@ Pearson test:
 ```{r}
 # All
 cor.test(growth_grp_avg$k, log(growth_grp_avg$change_abund_corr), method="pearson")
+
+# Group 1
+cor.test(growth_grp_avg[growth_grp_avg$group=="grp1",]$k, log(growth_grp_avg[growth_grp_avg$group=="grp1",]$change_abund_corr), method="pearson")
 
 # Group 2 only
 cor.test(growth_grp_avg[growth_grp_avg$group=="grp2",]$k, log(growth_grp_avg[growth_grp_avg$group=="grp2",]$change_abund_corr), method="pearson")

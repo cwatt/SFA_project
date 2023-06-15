@@ -302,7 +302,7 @@ for (l in unique(growth_slim$label)) {
 growth_impute <- growth_resptps %>% 
   # add respiration measurement tps
   mutate(growing = if_else(Day >= start_day & Day <= end_day, "yes", "no"), # label if during growth period
-         impute_abund = if_else(growing=="yes", slope*Day+yint, NULL), # impute using linear estimate
+         impute_abund = if_else(growing=="yes", slope*Day+yint, NA), # impute using linear estimate
          impute_abund_corr = exp(impute_abund)/n16S) %>% # un-ln and correct by n16S
   select(Inoculant, ASV, Day, start_day, end_day, impute_abund_corr) %>% 
   filter(!is.na(impute_abund_corr))
@@ -366,6 +366,28 @@ Statistics:
 cor.test(log(greff_df$Day), log(greff_df$greff), method="spearman")
 ```
 
+Phases
+
+```{r}
+greff_phase <- greff_df %>% 
+  mutate(phase = if_else(Day < 9, "exponential", "stationary")) %>% 
+  group_by(phase, Inoculant) %>% 
+  summarize(greff = mean(greff))
+
+greff_phase
+
+greff_phase %>% 
+  ggplot(aes(x=phase, y=log(greff))) +
+  geom_point() + 
+  theme_test()
+
+# Statistics
+greffphase_lm <- lm(log(greff) ~ phase, data=greff_phase)
+hist(resid(greffphase_lm)) # normalish
+plot(predict(greffphase_lm), resid(greffphase_lm)) # heteroskedastic
+# welch t test
+t.test(log(greff) ~ phase, data=greff_phase, var.equal=FALSE)
+```
 
 # Abundance gain vs respiration
 
@@ -377,20 +399,14 @@ greff_df %>%
   theme_test()
 ```
 
-Stats:
+Statistics:
+
+Correlation
 
 ```{r}
 cor.test(log(greff_df$deltaN), greff_df$mgCO2, method="spearman")
 ```
 
-
-Statistics:
-
-# WIP
-
-```{r}
-#cor.test()
-```
 
 # Growing:non-growing
 

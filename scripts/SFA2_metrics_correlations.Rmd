@@ -1,0 +1,164 @@
+---
+title: "WIP"
+author: "Cassandra Wattenburger"
+date: "2/7/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("phyloseq")
+library("vegan")
+library("tidyverse")
+library("lmerTest")
+library("cowplot")
+
+sessionInfo()
+
+# I can't type "head" apparently so I'm going to make an alias
+h <- function(x) {head(x)}
+```
+
+# Import data
+
+```{r}
+# Metadata
+meta <- readRDS("../data_intermediate/SFA2_metadata.rds")
+
+# Growth estimates
+growth <- readRDS("../data_intermediate/SFA2_growth_estimates_pap2.rds")
+
+# Death estimates
+death <- readRDS("../data_intermediate/SFA2_death_estimates_pap2.rds")
+
+# All paprica estimates
+pap_all <- readRDS("../data_intermediate/SFA2_paprica_all.rds")
+```
+
+# Growth vs growth
+
+ASV averages:
+
+```{r}
+growth_asv <- growth %>% 
+  group_by(ASV) %>% 
+  summarize(k = mean(k),
+            g = mean(g),
+            lag = mean(start_day),
+            deltaN = mean(change_abund/n16S)) %>% 
+  ungroup()
+
+growth_asv
+```
+
+
+## k vs deltaNg
+
+```{r}
+growth_asv %>% 
+  ggplot(aes(x=log(k), y=log(deltaN))) +
+  geom_point() +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+cor.test(log(growth_asv$k), log(growth_asv$deltaN), method="spearman")
+```
+
+## k vs lag
+
+```{r}
+growth_asv %>% 
+  ggplot(aes(x=log(k), y=lag)) +
+  geom_point() +
+  theme_test()
+```
+
+Statistics:
+
+```{r}
+cor.test(log(growth_asv$k), log(growth_asv$lag), method="spearman")
+```
+
+# Death vs death
+
+ASV averages:
+
+```{r}
+death_asv <- death %>% 
+  group_by(ASV) %>% 
+  summarize(k = mean(k),
+            h = mean(h),
+            lag = mean(start_day),
+            deltaN = mean(change_abund/n16S)) %>% 
+  ungroup()
+
+death_asv
+```
+
+## k vs deltaNd
+
+```{r}
+death_asv %>% 
+  ggplot(aes(x=log(k), y=log(abs(deltaN)))) +
+  geom_point() +
+  theme_test()
+```
+
+```{r}
+cor.test(log(death_asv$k), log(abs(death_asv$deltaN)), method="spearman")
+```
+
+# Growth vs death
+
+Combine datasets, only overlapping ASVs:
+
+```{r}
+growth_death_asv <- growth_asv %>%
+  select(ASV, k_gr=k, g, lag_gr = lag, deltaN_gr = deltaN) %>% 
+  inner_join(death_asv) %>% 
+  select(everything(), k_de=k, h, lag_de = lag, deltaN_de = deltaN)
+
+growth_death_asv
+```
+
+## k
+
+```{r}
+growth_death_asv %>% 
+  ggplot(aes(x=k_gr, y=k_de)) +
+  geom_point() +
+  theme_test()
+```
+
+```{r}
+cor.test(growth_death_asv$k_gr, growth_death_asv$k_de, method="spearman")
+```
+
+## deltaN
+
+```{r}
+growth_death_asv %>% 
+  ggplot(aes(x=log(deltaN_gr), y=log(abs(deltaN_de)))) +
+  geom_point(size=2) +
+  geom_smooth(method="lm", linetype=2, color="black") +
+  theme_test() +
+  theme(axis.text = element_text(size=10),
+        axis.title = element_blank())
+```
+
+```{r}
+cor.test(log(growth_death$deltaNg), log(abs(growth_death$deltaNd)), data=growth_death, method="spearman")
+```
+
+

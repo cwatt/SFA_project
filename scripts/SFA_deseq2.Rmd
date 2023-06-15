@@ -1,0 +1,631 @@
+---
+title: "SFA - DESeq2"
+author: "Cassandra Wattenburger"
+date: "2023-06-12"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r}
+# Clear working directory, load in packages, generate package info
+rm(list=ls())
+
+library("phyloseq")
+library("DESeq2")
+library("tidyverse")
+
+sessionInfo()
+```
+Note: ran this script on personal computer with newer version R and DESeq2 (couldn't install onto R version on server)
+
+# Import data
+
+```{r}
+# Growth estimates
+growth <- readRDS("SFA2_growth_estimates_pap2.rds")
+
+# Unrarefied counts
+physeq_raw <- readRDS("SFA2_physeq_unrare.rds")
+```
+
+Reformat and filter:
+
+```{r}
+# Subset day 0 and 30, microcosms used for growth estimation
+physeq030 <- subset_samples(physeq_raw, Type=="Growth" & Day %in% c(0,30))
+physeq030
+
+# Day to factor
+sample_data(physeq030)$Day <- as.factor(sample_data(physeq030)$Day)
+```
+
+# Differential Abundance
+
+Day 0 vs day 30
+
+## Inoculant 2
+
+Reformat:
+
+```{r}
+# Inoculant 2 samples
+physeq_all2 <- subset_samples(physeq030, Inoculant=2)
+
+# Remove 0 abundance taxa
+physeq_all2 <- prune_taxa(taxa_sums(physeq_all2) > 0, physeq_all2)
+
+# Add psuedo count of 1 to each sample and ASV (0s are a problem for DESeq2)
+physeq_all2 <- transform_sample_counts(physeq_all2, function(x) x+1)
+physeq_all2
+```
+
+DESeq2 test:
+
+```{r}
+# Create deseq2 object
+deseq_all2 <- phyloseq_to_deseq2(physeq_all2, ~ Day)
+
+# Test
+test_all2 <-  DESeq(deseq_all2, test="Wald", fitType="parametric")
+
+# Extract results
+results_all2 <- results(test_all2, contrast=c("Day", "30", "0"))
+alpha <- 0.05
+results_all2sig  <-  results_all2[which(results_all2$padj < alpha),]
+results_all2sig <-  cbind(as(results_all2sig, "data.frame"), as(tax_table(physeq_all2)[rownames(results_all2sig),], "matrix"))
+```
+
+Formatting:
+
+```{r}
+growth2 <- growth %>% 
+  filter(Inoculant==2) %>% 
+  select(everything(), -label, -Inoculant, -c(Domain:Species))
+
+# ASVs that grew
+growth_asvs2 <- growth2 %>% 
+  select(ASV) %>%  
+  unique()
+
+growth_asvs2 <- growth_asvs2$ASV
+growth_asvs2
+
+# Formatting
+results_all2sig <- results_all2sig %>% 
+  mutate(gr_infer = if_else(ASV %in% growth_asvs2, "inferred", "not"))
+
+# Add growth inferences
+deseq2 <- results_all2sig %>% 
+  left_join(growth2) %>% 
+  add_column(Inoculant=2)
+head(deseq2)
+```
+
+## Inoculant 10
+
+Reformat:
+
+```{r}
+# Inoculant 10 samples
+physeq_all10 <- subset_samples(physeq030, Inoculant=10)
+
+# Remove 0 abundance taxa
+physeq_all10 <- prune_taxa(taxa_sums(physeq_all10) > 0, physeq_all10)
+
+# Add psuedo count of 1 to each sample and ASV (0s are a problem for DESeq2)
+physeq_all10 <- transform_sample_counts(physeq_all10, function(x) x+1)
+physeq_all10
+```
+
+DESeq2 test:
+
+```{r}
+# Create deseq2 object
+deseq_all10 <- phyloseq_to_deseq2(physeq_all10, ~ Day)
+
+# Test
+test_all10 <-  DESeq(deseq_all10, test="Wald", fitType="parametric")
+
+# Extract results
+results_all10 <- results(test_all10, contrast=c("Day", "30", "0"))
+alpha <- 0.05
+results_all10sig  <-  results_all10[which(results_all10$padj < alpha),]
+results_all10sig <-  cbind(as(results_all10sig, "data.frame"), as(tax_table(physeq_all10)[rownames(results_all10sig),], "matrix"))
+```
+
+Formatting:
+
+```{r}
+growth10 <- growth %>% 
+  filter(Inoculant==10) %>% 
+  select(everything(), -label, -Inoculant, -c(Domain:Species))
+
+# ASVs that grew
+growth_asvs10 <- growth10 %>% 
+  select(ASV) %>%  
+  unique()
+
+growth_asvs10 <- growth_asvs10$ASV
+growth_asvs10
+
+# Formatting
+results_all10sig <- results_all10sig %>% 
+  mutate(gr_infer = if_else(ASV %in% growth_asvs10, "inferred", "not"))
+
+# Add growth inferences
+deseq10 <- results_all10sig %>% 
+  left_join(growth10) %>% 
+  add_column(Inoculant=10)
+head(deseq10)
+```
+
+## Inoculant 12
+
+Reformat:
+
+```{r}
+# Inoculant 12 samples
+physeq_all12 <- subset_samples(physeq030, Inoculant=12)
+
+# Remove 0 abundance taxa
+physeq_all12 <- prune_taxa(taxa_sums(physeq_all12) > 0, physeq_all12)
+
+# Add psuedo count of 1 to each sample and ASV (0s are a problem for DESeq2)
+physeq_all12 <- transform_sample_counts(physeq_all12, function(x) x+1)
+physeq_all12
+```
+
+DESeq2 test:
+
+```{r}
+# Create deseq2 object
+deseq_all12 <- phyloseq_to_deseq2(physeq_all12, ~ Day)
+
+# Test
+test_all12 <-  DESeq(deseq_all12, test="Wald", fitType="parametric")
+
+# Extract results
+results_all12 <- results(test_all12, contrast=c("Day", "30", "0"))
+alpha <- 0.05
+results_all12sig  <-  results_all12[which(results_all12$padj < alpha),]
+results_all12sig <-  cbind(as(results_all12sig, "data.frame"), as(tax_table(physeq_all12)[rownames(results_all12sig),], "matrix"))
+```
+
+Formatting:
+
+```{r}
+growth12 <- growth %>% 
+  filter(Inoculant==12) %>% 
+  select(everything(), -label, -Inoculant, -c(Domain:Species))
+
+# ASVs that grew
+growth_asvs12 <- growth12 %>% 
+  select(ASV) %>%  
+  unique()
+
+growth_asvs12 <- growth_asvs12$ASV
+growth_asvs12
+
+# Formatting
+results_all12sig <- results_all12sig %>% 
+  mutate(gr_infer = if_else(ASV %in% growth_asvs12, "inferred", "not"))
+
+# Add growth inferences
+deseq12 <- results_all12sig %>% 
+  left_join(growth12) %>% 
+  add_column(Inoculant=12)
+head(deseq12)
+```
+
+## Inoculant 19
+
+Reformat:
+
+```{r}
+# Inoculant 19 samples
+physeq_all19 <- subset_samples(physeq030, Inoculant=19)
+
+# Remove 0 abundance taxa
+physeq_all19 <- prune_taxa(taxa_sums(physeq_all19) > 0, physeq_all19)
+
+# Add psuedo count of 1 to each sample and ASV (0s are a problem for DESeq2)
+physeq_all19 <- transform_sample_counts(physeq_all19, function(x) x+1)
+physeq_all19
+```
+
+DESeq2 test:
+
+```{r}
+# Create deseq2 object
+deseq_all19 <- phyloseq_to_deseq2(physeq_all19, ~ Day)
+
+# Test
+test_all19 <-  DESeq(deseq_all19, test="Wald", fitType="parametric")
+
+# Extract results
+results_all19 <- results(test_all19, contrast=c("Day", "30", "0"))
+alpha <- 0.05
+results_all19sig  <-  results_all19[which(results_all19$padj < alpha),]
+results_all19sig <-  cbind(as(results_all19sig, "data.frame"), as(tax_table(physeq_all19)[rownames(results_all19sig),], "matrix"))
+```
+
+Formatting:
+
+```{r}
+growth19 <- growth %>% 
+  filter(Inoculant==19) %>% 
+  select(everything(), -label, -Inoculant, -c(Domain:Species))
+
+# ASVs that grew
+growth_asvs19 <- growth19 %>% 
+  select(ASV) %>%  
+  unique()
+
+growth_asvs19 <- growth_asvs19$ASV
+growth_asvs19
+
+# Formatting
+results_all19sig <- results_all19sig %>% 
+  mutate(gr_infer = if_else(ASV %in% growth_asvs19, "inferred", "not"))
+
+# Add growth inferences
+deseq19 <- results_all19sig %>% 
+  left_join(growth19) %>% 
+  add_column(Inoculant=19)
+head(deseq19)
+```
+
+## Inoculant 41
+
+Reformat:
+
+```{r}
+# Inoculant 41 samples
+physeq_all41 <- subset_samples(physeq030, Inoculant=41)
+
+# Remove 0 abundance taxa
+physeq_all41 <- prune_taxa(taxa_sums(physeq_all41) > 0, physeq_all41)
+
+# Add psuedo count of 1 to each sample and ASV (0s are a problem for DESeq2)
+physeq_all41 <- transform_sample_counts(physeq_all41, function(x) x+1)
+physeq_all41
+```
+
+DESeq2 test:
+
+```{r}
+# Create deseq2 object
+deseq_all41 <- phyloseq_to_deseq2(physeq_all41, ~ Day)
+
+# Test
+test_all41 <-  DESeq(deseq_all41, test="Wald", fitType="parametric")
+
+# Extract results
+results_all41 <- results(test_all41, contrast=c("Day", "30", "0"))
+alpha <- 0.05
+results_all41sig  <-  results_all41[which(results_all41$padj < alpha),]
+results_all41sig <-  cbind(as(results_all41sig, "data.frame"), as(tax_table(physeq_all41)[rownames(results_all41sig),], "matrix"))
+```
+
+Formatting:
+
+```{r}
+growth41 <- growth %>% 
+  filter(Inoculant==41) %>% 
+  select(everything(), -label, -Inoculant, -c(Domain:Species))
+
+# ASVs that grew
+growth_asvs41 <- growth41 %>% 
+  select(ASV) %>%  
+  unique()
+
+growth_asvs41 <- growth_asvs41$ASV
+growth_asvs41
+
+# Formatting
+results_all41sig <- results_all41sig %>% 
+  mutate(gr_infer = if_else(ASV %in% growth_asvs41, "inferred", "not"))
+
+# Add growth inferences
+deseq41 <- results_all41sig %>% 
+  left_join(growth41) %>% 
+  add_column(Inoculant=41)
+head(deseq41)
+```
+
+## Inoculant 47
+
+Reformat:
+
+```{r}
+# Inoculant 47 samples
+physeq_all47 <- subset_samples(physeq030, Inoculant=47)
+
+# Remove 0 abundance taxa
+physeq_all47 <- prune_taxa(taxa_sums(physeq_all47) > 0, physeq_all47)
+
+# Add psuedo count of 1 to each sample and ASV (0s are a problem for DESeq2)
+physeq_all47 <- transform_sample_counts(physeq_all47, function(x) x+1)
+physeq_all47
+```
+
+DESeq2 test:
+
+```{r}
+# Create deseq2 object
+deseq_all47 <- phyloseq_to_deseq2(physeq_all47, ~ Day)
+
+# Test
+test_all47 <-  DESeq(deseq_all47, test="Wald", fitType="parametric")
+
+# Extract results
+results_all47 <- results(test_all47, contrast=c("Day", "30", "0"))
+alpha <- 0.05
+results_all47sig  <-  results_all47[which(results_all47$padj < alpha),]
+results_all47sig <-  cbind(as(results_all47sig, "data.frame"), as(tax_table(physeq_all47)[rownames(results_all47sig),], "matrix"))
+```
+
+Formatting:
+
+```{r}
+growth47 <- growth %>% 
+  filter(Inoculant==47) %>% 
+  select(everything(), -label, -Inoculant, -c(Domain:Species))
+
+# ASVs that grew
+growth_asvs47 <- growth47 %>% 
+  select(ASV) %>%  
+  unique()
+
+growth_asvs47 <- growth_asvs47$ASV
+growth_asvs47
+
+# Formatting
+results_all47sig <- results_all47sig %>% 
+  mutate(gr_infer = if_else(ASV %in% growth_asvs47, "inferred", "not"))
+
+# Add growth inferences
+deseq47 <- results_all47sig %>% 
+  left_join(growth47) %>% 
+  add_column(Inoculant=47)
+head(deseq47)
+```
+
+## Combine results
+
+```{r}
+combined <- bind_rows(deseq2, deseq10) %>% 
+  bind_rows(deseq12) %>% 
+  bind_rows(deseq19) %>% 
+  bind_rows(deseq41) %>% 
+  bind_rows(deseq47) %>% 
+  select(Inoculant, ASV, Domain:Species, baseMean:padj, gr_infer, k:g, start_day:end_day, start_abund_corr:change_abund_corr, n16S:genome_size)
+
+combined
+```
+
+## Growth inferred
+
+Visualize:
+
+```{r}
+# Growth inferred only, k
+combined %>%
+  mutate(Inoculant = as_factor(Inoculant)) %>% 
+  filter(gr_infer=="inferred") %>% 
+  ggplot(aes(x=k, y=log2FoldChange, color=Phylum)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype=2, color="gray") +
+  theme_test()
+
+# Growth inferred only, deltaN
+combined %>%
+  mutate(Inoculant = as_factor(Inoculant)) %>% 
+  filter(gr_infer=="inferred") %>% 
+  ggplot(aes(x=log(change_abund_corr), y=log2FoldChange, color=Phylum)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype=2, color="gray") +
+  theme_test()
+```
+
+Correlation:
+
+```{r}
+cor.test(combined$log2FoldChange, combined$k, method="spearman")
+cor.test(combined$log2FoldChange, log(combined$change_abund_corr), method="spearman")
+```
+Spot checking:
+
+```{r}
+meta <- data.frame(sample_data(physeq030))
+meta
+
+physeq_x <- subset_samples(physeq030, Inoculant==41)
+physeq_x <- subset_taxa(physeq_x, ASV=="2fc4b2a4cf66323e3f29c22589942ed0")
+data.frame(otu_table(physeq_x))
+
+physeq_y <- subset_samples(physeq030, Inoculant==12)
+physeq_y <- subset_taxa(physeq_y, ASV=="f45e2011ebad601b7c996218b5180745")
+data.frame(otu_table(physeq_y))
+
+#5d096318bfca5a9e34c622bd884c94de
+physeq_z <- subset_samples(physeq030, Inoculant==47)
+physeq_z <- subset_taxa(physeq_z, ASV=="4205b2d577048e1da9d9712f9476cd7b")
+data.frame(otu_table(physeq_z))
+```
+
+## Non-growth inferred taxa
+
+Filter enriched taxa: 
+
+```{r}
+combined_noinfer <- combined %>%
+  filter(gr_infer == "not",
+         log2FoldChange > 0) %>% 
+  select(everything(), -gr_infer:genome_size)
+
+combined_noinfer
+```
+
+Visualize:
+
+```{r}
+combined_noinfer %>%
+  ggplot(aes(y=log2FoldChange, x=ASV, shape=Phylum)) +
+  geom_jitter() +
+  facet_wrap(~Inoculant) +
+  theme_test() +
+  theme(axis.text.x = element_blank())
+```
+Summarize:
+
+```{r}
+nrow(combined_noinfer)
+
+# enriched per inoculant
+combined_noinfer %>% 
+  group_by(Inoculant) %>% 
+  summarize(count = n()) %>% 
+  summarize(mean(count), sd(count))
+
+# species
+combined_noinfer %>%
+  select(ASV) %>% 
+  unique() %>% 
+  nrow()
+
+# Phyla
+combined_noinfer %>% 
+  select(Phylum, ASV) %>% 
+  unique() %>% 
+  group_by(Phylum) %>% 
+  summarize(count = n()) %>% 
+  arrange(-count)
+
+noinfer_inocasvs <- combined_noinfer %>%
+  select(Inoculant, ASV) %>% 
+  mutate(Inoculant = as.character(Inoculant))
+noinfer_inocasvs
+```
+Look at time series:
+
+```{r}
+norm_noinfer <- readRDS("./SFA2_norm_prepped.rds") %>%
+  semi_join(noinfer_inocasvs)
+norm_noinfer
+
+# 10 random
+set.seed(10)
+inocasv_rand <- norm_noinfer %>% 
+  select(label) %>% 
+  unique() %>% 
+  sample_n(20)
+
+norm_rand <- norm_noinfer %>% 
+  semi_join(inocasv_rand)
+
+for (l in unique(norm_rand$label)) {
+    data_sub <- filter(norm_rand, label==l)
+    plot <- data_sub %>% 
+      ggplot(aes(x=time, y=abund)) +
+      geom_point() +
+      geom_line() +
+      theme_test() +
+      labs(title=paste0(unique(data_sub$Inoculant), " ", unique(data_sub$ASV)))
+    print(plot)
+    ggsave(plot, file=paste0("noinfer_", unique(data_sub$label), ".png"), units="mm", height=90, width=90)
+}
+```
+
+# Autocorrelation
+
+```{r}
+library("tseries")
+
+# growth inferred time series
+norm_gr <- readRDS("./SFA2_norm_prepped.rds") %>%
+  semi_join(growth) %>% 
+  select(ASV, Inoculant, label, time, abund, norm_abund_avg) %>% 
+  add_column(infer="yes")
+norm_gr
+
+# enriched but no growth inference time series
+norm_noinfer <- norm_noinfer %>% 
+  add_column(infer="no")
+norm_noinfer
+
+# combine
+norm_both <- bind_rows(norm_gr, norm_noinfer)
+norm_both
+```
+
+Calculate autocorrelations:
+
+```{r}
+acf_df <- data.frame()
+
+for (l in unique(norm_both$label)) {
+  data_sub <- filter(norm_both, label==l) %>%
+    arrange(time)
+  # autocorrelation
+  acf_sub <- acf(data_sub$abund, plot=FALSE) # calculate
+  acf_lag <- data.frame(lag = acf_sub$lag) # lags
+  acf_acf <- data.frame(acf = acf_sub$acf) # autocorrelation values
+  acf_sig <- qnorm((1 + 0.95)/2)/sqrt(acf_sub$n.used) # 95% confidence
+  acf_subdf <- bind_cols(acf_lag, acf_acf) %>% 
+    add_column(label=l, sig_lvl = acf_sig, infer=unique(data_sub$infer)) %>% 
+    select(label, infer, lag, acf, sig_lvl)
+  acf_df <- bind_rows(acf_df, acf_subdf)
+}
+
+acf_df <- acf_df %>% 
+  mutate(sig = if_else(acf > sig_lvl | acf < 0-sig_lvl, "yes", "no")) %>% # denote significance
+  filter(lag > 0) # rm lag 0
+acf_df
+```
+
+## Result summary
+
+How many time series had any autocorrelation at any lag?
+
+```{r}
+# how many time series had any autocorrelation at all?
+acf_sig <- acf_df %>% 
+  mutate(dummy = if_else(sig=="yes", 1, 0)) %>% 
+  group_by(label, infer) %>% 
+  summarize(dummy_sum = sum(dummy)) %>% 
+  ungroup() %>% 
+  filter(dummy_sum > 0) %>% 
+  group_by(infer) %>% 
+  summarize(count = n())
+acf_sig
+
+acf_sig$count/nrow(growth)
+```
+26 (15.8%) of inferred time series had autocorrelation detected, 0 in non-growth inferred.
+
+What lags were autocorrelated?
+
+```{r}
+acf_sig_labs <- acf_df %>% 
+  mutate(dummy = if_else(sig=="yes", 1, 0)) %>% 
+  group_by(label, infer) %>% 
+  summarize(dummy_sum = sum(dummy)) %>% 
+  ungroup() %>% 
+  filter(dummy_sum > 0)
+acf_sig_labs <- acf_sig_labs$label
+
+acf_df %>% 
+  filter(label %in% acf_sig_labs & sig=="yes") %>% 
+  ggplot(aes(y=acf, x=lag)) +
+  geom_jitter(width=0.1, height=0) +
+  geom_hline(yintercept=0, linetype=2, color="gray") +
+  theme_test()
+```
+
+
