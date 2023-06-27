@@ -43,12 +43,19 @@ physeq <- readRDS("../data_intermediate/SFA2_physeq_unrare.rds")
 Phylum:
 
 ```{r}
-growth_asv %>% 
+phy_plot <- growth_asv %>% 
   ggplot(aes(x=reorder(Phylum, -k), y=k)) +
   geom_jitter(width=0.1, height=0) +
   theme_test() +
-  theme(axis.text.x = element_text(angle=45, hjust=1))
+  theme(axis.text.x = element_text(angle=45, hjust=1, size=9),
+        axis.text.y = element_text(size=10))
+phy_plot
 ```
+
+```{r, eval=FALSE}
+ggsave(phy_plot, file="../figures/suppfig_phylak.svg", units="mm", width=120, height=90, device="svg")
+```
+
 
 Order:
 
